@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, useDragControls } from 'framer-motion';
 import { Search, X, Plus, ChevronLeft } from 'lucide-react';
 import { DRINK_LIBRARY, getDrinksByCategory, searchDrinks } from '@/lib/data/drink-library';
 import { calculateStandardDrinks } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
+import { supabase } from '@/lib/supabase/client';
+import { useAuthStore } from '@/stores/use-auth-store';
 import type { DrinkCategory, DrinkEntry, DrinkDefinition } from '@/types';
 
-const CATEGORIES: { value: DrinkCategory | 'all'; label: string }[] = [
+const CATEGORIES: { value: DrinkCategory | 'all' | 'custom'; label: string }[] = [
   { value: 'all', label: 'All' },
+  { value: 'custom', label: 'My Drinks' },
   { value: 'beer', label: 'Beer' },
   { value: 'whiskey', label: 'Whiskey' },
   { value: 'vodka', label: 'Vodka' },
@@ -23,6 +26,15 @@ const CATEGORIES: { value: DrinkCategory | 'all'; label: string }[] = [
   { value: 'desi', label: 'Desi' },
 ];
 
+interface CustomDrinkRow {
+  id: string;
+  name: string;
+  emoji: string;
+  category: string;
+  abv_percent: number;
+  volume_ml: number;
+}
+
 interface DrinkPickerProps {
   onSelect: (drink: DrinkEntry) => void;
   onClose: () => void;
@@ -30,19 +42,53 @@ interface DrinkPickerProps {
 
 export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<DrinkCategory | 'all'>('all');
+  const [category, setCategory] = useState<DrinkCategory | 'all' | 'custom'>('all');
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customAbv, setCustomAbv] = useState('5');
   const [customVol, setCustomVol] = useState('330');
+  const [customDrinks, setCustomDrinks] = useState<DrinkDefinition[]>([]);
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   const dragControls = useDragControls();
 
+  // Fetch user's custom drinks
+  useEffect(() => {
+    if (!currentUser) return;
+    supabase
+      .from('custom_drinks')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) {
+          setCustomDrinks(
+            (data as CustomDrinkRow[]).map((d) => ({
+              id: `custom-${d.id}`,
+              name: d.name,
+              emoji: d.emoji,
+              category: d.category as DrinkCategory,
+              defaultAbvPercent: d.abv_percent,
+              defaultVolumeMl: d.volume_ml,
+              standardDrinks: calculateStandardDrinks(d.volume_ml, d.abv_percent),
+              color: '#71717a',
+              isCustom: true,
+            }))
+          );
+        }
+      });
+  }, [currentUser]);
+
   const drinks = useMemo(() => {
-    if (query.trim()) return searchDrinks(query);
-    if (category === 'all') return DRINK_LIBRARY;
-    return getDrinksByCategory(category);
-  }, [query, category]);
+    const allDrinks = [...customDrinks, ...DRINK_LIBRARY];
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      return allDrinks.filter((d) => d.name.toLowerCase().includes(q));
+    }
+    if (category === 'all') return allDrinks;
+    if (category === 'custom') return customDrinks;
+    return getDrinksByCategory(category as DrinkCategory);
+  }, [query, category, customDrinks]);
 
   const handleSelect = (def: DrinkDefinition) => {
     onSelect({
@@ -60,16 +106,51 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
     });
   };
 
-  const handleCustomDrink = () => {
-    if (!customName.trim()) return;
+  const handleCustomDrink = async () => {
+    if (!customName.trim() || !currentUser) return;
     const abv = parseFloat(customAbv) || 5;
     const vol = parseFloat(customVol) || 330;
+
+    // Save to Supabase for future use
+    const { data: inserted } = await supabase
+      .from('custom_drinks')
+      .insert({
+        user_id: currentUser.id,
+        name: customName.trim(),
+        emoji: '🍸',
+        category: 'custom',
+        abv_percent: abv,
+        volume_ml: vol,
+      })
+      .select()
+      .single();
+
+    // Add to local custom drinks list
+    if (inserted) {
+      const row = inserted as CustomDrinkRow;
+      setCustomDrinks((prev) => [
+        {
+          id: `custom-${row.id}`,
+          name: row.name,
+          emoji: row.emoji,
+          category: row.category as DrinkCategory,
+          defaultAbvPercent: row.abv_percent,
+          defaultVolumeMl: row.volume_ml,
+          standardDrinks: calculateStandardDrinks(row.volume_ml, row.abv_percent),
+          color: '#71717a',
+          isCustom: true,
+        },
+        ...prev,
+      ]);
+    }
+
+    // Select it immediately
     onSelect({
       id: crypto.randomUUID(),
-      drinkDefinitionId: 'custom-' + crypto.randomUUID(),
+      drinkDefinitionId: inserted ? `custom-${(inserted as CustomDrinkRow).id}` : `custom-${crypto.randomUUID()}`,
       drinkName: customName.trim(),
       emoji: '🍸',
-      category: 'custom',
+      category: 'custom' as DrinkCategory,
       abvPercent: abv,
       volumeMl: vol,
       standardDrinks: calculateStandardDrinks(vol, abv),
@@ -86,10 +167,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[60]"
     >
-      {/* Blurred backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Bottom sheet — drag to dismiss */}
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -106,7 +185,6 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
         className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl flex flex-col"
         style={{ background: '#111114', height: '92vh', maxHeight: '92vh' }}
       >
-        {/* Drag handle */}
         <div
           onPointerDown={(e) => dragControls.start(e)}
           className="flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none"
@@ -115,7 +193,6 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
         </div>
 
         {showCustom ? (
-          /* ── Custom drink form ── */
           <div className="flex-1 flex flex-col px-5">
             <div className="flex items-center gap-2 mb-4">
               <button onClick={() => setShowCustom(false)} className="p-1 -ml-1">
@@ -154,6 +231,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
               <p className="text-xs text-zinc-600 text-center">
                 = <span className="font-bold text-white">{calculateStandardDrinks(parseFloat(customVol) || 0, parseFloat(customAbv) || 0)}</span> standard drinks
               </p>
+              <p className="text-[10px] text-zinc-700 text-center">This drink will be saved to your list</p>
             </div>
             <div className="py-4">
               <motion.button
@@ -167,9 +245,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
             </div>
           </div>
         ) : (
-          /* ── Drink library ── */
           <>
-            {/* Search + filters (sticky within sheet) */}
             <div className="shrink-0 px-5 pb-2.5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-bold">Add Drink</h2>
@@ -202,15 +278,14 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                       }`}
                     >
                       {c.label}
+                      {c.value === 'custom' && customDrinks.length > 0 ? ` (${customDrinks.length})` : ''}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Scrollable drink list */}
             <div className="flex-1 overflow-y-auto px-5 pt-2 pb-20">
-              {/* Custom drink row */}
               <button
                 onClick={() => setShowCustom(true)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl border border-dashed border-white/[0.06] active:bg-white/[0.03]"
@@ -229,6 +304,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
               ) : (
                 drinks.map((drink) => {
                   const color = DRINK_CATEGORY_COLORS[drink.category] || '#71717a';
+                  const isCustom = drink.id.startsWith('custom-');
                   return (
                     <motion.button
                       key={drink.id}
@@ -238,7 +314,10 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                     >
                       <span className="text-xl w-7 text-center shrink-0">{drink.emoji}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{drink.name}</p>
+                        <p className="text-sm font-medium truncate">
+                          {drink.name}
+                          {isCustom && <span className="text-[10px] text-zinc-600 ml-1.5">custom</span>}
+                        </p>
                         <p className="text-[10px] text-zinc-600">
                           {drink.defaultAbvPercent}% · {drink.defaultVolumeMl}ml · <span style={{ color }}>{drink.standardDrinks} std</span>
                         </p>
