@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Copy, Plus, Swords, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -31,6 +31,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const updateGroup = useGroupsStore((s) => s.updateGroup);
   const removeMember = useGroupsStore((s) => s.removeMember);
   const leaveGroup = useGroupsStore((s) => s.leaveGroup);
+  const fetchChallenges = useGroupsStore((s) => s.fetchChallenges);
+  const refreshChallengeProgress = useGroupsStore((s) => s.refreshChallengeProgress);
+  const fetchGroups = useGroupsStore((s) => s.fetchGroups);
   const group = groups.find((g) => g.id === id);
   const challenges = allChallenges.filter((c) => c.groupId === id);
   const addToast = useUIStore((s) => s.addToast);
@@ -44,6 +47,19 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [metric, setMetric] = useState<ChallengeMetric>('total_drinks');
   const [stake, setStake] = useState('');
   const [editName, setEditName] = useState('');
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchGroups(currentUser.id);
+      fetchChallenges(id).then(() => {
+        // Refresh progress for active challenges
+        const activeCh = useGroupsStore.getState().challenges.filter(
+          (c) => c.groupId === id && c.status === 'active'
+        );
+        activeCh.forEach((c) => refreshChallengeProgress(c.id));
+      });
+    }
+  }, [id, currentUser, fetchGroups, fetchChallenges, refreshChallengeProgress]);
 
   if (!group || !currentUser) {
     return (
@@ -70,8 +86,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleCreate = () => {
     if (!title.trim()) return;
+    const challengeId = crypto.randomUUID();
     const challenge: Challenge = {
-      id: crypto.randomUUID(), groupId: id, title: title.trim(), description: '', type: 'individual', metric,
+      id: challengeId, groupId: id, title: title.trim(), description: '', type: 'individual', metric,
       targetValue: null, startDate: new Date().toISOString(),
       endDate: new Date(Date.now() + 7 * 86400000).toISOString(), status: 'active',
       participants: group.members.map((m, i) => ({
@@ -79,7 +96,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       })),
       winnerId: null,
       wager: stake.trim() ? {
-        id: crypto.randomUUID(), challengeId: '', createdByUserId: currentUser.id,
+        id: crypto.randomUUID(), challengeId, createdByUserId: currentUser.id,
         description: stake.trim(), stake: stake.trim(),
         participants: group.members.map((m) => ({
           userId: m.userId, userName: m.userName, accepted: m.userId === currentUser.id, outcome: 'pending' as const,
@@ -176,9 +193,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             <div className="space-y-1.5 mb-4">
               {group.members.map((m) => (
                 <div key={m.userId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <Avatar name={m.userName} size="sm" src={m.userAvatar} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                  <div onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)} className="cursor-pointer">
+                    <Avatar name={m.userName} size="sm" src={m.userAvatar} />
+                  </div>
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)}
+                  >
+                    <p className="text-sm font-medium truncate hover:underline">
                       {m.userName}
                       {m.userId === currentUser.id && <span className="text-zinc-600 ml-1">(you)</span>}
                     </p>
@@ -200,7 +222,11 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           {!showMembers && (
             <div className="flex -space-x-1.5 mb-4">
               {group.members.slice(0, 6).map((m) => (
-                <div key={m.userId} className="ring-2 ring-[#09090b] rounded-full">
+                <div
+                  key={m.userId}
+                  className="ring-2 ring-[#09090b] rounded-full cursor-pointer"
+                  onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)}
+                >
                   <Avatar name={m.userName} size="sm" src={m.userAvatar} />
                 </div>
               ))}

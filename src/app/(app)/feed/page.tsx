@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+import { Search, X, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -22,6 +22,13 @@ export default function FeedPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [searching, setSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchFeed();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     fetchFeed();
@@ -91,16 +98,23 @@ export default function FeedPage() {
             <h1 className="text-xl font-extrabold tracking-tight">
               hevy<span className="gradient-text">drinkr</span>
             </h1>
-            {tab === 'discover' ? (
-              <div />
-            ) : (
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => setTab('discover')}
-                className="p-2 -mr-2 rounded-xl hover:bg-white/5"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 rounded-xl hover:bg-white/5"
               >
-                <Search className="w-5 h-5 text-zinc-500" />
+                <RefreshCw className={`w-4.5 h-4.5 text-zinc-500 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
-            )}
+              {tab !== 'discover' && (
+                <button
+                  onClick={() => setTab('discover')}
+                  className="p-2 -mr-2 rounded-xl hover:bg-white/5"
+                >
+                  <Search className="w-5 h-5 text-zinc-500" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex">

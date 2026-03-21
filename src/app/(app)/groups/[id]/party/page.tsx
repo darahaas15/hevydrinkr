@@ -2,14 +2,15 @@
 
 import { use, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Play, Square, Users } from 'lucide-react';
+import { ChevronLeft, Play, Square, Users, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { usePartyStore } from '@/stores/use-party-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useTimer } from '@/hooks/use-timer';
 import { Avatar } from '@/components/ui/avatar';
-import { generateId } from '@/lib/utils';
+import { DrinkPicker } from '@/components/session/drink-picker';
+import { useSessionStore } from '@/stores/use-session-store';
 
 export default function PartyModePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -22,6 +23,13 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
   const endParty = usePartyStore((s) => s.endParty);
   const currentUser = useAuthStore((s) => s.currentUser);
   const [partyName, setPartyName] = useState('');
+  const [showDrinkPicker, setShowDrinkPicker] = useState(false);
+  const addDrinkEvent = usePartyStore((s) => s.addDrinkEvent);
+  const updateParticipantDrinks = usePartyStore((s) => s.updateParticipantDrinks);
+  const joinParty = usePartyStore((s) => s.joinParty);
+  const addDrink = useSessionStore((s) => s.addDrink);
+  const activeSession = useSessionStore((s) => s.activeSession);
+  const startSession = useSessionStore((s) => s.startSession);
 
   const timer = useTimer(activeParty?.startedAt || null);
 
@@ -160,6 +168,38 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
+            {/* Log Drink Button */}
+            {activeParty.status === 'active' && isParticipant && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowDrinkPicker(true)}
+                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-lg flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Log a Drink
+              </motion.button>
+            )}
+
+            {/* Join Button */}
+            {activeParty.status !== 'ended' && !isParticipant && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  joinParty(activeParty.id, {
+                    userId: currentUser.id,
+                    userName: currentUser.displayName,
+                    userAvatar: currentUser.avatarUrl,
+                    sessionId: '',
+                    totalStandardDrinks: 0,
+                    isActive: true,
+                  });
+                }}
+                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-lg"
+              >
+                Join Party
+              </motion.button>
+            )}
+
             {/* Live Drink Feed */}
             {activeParty.liveDrinkFeed.length > 0 && (
               <div>
@@ -186,6 +226,36 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
           </div>
         )}
       </div>
+
+      {/* Drink Picker */}
+      <AnimatePresence>
+        {showDrinkPicker && activeParty && (
+          <DrinkPicker
+            onSelect={(drink) => {
+              // Log to party feed
+              addDrinkEvent({
+                id: crypto.randomUUID(),
+                userId: currentUser.id,
+                userName: currentUser.displayName,
+                drinkName: drink.drinkName,
+                drinkEmoji: drink.emoji,
+                timestamp: new Date().toISOString(),
+              });
+              // Update participant total
+              const me = activeParty.participants.find((p) => p.userId === currentUser.id);
+              if (me) {
+                updateParticipantDrinks(currentUser.id, me.totalStandardDrinks + drink.standardDrinks);
+              }
+              // Also add to personal session if active
+              if (activeSession) {
+                addDrink(drink);
+              }
+              setShowDrinkPicker(false);
+            }}
+            onClose={() => setShowDrinkPicker(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

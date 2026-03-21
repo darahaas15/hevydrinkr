@@ -116,11 +116,17 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   // Fetch sessions from Supabase and hydrate local state
   // -----------------------------------------------------------------------
   fetchSessions: async (userId: string) => {
-    const { data: sessionRows, error: sessionsError } = await supabase
+    // If userId is empty, fetch all sessions (for leaderboard)
+    let query = supabase
       .from('drink_sessions')
       .select('*')
-      .eq('user_id', userId)
       .order('started_at', { ascending: false });
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data: sessionRows, error: sessionsError } = await query;
 
     if (sessionsError || !sessionRows) {
       console.error('Failed to fetch sessions:', sessionsError);

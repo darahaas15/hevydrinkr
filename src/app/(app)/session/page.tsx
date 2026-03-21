@@ -23,6 +23,7 @@ export default function SessionPage() {
   const endSession = useSessionStore((s) => s.endSession);
   const addDrink = useSessionStore((s) => s.addDrink);
   const removeDrink = useSessionStore((s) => s.removeDrink);
+  const abandonSession = useSessionStore((s) => s.abandonSession);
   const addPhoto = useSessionStore((s) => s.addPhoto);
   const removePhoto = useSessionStore((s) => s.removePhoto);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
@@ -44,9 +45,11 @@ export default function SessionPage() {
 
   const [venue, setVenue] = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showPostPreview, setShowPostPreview] = useState(false);
   const [caption, setCaption] = useState('');
+  const [selectedMood, setSelectedMood] = useState<'legendary' | 'great' | 'good' | 'meh' | 'rough'>('good');
   const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['sessionHistory'][0] | null>(null);
 
   const timer = useTimer(activeSession?.startedAt || null);
@@ -70,7 +73,7 @@ export default function SessionPage() {
   const handlePost = () => {
     if (!activeSession || !currentUser) return;
     setShowPostPreview(false);
-    endSession('good');
+    endSession(selectedMood);
 
     const completed = useSessionStore.getState().sessionHistory[0];
     if (completed) {
@@ -190,6 +193,13 @@ export default function SessionPage() {
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAbandonConfirm(true)}
+              className="px-3 py-2 rounded-xl bg-white/[0.06] text-zinc-500 text-sm"
+            >
+              Cancel
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => activeSession.drinks.length > 0 ? setShowPostPreview(true) : addToast('Add at least one drink first', 'error')}
               className="px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-sm font-semibold"
             >
@@ -290,13 +300,33 @@ export default function SessionPage() {
                 <PhotoGallery photos={activeSession.photos} />
               )}
 
+              {/* Mood */}
+              <div className="flex justify-between">
+                {[
+                  { value: 'legendary' as const, emoji: '🤩' },
+                  { value: 'great' as const, emoji: '😄' },
+                  { value: 'good' as const, emoji: '🙂' },
+                  { value: 'meh' as const, emoji: '😐' },
+                  { value: 'rough' as const, emoji: '🤢' },
+                ].map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => setSelectedMood(m.value)}
+                    className={`p-2 rounded-lg transition-all ${
+                      selectedMood === m.value ? 'bg-accent/10 ring-1 ring-accent/30 scale-110' : ''
+                    }`}
+                  >
+                    <span className="text-xl">{m.emoji}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Caption */}
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="Add a caption (optional)"
                 rows={2}
-                autoFocus
                 className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors resize-none"
               />
 
@@ -314,6 +344,46 @@ export default function SessionPage() {
                   className="flex-1 py-3 rounded-xl bg-accent text-black font-bold text-sm"
                 >
                   Post
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Abandon Session Confirmation */}
+      <AnimatePresence>
+        {showAbandonConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowAbandonConfirm(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
+              style={{ background: '#141418' }}
+            >
+              <div className="text-3xl mb-3">🗑️</div>
+              <h3 className="text-lg font-bold mb-1">Cancel session?</h3>
+              <p className="text-sm text-zinc-500 mb-5">This session won&apos;t be saved</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAbandonConfirm(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/[0.04] text-zinc-400 font-medium text-sm"
+                >
+                  Keep Going
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { abandonSession(); setShowAbandonConfirm(false); }}
+                  className="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 font-bold text-sm"
+                >
+                  Cancel It
                 </motion.button>
               </div>
             </motion.div>

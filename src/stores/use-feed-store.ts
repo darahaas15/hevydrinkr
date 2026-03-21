@@ -24,6 +24,9 @@ interface FeedState {
     user: UserProfile,
     caption: string
   ) => Promise<void>;
+  deleteFeedItem: (feedItemId: string) => Promise<void>;
+  updateFeedItem: (feedItemId: string, updates: { caption?: string }) => Promise<void>;
+  deleteComment: (feedItemId: string, commentId: string) => Promise<void>;
 }
 
 interface FeedItemRow {
@@ -311,4 +314,64 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
 
   getFeedForUser: (userId) =>
     get().items.filter((item) => item.userId === userId),
+
+  deleteFeedItem: async (feedItemId) => {
+    const prev = get().items;
+    set((state) => ({
+      items: state.items.filter((item) => item.id !== feedItemId),
+    }));
+
+    const { error } = await supabase
+      .from('feed_items')
+      .delete()
+      .eq('id', feedItemId);
+
+    if (error) {
+      console.error('Failed to delete feed item:', error);
+      set({ items: prev });
+    }
+  },
+
+  updateFeedItem: async (feedItemId, updates) => {
+    const prev = get().items;
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === feedItemId ? { ...item, ...updates } : item
+      ),
+    }));
+
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.caption !== undefined) dbUpdates.caption = updates.caption;
+
+    const { error } = await supabase
+      .from('feed_items')
+      .update(dbUpdates)
+      .eq('id', feedItemId);
+
+    if (error) {
+      console.error('Failed to update feed item:', error);
+      set({ items: prev });
+    }
+  },
+
+  deleteComment: async (feedItemId, commentId) => {
+    const prev = get().items;
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === feedItemId
+          ? { ...item, comments: item.comments.filter((c) => c.id !== commentId) }
+          : item
+      ),
+    }));
+
+    const { error } = await supabase
+      .from('feed_comments')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) {
+      console.error('Failed to delete comment:', error);
+      set({ items: prev });
+    }
+  },
 }));

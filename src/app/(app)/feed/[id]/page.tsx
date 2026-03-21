@@ -2,7 +2,7 @@
 
 import { use, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, Share2, Clock, Wine, Send } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -19,9 +19,16 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
   const addComment = useFeedStore((s) => s.addComment);
+  const deleteFeedItem = useFeedStore((s) => s.deleteFeedItem);
+  const updateFeedItem = useFeedStore((s) => s.updateFeedItem);
+  const deleteComment = useFeedStore((s) => s.deleteComment);
   const currentUser = useAuthStore((s) => s.currentUser);
   const [commentText, setCommentText] = useState('');
   const [showReactions, setShowReactions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editCaption, setEditCaption] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -104,7 +111,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           <button onClick={() => router.back()} className="p-1 -ml-1">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
-          <h1 className="text-lg font-bold">Post</h1>
+          <h1 className="text-lg font-bold flex-1">Post</h1>
+          {item.userId === currentUser?.id && (
+            <button onClick={() => setShowMenu(true)} className="p-1.5 -mr-1.5 rounded-lg hover:bg-white/5">
+              <MoreHorizontal className="w-5 h-5 text-zinc-500" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -121,8 +133,32 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {item.caption && (
-          <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
+        {editing ? (
+          <div className="mb-3 space-y-2">
+            <textarea
+              value={editCaption}
+              onChange={(e) => setEditCaption(e.target.value)}
+              rows={2}
+              autoFocus
+              className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-accent/30 text-sm text-white placeholder:text-zinc-600 focus:outline-none resize-none"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 bg-white/[0.04]">Cancel</button>
+              <button
+                onClick={async () => {
+                  await updateFeedItem(item.id, { caption: editCaption });
+                  setEditing(false);
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-black bg-accent"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          item.caption && (
+            <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
+          )
         )}
 
         {/* Photos */}
@@ -208,7 +244,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="flex gap-3"
+                className="flex gap-3 group"
               >
                 <div onClick={() => goToUser(comment.userId)} className="cursor-pointer">
                   <Avatar name={comment.userName} size="sm" src={comment.userAvatar} />
@@ -220,6 +256,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                   </p>
                   <p className="text-[10px] text-zinc-700 mt-0.5">{formatTimeAgo(comment.createdAt)}</p>
                 </div>
+                {comment.userId === currentUser?.id && (
+                  <button
+                    onClick={() => deleteComment(item.id, comment.id)}
+                    className="p-1 rounded-lg hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-1"
+                  >
+                    <Trash2 className="w-3 h-3 text-zinc-700 hover:text-red-400" />
+                  </button>
+                )}
               </motion.div>
             ))}
           </div>
@@ -251,6 +295,95 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </motion.button>
         </div>
       </div>
+      {/* Post Menu */}
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowMenu(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-xs mx-6 rounded-3xl p-5 space-y-1"
+              style={{ background: '#141418' }}
+            >
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  setEditCaption(item.caption);
+                  setEditing(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/5 transition-colors"
+              >
+                <Pencil className="w-4 h-4 text-zinc-400" />
+                <span className="text-sm">Edit Caption</span>
+              </button>
+              <button
+                onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-red-500/5 transition-colors"
+              >
+                <Trash2 className="w-4 h-4 text-red-400" />
+                <span className="text-sm text-red-400">Delete Post</span>
+              </button>
+              <button
+                onClick={() => setShowMenu(false)}
+                className="w-full py-3 mt-2 rounded-xl bg-white/[0.04] text-sm text-zinc-400 font-medium"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Delete Confirmation */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteConfirm(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
+              style={{ background: '#141418' }}
+            >
+              <div className="text-3xl mb-3">🗑️</div>
+              <h3 className="text-lg font-bold mb-1">Delete post?</h3>
+              <p className="text-sm text-zinc-500 mb-5">This can&apos;t be undone</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/[0.04] text-zinc-400 font-medium text-sm"
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={async () => {
+                    setShowDeleteConfirm(false);
+                    await deleteFeedItem(item.id);
+                    router.back();
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 font-bold text-sm"
+                >
+                  Delete
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

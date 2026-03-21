@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Scale, Camera } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Scale, Camera, Type, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
+import { useUIStore } from '@/stores/use-ui-store';
+import { supabase } from '@/lib/supabase/client';
 import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
 
 export default function SettingsPage() {
@@ -12,9 +14,12 @@ export default function SettingsPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
   const updateProfile = useAuthStore((s) => s.updateProfile);
+  const addToast = useUIStore((s) => s.addToast);
 
   const [weight, setWeight] = useState(currentUser?.weightKg?.toString() || '75');
   const [gender, setGender] = useState(currentUser?.gender || 'male');
+  const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
+  const [bio, setBio] = useState(currentUser?.bio || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleChangePhoto = async () => {
@@ -22,6 +27,18 @@ export default function SettingsPage() {
     if (!file) return;
     const dataUrl = await compressImage(file, MAX_AVATAR_SIZE, AVATAR_MAX_DIM);
     updateProfile({ avatarUrl: dataUrl });
+    addToast('Photo updated', 'success');
+  };
+
+  const handleSaveDisplayName = () => {
+    if (!displayName.trim()) return;
+    updateProfile({ displayName: displayName.trim() });
+    addToast('Name updated', 'success');
+  };
+
+  const handleSaveBio = () => {
+    updateProfile({ bio: bio.trim() });
+    addToast('Bio updated', 'success');
   };
 
   const handleLogout = async () => {
@@ -34,14 +51,21 @@ export default function SettingsPage() {
       setConfirmDelete(true);
       return;
     }
-    await logout();
-    if (typeof window !== 'undefined') {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('hevydrinkr')) {
-          localStorage.removeItem(key);
-        }
-      });
-      window.location.href = '/';
+    if (!currentUser) return;
+    try {
+      // Delete user data from Supabase (cascading deletes handle related rows)
+      await supabase.from('follows').delete().or(`follower_id.eq.${currentUser.id},following_id.eq.${currentUser.id}`);
+      await supabase.from('feed_items').delete().eq('user_id', currentUser.id);
+      await supabase.from('drink_sessions').delete().eq('user_id', currentUser.id);
+      await supabase.from('personal_records').delete().eq('user_id', currentUser.id);
+      await supabase.from('profiles').delete().eq('id', currentUser.id);
+      await logout();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } catch {
+      setConfirmDelete(false);
+      addToast('Failed to delete account. Try again.', 'error');
     }
   };
 
@@ -74,10 +98,38 @@ export default function SettingsPage() {
             </button>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
+                <Type className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Display Name</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  onBlur={handleSaveDisplayName}
+                  className="w-32 text-right text-sm bg-transparent text-white focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="px-4 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <User className="w-4 h-4 text-zinc-500" />
                 <span className="text-sm">Username</span>
               </div>
               <span className="text-sm text-zinc-500">@{currentUser?.username}</span>
+            </div>
+            <div className="px-4 py-3.5">
+              <div className="flex items-center gap-3 mb-2">
+                <FileText className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Bio</span>
+              </div>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                onBlur={handleSaveBio}
+                placeholder="Tell people about yourself..."
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.05] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 resize-none"
+              />
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -111,7 +163,6 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-zinc-700 mt-2">Used for drink score calculations</p>
             </div>
           </div>
         </div>
@@ -126,7 +177,7 @@ export default function SettingsPage() {
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <span className="text-sm text-zinc-400">Storage</span>
-              <span className="text-sm text-zinc-600">Local</span>
+              <span className="text-sm text-zinc-600">Supabase</span>
             </div>
           </div>
         </div>

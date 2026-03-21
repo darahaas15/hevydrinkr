@@ -30,6 +30,7 @@ interface GroupsState {
   fetchChallenges: (groupId: string) => Promise<void>;
   addChallenge: (challenge: Challenge) => Promise<void>;
   deleteChallenge: (challengeId: string) => Promise<void>;
+  refreshChallengeProgress: (challengeId: string) => Promise<void>;
   updateChallengeProgress: (
     challengeId: string,
     userId: string,
@@ -484,6 +485,79 @@ export const useGroupsStore = create<GroupsState>()((set, get) => ({
         set((state) => ({ challenges: [...state.challenges, prev] }));
       }
     }
+  },
+
+  refreshChallengeProgress: async (challengeId) => {
+    const challenge = get().challenges.find((c) => c.id === challengeId);
+    if (!challenge || challenge.status !== 'active') return;
+
+    // Fetch sessions for all participants within the challenge timeframe
+    const participantIds = challenge.participants.map((p) => p.userId);
+    const { data: sessions } = await supabase
+      .from('drink_sessions')
+      .select('user_id, drinks:drink_entries(standard_drinks), duration_minutes, rounds(id)')
+      .in('user_id', participantIds)
+      .eq('status', 'completed')
+      .gte('started_at', challenge.startDate)
+      .lte('started_at', challenge.endDate);
+
+    if (!sessions) return;
+
+    // Compute values per participant based on metric
+    const values: Record<string, number> = {};
+    for (const s of sessions) {
+      const uid = s.user_id as string;
+      if (!values[uid]) values[uid] = 0;
+      const drinks = (s.drinks as { standard_drinks: number }[]) || [];
+      const totalStd = drinks.reduce((sum, d) => sum + d.standard_drinks, 0);
+      const rounds = (s.rounds as { id: string }[]) || [];
+
+      switch (challenge.metric) {
+        case 'total_drinks':
+          values[uid] += drinks.length;
+          break;
+        case 'total_standard_drinks':
+          values[uid] += totalStd;
+          break;
+        case 'most_sessions':
+          values[uid] += 1;
+          break;
+        case 'session_duration':
+          values[uid] = Math.max(values[uid], (s.duration_minutes as number) || 0);
+          break;
+        case 'unique_drinks':
+          values[uid] += drinks.length; // approximation
+          break;
+        case 'most_rounds_bought':
+          values[uid] += rounds.length;
+          break;
+      }
+    }
+
+    // Update each participant
+    for (const p of challenge.participants) {
+      const val = values[p.userId] || 0;
+      if (val !== p.currentValue) {
+        await supabase
+          .from('challenge_participants')
+          .update({ current_value: val })
+          .eq('challenge_id', challengeId)
+          .eq('user_id', p.userId);
+      }
+    }
+
+    // Update local state with re-ranking
+    set((state) => ({
+      challenges: state.challenges.map((c) => {
+        if (c.id !== challengeId) return c;
+        const updated = c.participants.map((p) => ({
+          ...p,
+          currentValue: values[p.userId] || 0,
+        }));
+        const sorted = [...updated].sort((a, b) => b.currentValue - a.currentValue);
+        return { ...c, participants: sorted.map((p, i) => ({ ...p, rank: i + 1 })) };
+      }),
+    }));
   },
 
   updateChallengeProgress: async (challengeId, userId, value) => {

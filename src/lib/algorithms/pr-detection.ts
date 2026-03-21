@@ -1,6 +1,5 @@
 import type { DrinkSession } from '@/types/session';
 import type { PersonalRecord, PRCategory } from '@/types/pr';
-import { generateId } from '@/lib/utils';
 
 function formatPrValue(category: PRCategory, value: number): string {
   switch (category) {
@@ -84,7 +83,7 @@ export function detectPRs(
 
     if (!existing || isBetter(value, existing.value)) {
       newPRs.push({
-        id: generateId(),
+        id: crypto.randomUUID(),
         userId: completedSession.userId,
         category,
         value,

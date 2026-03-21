@@ -14,9 +14,10 @@ export function GroupCard({ group }: { group: Group }) {
 
   return (
     <motion.button
+      whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => router.push(`/groups/${group.id}`)}
-      className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-left"
+      className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-left active:bg-white/[0.05] transition-colors"
     >
       <div className="flex items-center gap-3">
         {group.iconUrl ? (
