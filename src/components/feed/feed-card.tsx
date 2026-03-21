@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { memo, useState } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
@@ -13,7 +12,6 @@ import type { FeedItem, ReactionEmoji } from '@/types';
 import { REACTION_EMOJIS } from '@/lib/constants';
 
 export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
-  const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
@@ -21,6 +19,7 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
 
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
+  const userProfileHref = item.userId === currentUser?.id ? '/profile' : `/profile/${item.userId}`;
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,15 +45,6 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
     setShowReactions(false);
   };
 
-  const goToUser = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (item.userId !== currentUser?.id) {
-      router.push(`/profile/${item.userId}`);
-    } else {
-      router.push('/profile');
-    }
-  };
-
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const text = `${item.userName} had ${item.sessionSummary.totalDrinks} drinks at ${item.sessionSummary.venue}`;
@@ -74,13 +64,13 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
     >
       {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
-        <div onClick={goToUser} className="cursor-pointer">
+        <Link href={userProfileHref} onClick={(e) => e.stopPropagation()} className="cursor-pointer">
           <Avatar name={item.userName} size="md" src={item.userAvatar} />
-        </div>
-        <div className="flex-1 min-w-0" onClick={goToUser}>
+        </Link>
+        <Link href={userProfileHref} onClick={(e) => e.stopPropagation()} className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate cursor-pointer hover:underline">{item.userName}</p>
           <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
-        </div>
+        </Link>
       </div>
 
       {/* Caption */}

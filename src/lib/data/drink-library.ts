@@ -44,6 +44,21 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('beer-simba-wit',      'Simba Wit',               '🍺', 'beer', 5.0,  330),
   d('beer-simba-strong',   'Simba Strong',            '🍺', 'beer', 7.0,  330),
 
+  // Beer — Indian Brands (500ml)
+  d('beer-kf-premium-500',  'Kingfisher Premium 500ml',  '🍺', 'beer', 4.8,  500),
+  d('beer-kf-strong-500',   'Kingfisher Strong 500ml',   '🍺', 'beer', 8.0,  500),
+  d('beer-kf-ultra-500',    'Kingfisher Ultra 500ml',    '🍺', 'beer', 5.0,  500),
+  d('beer-kf-blue-500',     'Kingfisher Blue 500ml',     '🍺', 'beer', 8.0,  500),
+  d('beer-bira-white-500',  'Bira 91 White 500ml',       '🍺', 'beer', 4.7,  500),
+  d('beer-bira-blonde-500', 'Bira 91 Blonde 500ml',      '🍺', 'beer', 4.5,  500),
+  d('beer-bira-strong-500', 'Bira 91 Strong 500ml',      '🍺', 'beer', 8.0,  500),
+  d('beer-bira-light-500',  'Bira 91 Light 500ml',       '🍺', 'beer', 4.0,  500),
+  d('beer-haywards-500',    'Haywards 5000 500ml',       '🍺', 'beer', 8.0,  500),
+  d('beer-godfather-s-500', 'Godfather Strong 500ml',    '🍺', 'beer', 7.5,  500),
+  d('beer-godfather-l-500', 'Godfather Lager 500ml',     '🍺', 'beer', 5.0,  500),
+  d('beer-simba-wit-500',   'Simba Wit 500ml',           '🍺', 'beer', 5.0,  500),
+  d('beer-simba-strong-500','Simba Strong 500ml',        '🍺', 'beer', 7.0,  500),
+
   // Beer — International (popular in India)
   d('beer-tuborg',         'Tuborg Green',            '🍺', 'beer', 4.8,  330),
   d('beer-tuborg-strong',  'Tuborg Strong',           '🍺', 'beer', 8.0,  330),
@@ -56,6 +71,18 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('beer-hoegaarden',     'Hoegaarden',              '🍺', 'beer', 4.9,  330),
   d('beer-fosters',        'Foster\'s Lager',         '🍺', 'beer', 4.0,  330),
 
+  // Beer — International (500ml)
+  d('beer-tuborg-500',        'Tuborg Green 500ml',        '🍺', 'beer', 4.8,  500),
+  d('beer-tuborg-strong-500', 'Tuborg Strong 500ml',       '🍺', 'beer', 8.0,  500),
+  d('beer-carlsberg-500',     'Carlsberg Pilsner 500ml',   '🍺', 'beer', 5.0,  500),
+  d('beer-carlsberg-s-500',   'Carlsberg Elephant 500ml',  '🍺', 'beer', 7.2,  500),
+  d('beer-budweiser-500',     'Budweiser 500ml',           '🍺', 'beer', 5.0,  500),
+  d('beer-bud-magnum-500',    'Budweiser Magnum 500ml',    '🍺', 'beer', 6.5,  500),
+  d('beer-heineken-500',      'Heineken 500ml',            '🍺', 'beer', 5.0,  500),
+  d('beer-corona-500',        'Corona Extra 500ml',        '🍺', 'beer', 4.5,  500),
+  d('beer-hoegaarden-500',    'Hoegaarden 500ml',          '🍺', 'beer', 4.9,  500),
+  d('beer-fosters-500',       'Foster\'s Lager 500ml',     '🍺', 'beer', 4.0,  500),
+
   // Beer — Generic styles
   d('beer-ipa',            'IPA',                     '🍺', 'beer', 6.5,  330),
   d('beer-stout',          'Stout',                   '🍺', 'beer', 5.5,  330),
@@ -63,6 +90,14 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('beer-wheat',          'Wheat Beer',              '🍺', 'beer', 5.2,  330),
   d('beer-lager',          'Lager',                   '🍺', 'beer', 5.0,  330),
   d('beer-light',          'Light Beer',              '🍺', 'beer', 4.2,  330),
+
+  // Beer — Generic styles (500ml)
+  d('beer-ipa-500',       'IPA 500ml',               '🍺', 'beer', 6.5,  500),
+  d('beer-stout-500',     'Stout 500ml',             '🍺', 'beer', 5.5,  500),
+  d('beer-pale-ale-500',  'Pale Ale 500ml',          '🍺', 'beer', 5.5,  500),
+  d('beer-wheat-500',     'Wheat Beer 500ml',        '🍺', 'beer', 5.2,  500),
+  d('beer-lager-500',     'Lager 500ml',             '🍺', 'beer', 5.0,  500),
+  d('beer-light-500',     'Light Beer 500ml',        '🍺', 'beer', 4.2,  500),
 
   // ═══════════════════════════════════════════════════════════
   // WHISKEY — Indian Blended
