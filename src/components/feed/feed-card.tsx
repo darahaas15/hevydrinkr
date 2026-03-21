@@ -89,17 +89,21 @@ export function FeedCard({ item }: { item: FeedItem }) {
         <p className="px-4 pb-2 text-[13px] text-zinc-300">{item.caption}</p>
       )}
 
-      {/* Photos */}
+      {/* Photos — Instagram style */}
       {item.photos && item.photos.length > 0 && (
-        <div className="mb-2 px-4">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        item.photos.length === 1 ? (
+          <div className="mb-2">
+            <img src={item.photos[0]} alt="" className="w-full aspect-[4/3] object-cover" />
+          </div>
+        ) : (
+          <div className="mb-2 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
             {item.photos.map((photo, i) => (
-              <div key={i} className="shrink-0 w-44 h-44 rounded-2xl overflow-hidden bg-white/5">
-                <img src={photo} alt="" className="w-full h-full object-cover" />
+              <div key={i} className="w-full shrink-0 snap-center">
+                <img src={photo} alt="" className="w-full aspect-[4/3] object-cover" />
               </div>
             ))}
           </div>
-        </div>
+        )
       )}
 
       {/* Session stats */}
