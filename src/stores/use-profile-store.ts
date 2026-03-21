@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { PersonalRecord } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
@@ -30,7 +31,7 @@ function mapDbPrToPersonalRecord(
   };
 }
 
-export const useProfileStore = create<ProfileState>()((set, get) => ({
+export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
   personalRecords: [],
   loading: false,
 
@@ -125,4 +126,7 @@ export const useProfileStore = create<ProfileState>()((set, get) => ({
 
   getUncelebratedPRs: () =>
     get().personalRecords.filter((pr) => !pr.celebrated),
+}), {
+  name: 'hd-profile',
+  partialize: (s) => ({ personalRecords: s.personalRecords }),
 }));

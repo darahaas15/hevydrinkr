@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type {
   Group,
   GroupMember,
@@ -134,7 +135,7 @@ function mapDbChallengeToChallenge(
   };
 }
 
-export const useGroupsStore = create<GroupsState>()((set, get) => ({
+export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
   groups: [],
   challenges: [],
   loading: true,
@@ -592,4 +593,10 @@ export const useGroupsStore = create<GroupsState>()((set, get) => ({
 
   getChallengesByGroup: (groupId) =>
     get().challenges.filter((c) => c.groupId === groupId),
+}), {
+  name: 'hd-groups',
+  partialize: (s) => ({ groups: s.groups, challenges: s.challenges }),
+  onRehydrateStorage: () => (state) => {
+    if (state && state.groups.length > 0) state.loading = false;
+  },
 }));

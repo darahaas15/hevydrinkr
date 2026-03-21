@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type {
   FeedItem,
   FeedLike,
@@ -149,7 +150,7 @@ function mapRow(row: FeedItemRow): FeedItem {
   };
 }
 
-export const useFeedStore = create<FeedState>()((set, get) => ({
+export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   items: [],
   loading: true,
   error: null,
@@ -627,5 +628,11 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     if (error) {
       set({ items: prev });
     }
+  },
+}), {
+  name: 'hd-feed',
+  partialize: (s) => ({ items: s.items }),
+  onRehydrateStorage: () => (state) => {
+    if (state && state.items.length > 0) state.loading = false;
   },
 }));

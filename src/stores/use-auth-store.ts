@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { UserProfile } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
@@ -34,7 +35,7 @@ function profileFromRow(row: Record<string, unknown>): UserProfile {
   };
 }
 
-export const useAuthStore = create<AuthState>()((set, get) => ({
+export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   currentUser: null,
   allUsers: [],
   isAuthenticated: false,
@@ -219,4 +220,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
     }
   },
+}), {
+  name: 'hd-auth',
+  partialize: (s) => ({ currentUser: s.currentUser, allUsers: s.allUsers, isAuthenticated: s.isAuthenticated }),
 }));

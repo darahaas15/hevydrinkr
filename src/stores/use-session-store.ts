@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
@@ -108,7 +109,7 @@ function drinkEntryToRow(entry: DrinkEntry, sessionId: string) {
 // Store
 // ---------------------------------------------------------------------------
 
-export const useSessionStore = create<SessionState>()((set, get) => ({
+export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   activeSession: null,
   sessionHistory: [],
 
@@ -503,4 +504,7 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
     set((state) => ({
       sessionHistory: [session, ...state.sessionHistory],
     })),
+}), {
+  name: 'hd-sessions',
+  partialize: (s) => ({ activeSession: s.activeSession, sessionHistory: s.sessionHistory }),
 }));
