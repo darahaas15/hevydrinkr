@@ -29,7 +29,6 @@ export function pickImage(): Promise<File | null> {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment';
     input.onchange = () => {
       resolve(input.files?.[0] ?? null);
     };

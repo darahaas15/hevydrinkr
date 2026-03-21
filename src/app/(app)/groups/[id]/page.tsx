@@ -2,14 +2,14 @@
 
 import { use, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Copy, Plus, Swords, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon } from 'lucide-react';
+import { ChevronLeft, Copy, Plus, Swords, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
-import { generateId } from '@/lib/utils';
 import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
+import { getBaseUrl, shareLink } from '@/lib/share';
 import type { Challenge, ChallengeMetric } from '@/types';
 
 const METRICS: { value: ChallengeMetric; label: string; emoji: string }[] = [
@@ -62,10 +62,16 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     addToast('Invite code copied!', 'success');
   };
 
+  const shareInviteLink = async () => {
+    const url = `${getBaseUrl()}/invite/${group.inviteCode}`;
+    const result = await shareLink(url, `Join ${group.name} on hevydrinkr`, `Use this link to join ${group.name}`);
+    if (result === 'copied') addToast('Invite link copied!', 'success');
+  };
+
   const handleCreate = () => {
     if (!title.trim()) return;
     const challenge: Challenge = {
-      id: generateId(), groupId: id, title: title.trim(), description: '', type: 'individual', metric,
+      id: crypto.randomUUID(), groupId: id, title: title.trim(), description: '', type: 'individual', metric,
       targetValue: null, startDate: new Date().toISOString(),
       endDate: new Date(Date.now() + 7 * 86400000).toISOString(), status: 'active',
       participants: group.members.map((m, i) => ({
@@ -73,7 +79,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       })),
       winnerId: null,
       wager: stake.trim() ? {
-        id: generateId(), challengeId: '', createdByUserId: currentUser.id,
+        id: crypto.randomUUID(), challengeId: '', createdByUserId: currentUser.id,
         description: stake.trim(), stake: stake.trim(),
         participants: group.members.map((m) => ({
           userId: m.userId, userName: m.userName, accepted: m.userId === currentUser.id, outcome: 'pending' as const,
@@ -142,17 +148,20 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
       <div className="px-5 py-4 space-y-5">
         {/* Invite code */}
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          onClick={copyInviteCode}
-          className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 flex items-center justify-between"
-        >
-          <div>
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 flex items-center justify-between">
+          <button onClick={copyInviteCode} className="text-left flex-1">
             <p className="text-[10px] text-zinc-600 mb-0.5">Invite Code</p>
             <p className="text-lg font-mono font-bold tracking-wider text-accent">{group.inviteCode}</p>
+          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={copyInviteCode} className="p-2 rounded-lg hover:bg-white/5">
+              <Copy className="w-4 h-4 text-zinc-600" />
+            </button>
+            <button onClick={shareInviteLink} className="p-2 rounded-lg hover:bg-white/5">
+              <Share2 className="w-4 h-4 text-zinc-600" />
+            </button>
           </div>
-          <Copy className="w-4 h-4 text-zinc-600" />
-        </motion.button>
+        </div>
 
         {/* Members */}
         <div>
@@ -362,15 +371,15 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[55] flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[55] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/70" onClick={() => setShowCreate(false)} />
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="relative w-full max-w-md sm:mx-4 rounded-t-3xl sm:rounded-3xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
               style={{ background: '#111114' }}
             >
               <div>

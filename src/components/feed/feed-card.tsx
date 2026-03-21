@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
-import { formatTimeAgo, formatDuration, generateId } from '@/lib/utils';
+import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem, ReactionEmoji } from '@/types';
 import { REACTION_EMOJIS } from '@/lib/constants';
 
@@ -37,7 +37,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
     e.stopPropagation();
     if (!currentUser) return;
     addLike(item.id, {
-      id: generateId(),
+      id: crypto.randomUUID(),
       userId: currentUser.id,
       userName: currentUser.displayName,
       emoji,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useSessionStore } from '@/stores/use-session-store';
@@ -27,8 +27,16 @@ export default function LeaderboardPage() {
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
   const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all-time');
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const allUsers = useAuthStore((s) => s.allUsers);
+  const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const currentUser = useAuthStore((s) => s.currentUser);
+
+  useEffect(() => {
+    fetchAllUsers();
+    // Fetch all sessions (pass empty to get all)
+    fetchSessions('');
+  }, [fetchAllUsers, fetchSessions]);
 
   const leaderboard = useMemo(
     () => buildLeaderboard(sessionHistory, allUsers, metric, timeframe),

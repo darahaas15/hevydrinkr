@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { motion, useDragControls } from 'framer-motion';
 import { Search, X, Plus, ChevronLeft } from 'lucide-react';
 import { DRINK_LIBRARY, getDrinksByCategory, searchDrinks } from '@/lib/data/drink-library';
-import { generateId, calculateStandardDrinks } from '@/lib/utils';
+import { calculateStandardDrinks } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import type { DrinkCategory, DrinkEntry, DrinkDefinition } from '@/types';
 
@@ -46,7 +46,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
 
   const handleSelect = (def: DrinkDefinition) => {
     onSelect({
-      id: generateId(),
+      id: crypto.randomUUID(),
       drinkDefinitionId: def.id,
       drinkName: def.name,
       emoji: def.emoji,
@@ -65,8 +65,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
     const abv = parseFloat(customAbv) || 5;
     const vol = parseFloat(customVol) || 330;
     onSelect({
-      id: generateId(),
-      drinkDefinitionId: 'custom-' + generateId(),
+      id: crypto.randomUUID(),
+      drinkDefinitionId: 'custom-' + crypto.randomUUID(),
       drinkName: customName.trim(),
       emoji: '🍸',
       category: 'custom',

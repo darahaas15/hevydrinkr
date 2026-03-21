@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Users, Link2, Search } from 'lucide-react';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { GroupCard } from '@/components/groups/group-card';
-import { generateId } from '@/lib/utils';
 import type { Group, GroupMember } from '@/types';
 
 export default function GroupsPage() {
   const groups = useGroupsStore((s) => s.groups);
   const addGroup = useGroupsStore((s) => s.addGroup);
+  const fetchGroups = useGroupsStore((s) => s.fetchGroups);
   const joinGroup = useGroupsStore((s) => s.joinGroup);
   const addToast = useUIStore((s) => s.addToast);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -23,6 +23,10 @@ export default function GroupsPage() {
   const [emoji] = useState('');
   const [description, setDescription] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+
+  useEffect(() => {
+    if (currentUser) fetchGroups(currentUser.id);
+  }, [currentUser, fetchGroups]);
 
   const myGroups = groups.filter((g) =>
     g.members.some((m) => m.userId === currentUser?.id)
@@ -40,14 +44,14 @@ export default function GroupsPage() {
     };
 
     const group: Group = {
-      id: generateId(),
+      id: crypto.randomUUID(),
       name: name.trim(),
       emoji,
       description: description.trim(),
       createdByUserId: currentUser.id,
       members: [member],
       iconUrl: null,
-      inviteCode: generateId().slice(0, 6).toUpperCase(),
+      inviteCode: crypto.randomUUID().slice(0, 6).toUpperCase(),
       createdAt: new Date().toISOString(),
       isActive: true,
     };
@@ -58,7 +62,7 @@ export default function GroupsPage() {
     setDescription('');
   };
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!inviteCode.trim() || !currentUser) return;
 
     const member: GroupMember = {
@@ -69,7 +73,7 @@ export default function GroupsPage() {
       joinedAt: new Date().toISOString(),
     };
 
-    const success = joinGroup(inviteCode.trim().toUpperCase(), member);
+    const success = await joinGroup(inviteCode.trim().toUpperCase(), member);
     if (success) {
       setShowJoin(false);
       setInviteCode('');
@@ -138,14 +142,14 @@ export default function GroupsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[55] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
             >
               <h2 className="text-lg font-bold">Create Group</h2>
 
@@ -191,14 +195,14 @@ export default function GroupsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[55] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowJoin(false)} />
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
             >
               <h2 className="text-xl font-bold text-accent font-extrabold">Join Group</h2>
 

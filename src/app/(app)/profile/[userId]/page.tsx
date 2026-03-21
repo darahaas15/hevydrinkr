@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useMemo } from 'react';
+import { use, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Wine, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
@@ -10,6 +10,8 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
 import { FeedCard } from '@/components/feed/feed-card';
 import { formatDuration } from '@/lib/utils';
+import { useUIStore } from '@/stores/use-ui-store';
+import { getBaseUrl, shareLink } from '@/lib/share';
 
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = use(params);
@@ -17,8 +19,18 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   const currentUser = useAuthStore((s) => s.currentUser);
   const allUsers = useAuthStore((s) => s.allUsers);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
+  const addToast = useUIStore((s) => s.addToast);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const feedItems = useFeedStore((s) => s.items);
+  const fetchFeed = useFeedStore((s) => s.fetchFeed);
+  const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
+
+  useEffect(() => {
+    fetchSessions(userId);
+    fetchFeed();
+    fetchAllUsers();
+  }, [userId, fetchSessions, fetchFeed, fetchAllUsers]);
 
   const user = allUsers.find((u) => u.id === userId);
 
@@ -59,7 +71,16 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
           <button onClick={() => router.back()} className="p-1 -ml-1">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
-          <h1 className="text-lg font-bold truncate">{user.displayName}</h1>
+          <h1 className="text-lg font-bold truncate flex-1">{user.displayName}</h1>
+          <button
+            onClick={async () => {
+              const result = await shareLink(`${getBaseUrl()}/profile/${userId}`, `${user.displayName} on hevydrinkr`);
+              if (result === 'copied') addToast('Link copied!', 'success');
+            }}
+            className="p-1.5 -mr-1.5 rounded-lg hover:bg-white/5"
+          >
+            <Share2 className="w-5 h-5 text-zinc-500" />
+          </button>
         </div>
       </div>
 

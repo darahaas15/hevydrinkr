@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Clock, Wine, ChevronRight, Camera } from 'lucide-react';
 import { useSessionStore } from '@/stores/use-session-store';
@@ -26,9 +26,18 @@ export default function SessionPage() {
   const addPhoto = useSessionStore((s) => s.addPhoto);
   const removePhoto = useSessionStore((s) => s.removePhoto);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const currentUser = useAuthStore((s) => s.currentUser);
   const personalRecords = useProfileStore((s) => s.personalRecords);
+  const fetchPRs = useProfileStore((s) => s.fetchPRs);
   const addPR = useProfileStore((s) => s.addPR);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchSessions(currentUser.id);
+      fetchPRs(currentUser.id);
+    }
+  }, [currentUser, fetchSessions, fetchPRs]);
   const triggerCelebration = useUIStore((s) => s.triggerCelebration);
   const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
   const addToast = useUIStore((s) => s.addToast);

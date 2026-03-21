@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { Avatar } from '@/components/ui/avatar';
-import { generateId } from '@/lib/utils';
 import type { Challenge, ChallengeMetric } from '@/types';
 
 const METRICS: { value: ChallengeMetric; label: string; emoji: string }[] = [
@@ -42,7 +41,7 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
     if (!title.trim() || !currentUser) return;
 
     const challenge: Challenge = {
-      id: generateId(),
+      id: crypto.randomUUID(),
       groupId: id,
       title: title.trim(),
       description: '',
@@ -61,7 +60,7 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
       })),
       winnerId: null,
       wager: stake.trim() ? {
-        id: generateId(),
+        id: crypto.randomUUID(),
         challengeId: '',
         createdByUserId: currentUser.id,
         description: stake.trim(),
@@ -141,15 +140,16 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[55] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
             <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-              className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-3xl p-6 space-y-5"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5"
+              style={{ background: '#141418' }}
             >
               <h2 className="text-xl font-bold text-accent font-extrabold">New Challenge</h2>
 

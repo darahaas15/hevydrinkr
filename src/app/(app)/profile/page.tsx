@@ -1,25 +1,37 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Flame, Wine, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useProfileStore } from '@/stores/use-profile-store';
+import { useUIStore } from '@/stores/use-ui-store';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { calculateWeeklyStreak } from '@/lib/algorithms/streaks';
 import { formatDuration } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { PR_LABELS, PR_EMOJIS } from '@/types/pr';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_EMOJIS } from '@/lib/constants';
+import { getBaseUrl, shareLink } from '@/lib/share';
 
 export default function ProfilePage() {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const updateProfile = useAuthStore((s) => s.updateProfile);
+  const addToast = useUIStore((s) => s.addToast);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
+  const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const personalRecords = useProfileStore((s) => s.personalRecords);
+  const fetchPRs = useProfileStore((s) => s.fetchPRs);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchSessions(currentUser.id);
+      fetchPRs(currentUser.id);
+    }
+  }, [currentUser, fetchSessions, fetchPRs]);
 
   const mySessions = sessionHistory.filter(
     (s) => s.userId === currentUser?.id && s.status === 'completed'
@@ -54,9 +66,20 @@ export default function ProfilePage() {
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className="text-xl font-extrabold">Profile</h1>
-          <button onClick={() => router.push('/profile/settings')} className="p-2 -mr-2 rounded-xl hover:bg-white/5">
-            <Settings className="w-5 h-5 text-zinc-500" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={async () => {
+                const result = await shareLink(`${getBaseUrl()}/profile/${currentUser.id}`, `${currentUser.displayName} on hevydrinkr`);
+                if (result === 'copied') addToast('Link copied!', 'success');
+              }}
+              className="p-2 rounded-xl hover:bg-white/5"
+            >
+              <Share2 className="w-5 h-5 text-zinc-500" />
+            </button>
+            <button onClick={() => router.push('/profile/settings')} className="p-2 -mr-2 rounded-xl hover:bg-white/5">
+              <Settings className="w-5 h-5 text-zinc-500" />
+            </button>
+          </div>
         </div>
       </div>
 

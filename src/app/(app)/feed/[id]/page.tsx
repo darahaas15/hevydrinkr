@@ -8,7 +8,7 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { Avatar } from '@/components/ui/avatar';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
-import { formatTimeAgo, formatDuration, generateId } from '@/lib/utils';
+import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { REACTION_EMOJIS } from '@/lib/constants';
 import type { ReactionEmoji } from '@/types';
 
@@ -56,7 +56,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const handleReact = (emoji: ReactionEmoji) => {
     if (!currentUser) return;
     addLike(item.id, {
-      id: generateId(),
+      id: crypto.randomUUID(),
       userId: currentUser.id,
       userName: currentUser.displayName,
       emoji,
@@ -85,7 +85,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const handleComment = () => {
     if (!commentText.trim() || !currentUser) return;
     addComment(item.id, {
-      id: generateId(),
+      id: crypto.randomUUID(),
       userId: currentUser.id,
       userName: currentUser.displayName,
       userAvatar: currentUser.avatarUrl,
