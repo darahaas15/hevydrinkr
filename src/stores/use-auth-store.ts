@@ -1,113 +1,184 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { UserProfile } from '@/types';
-import { generateId } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/client';
 
 interface AuthState {
   currentUser: UserProfile | null;
   allUsers: UserProfile[];
   isAuthenticated: boolean;
+  isLoading: boolean;
 
-  signup: (username: string, displayName: string, gender: 'male' | 'female' | 'other', weightKg: number) => void;
-  login: (username: string) => boolean;
-  loginWithUser: (user: UserProfile) => void;
-  logout: () => void;
-  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'avatarUrl'>>) => void;
-  setUsers: (users: UserProfile[]) => void;
+  initialize: () => Promise<void>;
+  signup: (email: string, password: string, username: string, displayName: string) => Promise<string | null>;
+  login: (email: string, password: string) => Promise<string | null>;
+  logout: () => Promise<void>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'avatarUrl'>>) => Promise<void>;
   getUserById: (id: string) => UserProfile | undefined;
-  toggleFollow: (userId: string) => void;
+  fetchAllUsers: () => Promise<void>;
+  toggleFollow: (userId: string) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      currentUser: null,
-      allUsers: [],
-      isAuthenticated: false,
+function profileFromRow(row: Record<string, unknown>): UserProfile {
+  return {
+    id: row.id as string,
+    username: row.username as string,
+    displayName: row.display_name as string,
+    avatarUrl: (row.avatar_url as string) || null,
+    bio: (row.bio as string) || '',
+    gender: (row.gender as 'male' | 'female' | 'other') || 'other',
+    weightKg: (row.weight_kg as number) || 70,
+    joinedAt: row.created_at as string,
+    isDemo: false,
+    followers: (row.followers as string[]) || [],
+    following: (row.following as string[]) || [],
+  };
+}
 
-      signup: (username, displayName, gender, weightKg) => {
-        const newUser: UserProfile = {
-          id: generateId(),
-          username: username.toLowerCase().replace(/[^a-z0-9_]/g, ''),
-          displayName,
-          avatarUrl: null,
-          bio: '',
-          gender,
-          weightKg,
-          joinedAt: new Date().toISOString(),
-          isDemo: false,
-          followers: [],
-          following: [],
-        };
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  currentUser: null,
+  allUsers: [],
+  isAuthenticated: false,
+  isLoading: true,
 
-        set((state) => ({
-          currentUser: newUser,
-          allUsers: [...state.allUsers, newUser],
-          isAuthenticated: true,
-        }));
-      },
+  initialize: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
 
-      login: (username) => {
-        const user = get().allUsers.find(
-          (u) => u.username.toLowerCase() === username.toLowerCase()
-        );
-        if (user) {
-          set({ currentUser: user, isAuthenticated: true });
-          return true;
-        }
-        return false;
-      },
+      if (profile) {
+        // Fetch follow data
+        const [{ data: followers }, { data: following }] = await Promise.all([
+          supabase.from('follows').select('follower_id').eq('following_id', session.user.id),
+          supabase.from('follows').select('following_id').eq('follower_id', session.user.id),
+        ]);
 
-      loginWithUser: (user) =>
-        set({ currentUser: user, isAuthenticated: true }),
-
-      logout: () =>
-        set({ currentUser: null, isAuthenticated: false }),
-
-      updateProfile: (updates) => {
-        const { currentUser, allUsers } = get();
-        if (!currentUser) return;
-
-        const updated = { ...currentUser, ...updates };
-        set({
-          currentUser: updated,
-          allUsers: allUsers.map((u) => (u.id === currentUser.id ? updated : u)),
-        });
-      },
-
-      setUsers: (users) => set({ allUsers: users }),
-
-      getUserById: (id) => get().allUsers.find((u) => u.id === id),
-
-      toggleFollow: (userId) => {
-        const { currentUser, allUsers } = get();
-        if (!currentUser) return;
-
-        const isFollowing = currentUser.following.includes(userId);
-
-        const updatedCurrentUser: UserProfile = {
-          ...currentUser,
-          following: isFollowing
-            ? currentUser.following.filter((id) => id !== userId)
-            : [...currentUser.following, userId],
-        };
-
-        const updatedAllUsers = allUsers.map((user) => {
-          if (user.id === currentUser.id) return updatedCurrentUser;
-          if (user.id === userId) {
-            return {
-              ...user,
-              followers: isFollowing
-                ? user.followers.filter((id) => id !== currentUser.id)
-                : [...user.followers, currentUser.id],
-            };
-          }
-          return user;
+        const user = profileFromRow({
+          ...profile,
+          followers: (followers || []).map((f: { follower_id: string }) => f.follower_id),
+          following: (following || []).map((f: { following_id: string }) => f.following_id),
         });
 
-        set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
+        set({ currentUser: user, isAuthenticated: true, isLoading: false });
+        get().fetchAllUsers();
+        return;
+      }
+    }
+    set({ currentUser: null, isAuthenticated: false, isLoading: false });
+  },
+
+  signup: async (email, password, username, displayName) => {
+    // Check username availability
+    const sanitized = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', sanitized)
+      .maybeSingle();
+
+    if (existing) return 'Username already taken';
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username: sanitized, display_name: displayName },
       },
-    }),
-    { name: 'hevydrinkr-auth' }
-  )
-);
+    });
+
+    if (error) return error.message;
+    if (!data.user) return 'Signup failed';
+
+    // Wait briefly for the trigger to create the profile
+    await new Promise((r) => setTimeout(r, 500));
+    await get().initialize();
+    return null;
+  },
+
+  login: async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return error.message;
+    await get().initialize();
+    return null;
+  },
+
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ currentUser: null, allUsers: [], isAuthenticated: false });
+  },
+
+  updateProfile: async (updates) => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+    if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
+    if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
+    if (updates.weightKg !== undefined) dbUpdates.weight_kg = updates.weightKg;
+    if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+    dbUpdates.updated_at = new Date().toISOString();
+
+    await supabase.from('profiles').update(dbUpdates).eq('id', currentUser.id);
+
+    const updated = { ...currentUser, ...updates };
+    set({
+      currentUser: updated,
+      allUsers: get().allUsers.map((u) => (u.id === currentUser.id ? updated : u)),
+    });
+  },
+
+  getUserById: (id) => get().allUsers.find((u) => u.id === id),
+
+  fetchAllUsers: async () => {
+    const { data: profiles } = await supabase.from('profiles').select('*');
+    if (!profiles) return;
+
+    const users = profiles.map((p) => profileFromRow(p));
+    set({ allUsers: users });
+  },
+
+  toggleFollow: async (userId) => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+
+    const isFollowing = currentUser.following.includes(userId);
+
+    if (isFollowing) {
+      await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId);
+    } else {
+      await supabase
+        .from('follows')
+        .insert({ follower_id: currentUser.id, following_id: userId });
+    }
+
+    // Update local state
+    const updatedFollowing = isFollowing
+      ? currentUser.following.filter((id) => id !== userId)
+      : [...currentUser.following, userId];
+
+    const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
+
+    const updatedAllUsers = get().allUsers.map((user) => {
+      if (user.id === currentUser.id) return updatedCurrentUser;
+      if (user.id === userId) {
+        return {
+          ...user,
+          followers: isFollowing
+            ? user.followers.filter((id) => id !== currentUser.id)
+            : [...user.followers, currentUser.id],
+        };
+      }
+      return user;
+    });
+
+    set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
+  },
+}));

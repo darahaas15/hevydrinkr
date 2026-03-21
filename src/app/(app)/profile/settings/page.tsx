@@ -24,18 +24,18 @@ export default function SettingsPage() {
     updateProfile({ avatarUrl: dataUrl });
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.replace('/');
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
       return;
     }
+    await logout();
     if (typeof window !== 'undefined') {
-      logout();
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('hevydrinkr')) {
           localStorage.removeItem(key);

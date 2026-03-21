@@ -3,33 +3,40 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronLeft } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/use-auth-store';
 
 type Screen = 'landing' | 'signup' | 'login';
 
 export default function LandingPage() {
   const router = useRouter();
-  const signup = useAuthStore((s) => s.signup);
-  const login = useAuthStore((s) => s.login);
+  const authSignup = useAuthStore((s) => s.signup);
+  const authLogin = useAuthStore((s) => s.login);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const initialize = useAuthStore((s) => s.initialize);
 
   const [screen, setScreen] = useState<Screen>('landing');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [loginUsername, setLoginUsername] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [error, setError] = useState('');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (mounted && isAuthenticated) {
+    initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
       router.replace('/feed');
     }
-  }, [mounted, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (!mounted || isAuthenticated) {
+  if (isLoading || isAuthenticated) {
     return (
       <div className="h-dvh flex items-center justify-center" style={{ background: '#09090b' }}>
         <div className="text-3xl animate-pulse">🥃</div>
@@ -37,8 +44,8 @@ export default function LandingPage() {
     );
   }
 
-  const handleSignup = () => {
-    if (!username.trim() || !displayName.trim()) {
+  const handleSignup = async () => {
+    if (!email.trim() || !password.trim() || !username.trim() || !displayName.trim()) {
       setError('Please fill in all fields');
       return;
     }
@@ -46,32 +53,39 @@ export default function LandingPage() {
       setError('Username must be at least 3 characters');
       return;
     }
-    const sanitized = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    const allUsers = useAuthStore.getState().allUsers;
-    if (allUsers.some((u) => u.username === sanitized)) {
-      setError('Username already taken');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
-    signup(username.trim(), displayName.trim(), 'other', 70);
-    router.push('/feed');
+    setSubmitting(true);
+    setError('');
+    const err = await authSignup(email.trim(), password, username.trim(), displayName.trim());
+    setSubmitting(false);
+    if (err) {
+      setError(err);
+    } else {
+      router.push('/feed');
+    }
   };
 
-  const handleLogin = () => {
-    if (!loginUsername.trim()) {
-      setError('Please enter your username');
+  const handleLogin = async () => {
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setError('Please fill in all fields');
       return;
     }
-    const success = login(loginUsername.trim());
-    if (success) {
-      router.push('/feed');
+    setSubmitting(true);
+    setError('');
+    const err = await authLogin(loginEmail.trim(), loginPassword);
+    setSubmitting(false);
+    if (err) {
+      setError(err);
     } else {
-      setError('Username not found');
+      router.push('/feed');
     }
   };
 
   return (
     <div className="h-dvh flex flex-col items-center justify-between px-6 py-16 relative overflow-hidden">
-      {/* Subtle bg glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[400px] bg-accent/[0.03] rounded-full blur-[150px] pointer-events-none" />
 
       <AnimatePresence mode="wait">
@@ -100,7 +114,6 @@ export default function LandingPage() {
               </h1>
             </div>
 
-            {/* CTAs */}
             <div className="w-full space-y-2.5">
               <motion.button
                 initial={{ opacity: 0, y: 12 }}
@@ -136,7 +149,6 @@ export default function LandingPage() {
             transition={{ duration: 0.2 }}
             className="relative z-10 flex flex-col w-full max-w-sm flex-1"
           >
-            {/* Back */}
             <button onClick={() => { setScreen('landing'); setError(''); }} className="flex items-center gap-1 text-zinc-500 text-sm mb-8 self-start">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
@@ -168,6 +180,29 @@ export default function LandingPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1.5 block">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1.5 block">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                />
+              </div>
+
               {error && (
                 <p className="text-sm text-red-400 text-center">{error}</p>
               )}
@@ -177,9 +212,10 @@ export default function LandingPage() {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSignup}
-                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-base"
+                disabled={submitting}
+                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Create Account
+                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
               </motion.button>
             </div>
           </motion.div>
@@ -194,7 +230,6 @@ export default function LandingPage() {
             transition={{ duration: 0.2 }}
             className="relative z-10 flex flex-col w-full max-w-sm flex-1"
           >
-            {/* Back */}
             <button onClick={() => { setScreen('landing'); setError(''); }} className="flex items-center gap-1 text-zinc-500 text-sm mb-8 self-start">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
@@ -204,17 +239,26 @@ export default function LandingPage() {
 
             <div className="space-y-4 flex-1">
               <div>
-                <label className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1.5 block">Username</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600">@</span>
-                  <input
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                    placeholder="username"
-                    className="w-full pl-9 pr-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  />
-                </div>
+                <label className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1.5 block">Email</label>
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1.5 block">Password</label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                />
               </div>
 
               {error && (
@@ -226,9 +270,10 @@ export default function LandingPage() {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleLogin}
-                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-base"
+                disabled={submitting}
+                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Sign In
+                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
               </motion.button>
 
               <button
