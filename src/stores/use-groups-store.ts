@@ -534,17 +534,18 @@ export const useGroupsStore = create<GroupsState>()((set, get) => ({
       }
     }
 
-    // Update each participant
-    for (const p of challenge.participants) {
-      const val = values[p.userId] || 0;
-      if (val !== p.currentValue) {
-        await supabase
-          .from('challenge_participants')
-          .update({ current_value: val })
-          .eq('challenge_id', challengeId)
-          .eq('user_id', p.userId);
-      }
-    }
+    // Update all changed participants in parallel
+    await Promise.all(
+      challenge.participants
+        .filter((p) => (values[p.userId] || 0) !== p.currentValue)
+        .map((p) =>
+          supabase
+            .from('challenge_participants')
+            .update({ current_value: values[p.userId] || 0 })
+            .eq('challenge_id', challengeId)
+            .eq('user_id', p.userId)
+        )
+    );
 
     // Update local state with re-ranking
     set((state) => ({

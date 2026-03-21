@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -7,7 +8,7 @@ import { useGroupsStore } from '@/stores/use-groups-store';
 import { Avatar } from '@/components/ui/avatar';
 import type { Group } from '@/types';
 
-export function GroupCard({ group }: { group: Group }) {
+export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
   const router = useRouter();
   const allChallenges = useGroupsStore((s) => s.challenges);
   const activeChallenges = allChallenges.filter((c) => c.groupId === group.id && c.status === 'active');
@@ -61,4 +62,4 @@ export function GroupCard({ group }: { group: Group }) {
       </div>
     </motion.button>
   );
-}
+});

@@ -151,12 +151,23 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (!profiles) return;
 
     const followsData = allFollows || [];
+    // Pre-index follows into Maps for O(1) lookup instead of O(n) per user
+    const followersMap = new Map<string, string[]>();
+    const followingMap = new Map<string, string[]>();
+    for (const f of followsData) {
+      const fArr = followersMap.get(f.following_id);
+      if (fArr) fArr.push(f.follower_id);
+      else followersMap.set(f.following_id, [f.follower_id]);
+      const gArr = followingMap.get(f.follower_id);
+      if (gArr) gArr.push(f.following_id);
+      else followingMap.set(f.follower_id, [f.following_id]);
+    }
     const users = profiles.map((p) => {
       const id = p.id as string;
       return profileFromRow({
         ...p,
-        followers: followsData.filter((f) => f.following_id === id).map((f) => f.follower_id),
-        following: followsData.filter((f) => f.follower_id === id).map((f) => f.following_id),
+        followers: followersMap.get(id) || [],
+        following: followingMap.get(id) || [],
       });
     });
     set({ allUsers: users });

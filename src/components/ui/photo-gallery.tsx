@@ -41,6 +41,7 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
                 <img
                   src={photo}
                   alt=""
+                  loading="lazy"
                   className="w-full aspect-[4/3] object-cover rounded-2xl"
                 />
               </div>
@@ -84,7 +85,7 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
             onClick={() => setViewerIndex(i)}
             className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-white/5 cursor-pointer"
           >
-            <img src={photo} alt="" className="w-full h-full object-cover" />
+            <img src={photo} alt="" loading="lazy" className="w-full h-full object-cover" />
             {onRemove && (
               <div
                 role="button"

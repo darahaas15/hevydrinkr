@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -79,17 +79,17 @@ export default function FeedPage() {
   }, [searchQuery, tab, currentUser?.id]);
 
   const followingIds = currentUser?.following || [];
-  const homeItems = items.filter(
-    (item) => followingIds.includes(item.userId) || item.userId === currentUser?.id
-  );
-  const discoverItems = items.filter(
-    (item) => !followingIds.includes(item.userId) && item.userId !== currentUser?.id
-  );
-  const displayItems = tab === 'home' ? homeItems : discoverItems;
 
-  const sorted = [...displayItems].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const sorted = useMemo(() => {
+    const followSet = new Set(followingIds);
+    const uid = currentUser?.id;
+    const filtered = tab === 'home'
+      ? items.filter((item) => followSet.has(item.userId) || item.userId === uid)
+      : items.filter((item) => !followSet.has(item.userId) && item.userId !== uid);
+    return [...filtered].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [items, followingIds, currentUser?.id, tab]);
 
   const showSearchResults = tab === 'discover' && searchQuery.trim().length > 0;
 

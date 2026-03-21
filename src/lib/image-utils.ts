@@ -1,5 +1,3 @@
-import imageCompression from 'browser-image-compression';
-
 export const MAX_AVATAR_SIZE = 0.05; // 50KB
 export const MAX_PHOTO_SIZE = 0.1; // 100KB
 export const AVATAR_MAX_DIM = 200;
@@ -10,6 +8,7 @@ export async function compressImage(
   maxSizeMB = MAX_PHOTO_SIZE,
   maxWidth = PHOTO_MAX_DIM
 ): Promise<string> {
+  const { default: imageCompression } = await import('browser-image-compression');
   const compressed = await imageCompression(file, {
     maxSizeMB,
     maxWidthOrHeight: maxWidth,

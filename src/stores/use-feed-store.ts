@@ -471,31 +471,34 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     if (updates.sessionSummary && item?.sessionId) {
       const s = updates.sessionSummary;
 
-      // Update session totals
-      await supabase.from('drink_sessions').update({
+      // Update session totals + replace drink entries in parallel
+      const sessionUpdate = supabase.from('drink_sessions').update({
         total_standard_drinks: s.totalStandardDrinks,
         duration_minutes: s.durationMinutes,
         venue: s.venue,
       }).eq('id', item.sessionId);
 
-      // Replace all drink entries: delete old, insert new
-      await supabase.from('drink_entries').delete().eq('session_id', item.sessionId);
-      if (s.drinks && s.drinks.length > 0) {
-        await supabase.from('drink_entries').insert(
-          s.drinks.map((d) => ({
-            id: crypto.randomUUID(),
-            session_id: item.sessionId,
-            drink_definition_id: 'edited',
-            drink_name: d.name,
-            emoji: d.emoji,
-            category: d.category,
-            abv_percent: d.abvPercent,
-            volume_ml: d.volumeMl,
-            standard_drinks: d.standardDrinks,
-            timestamp: new Date().toISOString(),
-          }))
-        );
-      }
+      const drinkReplace = supabase.from('drink_entries').delete().eq('session_id', item.sessionId)
+        .then(() => {
+          if (s.drinks && s.drinks.length > 0) {
+            return supabase.from('drink_entries').insert(
+              s.drinks.map((d) => ({
+                id: crypto.randomUUID(),
+                session_id: item.sessionId,
+                drink_definition_id: 'edited',
+                drink_name: d.name,
+                emoji: d.emoji,
+                category: d.category,
+                abv_percent: d.abvPercent,
+                volume_ml: d.volumeMl,
+                standard_drinks: d.standardDrinks,
+                timestamp: new Date().toISOString(),
+              }))
+            );
+          }
+        });
+
+      await Promise.all([sessionUpdate, drinkReplace]);
 
       // Update session store so profile stats reflect changes
       const sessionStore = useSessionStore.getState();

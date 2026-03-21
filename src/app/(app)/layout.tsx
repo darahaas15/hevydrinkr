@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { ActiveSessionBanner } from '@/components/session/active-session-banner';
-import { CelebrationModal } from '@/components/effects/celebration-modal';
-import { ToastContainer } from '@/components/ui/toast';
+
+const CelebrationModal = dynamic(() => import('@/components/effects/celebration-modal').then((m) => m.CelebrationModal), { ssr: false });
+const ToastContainer = dynamic(() => import('@/components/ui/toast').then((m) => m.ToastContainer), { ssr: false });
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

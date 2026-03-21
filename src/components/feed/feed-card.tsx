@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -11,7 +11,7 @@ import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem, ReactionEmoji } from '@/types';
 import { REACTION_EMOJIS } from '@/lib/constants';
 
-export function FeedCard({ item }: { item: FeedItem }) {
+export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const addLike = useFeedStore((s) => s.addLike);
@@ -93,13 +93,13 @@ export function FeedCard({ item }: { item: FeedItem }) {
       {item.photos && item.photos.length > 0 && (
         item.photos.length === 1 ? (
           <div className="mb-2">
-            <img src={item.photos[0]} alt="" className="w-full aspect-[4/3] object-cover" />
+            <img src={item.photos[0]} alt="" loading="lazy" className="w-full aspect-[4/3] object-cover" />
           </div>
         ) : (
           <div className="mb-2 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
             {item.photos.map((photo, i) => (
               <div key={i} className="w-full shrink-0 snap-center">
-                <img src={photo} alt="" className="w-full aspect-[4/3] object-cover" />
+                <img src={photo} alt="" loading="lazy" className="w-full aspect-[4/3] object-cover" />
               </div>
             ))}
           </div>
@@ -184,4 +184,4 @@ export function FeedCard({ item }: { item: FeedItem }) {
       </div>
     </div>
   );
-}
+});
