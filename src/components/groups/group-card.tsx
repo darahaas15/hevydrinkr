@@ -1,23 +1,22 @@
 'use client';
 
 import { memo } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { Avatar } from '@/components/ui/avatar';
 import type { Group } from '@/types';
 
 export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
-  const router = useRouter();
   const allChallenges = useGroupsStore((s) => s.challenges);
   const activeChallenges = allChallenges.filter((c) => c.groupId === group.id && c.status === 'active');
 
   return (
-    <motion.button
+    <Link href={`/groups/${group.id}`} prefetch>
+    <motion.div
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      onClick={() => router.push(`/groups/${group.id}`)}
       className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-left active:bg-white/[0.05] transition-colors"
     >
       <div className="flex items-center gap-3">
@@ -60,6 +59,7 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
 
         <ChevronRight className="w-5 h-5 text-zinc-600 shrink-0" />
       </div>
-    </motion.button>
+    </motion.div>
+    </Link>
   );
 });

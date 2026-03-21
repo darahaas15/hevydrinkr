@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { Home, Users, Trophy, User, Wine } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const tabs = [
@@ -14,7 +15,6 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
     <nav
@@ -33,9 +33,10 @@ export function BottomNav() {
 
           if (tab.isCenter) {
             return (
-              <button
+              <Link
                 key={tab.path}
-                onClick={() => router.push(tab.path)}
+                href={tab.path}
+                prefetch
                 className="relative flex flex-col items-center justify-center -mt-5"
               >
                 <div className={cn(
@@ -52,14 +53,15 @@ export function BottomNav() {
                 )}>
                   {tab.label}
                 </span>
-              </button>
+              </Link>
             );
           }
 
           return (
-            <button
+            <Link
               key={tab.path}
-              onClick={() => router.push(tab.path)}
+              href={tab.path}
+              prefetch
               className="flex flex-col items-center justify-center gap-0.5 py-2 px-4 min-w-[48px] min-h-[48px]"
             >
               <Icon
@@ -75,7 +77,7 @@ export function BottomNav() {
               )}>
                 {tab.label}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>

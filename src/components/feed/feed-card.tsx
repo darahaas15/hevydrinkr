@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { memo, useState } from 'react';
+import Link from 'next/link';
 import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -64,14 +65,12 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
     }
   };
 
-  const openPost = () => router.push(`/feed/${item.id}`);
-
   const { sessionSummary: s } = item;
 
   return (
+    <Link href={`/feed/${item.id}`} prefetch={false} className="block">
     <div
       className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden active:bg-white/[0.05] transition-colors cursor-pointer"
-      onClick={openPost}
     >
       {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
@@ -169,13 +168,13 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
             )}
           </motion.button>
 
-          <button onClick={(e) => { e.stopPropagation(); openPost(); }} className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5">
             <MessageCircle size={18} className="text-zinc-600" />
             {(() => {
               const total = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
               return total > 0 ? <span className="text-[11px] text-zinc-600">{total}</span> : null;
             })()}
-          </button>
+          </span>
 
           <button onClick={handleShare}>
             <Share2 size={18} className="text-zinc-600" />
@@ -183,5 +182,6 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
         </div>
       </div>
     </div>
+    </Link>
   );
 });
