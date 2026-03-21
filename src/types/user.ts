@@ -1,0 +1,23 @@
+export type Gender = 'male' | 'female' | 'other';
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string;
+  gender: Gender;
+  weightKg: number;
+  joinedAt: string;
+  isDemo: boolean;
+  followers: string[];
+  following: string[];
+}
+
+export interface UserSettings {
+  userId: string;
+  hydrationReminderEnabled: boolean;
+  hydrationIntervalMinutes: number;
+  bacWarningThreshold: number;
+  theme: 'dark' | 'neon';
+}

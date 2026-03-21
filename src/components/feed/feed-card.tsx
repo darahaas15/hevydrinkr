@@ -1,0 +1,179 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/use-auth-store';
+import { useFeedStore } from '@/stores/use-feed-store';
+import { Avatar } from '@/components/ui/avatar';
+import { PhotoGallery } from '@/components/ui/photo-gallery';
+import { formatTimeAgo, formatDuration, generateId } from '@/lib/utils';
+import type { FeedItem, ReactionEmoji } from '@/types';
+import { REACTION_EMOJIS } from '@/lib/constants';
+
+export function FeedCard({ item }: { item: FeedItem }) {
+  const router = useRouter();
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const addLike = useFeedStore((s) => s.addLike);
+  const removeLike = useFeedStore((s) => s.removeLike);
+  const [showReactions, setShowReactions] = useState(false);
+
+  const userLike = item.likes.find((l) => l.userId === currentUser?.id);
+  const isLiked = !!userLike;
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) return;
+    if (isLiked) {
+      removeLike(item.id, userLike!.id);
+      setShowReactions(false);
+    } else {
+      setShowReactions(true);
+    }
+  };
+
+  const handleReact = (emoji: ReactionEmoji, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) return;
+    addLike(item.id, {
+      id: generateId(),
+      userId: currentUser.id,
+      userName: currentUser.displayName,
+      emoji,
+      createdAt: new Date().toISOString(),
+    });
+    setShowReactions(false);
+  };
+
+  const goToUser = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.userId !== currentUser?.id) {
+      router.push(`/profile/${item.userId}`);
+    } else {
+      router.push('/profile');
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = `${item.userName} had ${item.sessionSummary.totalDrinks} drinks at ${item.sessionSummary.venue}`;
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch {}
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
+  };
+
+  const openPost = () => router.push(`/feed/${item.id}`);
+
+  const { sessionSummary: s } = item;
+
+  return (
+    <div
+      className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden active:bg-white/[0.05] transition-colors cursor-pointer"
+      onClick={openPost}
+    >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 flex items-center gap-3">
+        <div onClick={goToUser} className="cursor-pointer">
+          <Avatar name={item.userName} size="md" src={item.userAvatar} />
+        </div>
+        <div className="flex-1 min-w-0" onClick={goToUser}>
+          <p className="text-sm font-semibold truncate cursor-pointer hover:underline">{item.userName}</p>
+          <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+        </div>
+      </div>
+
+      {/* Caption */}
+      {item.caption && (
+        <p className="px-4 pb-2 text-[13px] text-zinc-300">{item.caption}</p>
+      )}
+
+      {/* Photos */}
+      {item.photos && item.photos.length > 0 && (
+        <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+          <PhotoGallery photos={item.photos} variant="feed" />
+        </div>
+      )}
+
+      {/* Session stats */}
+      <div className="mx-4 mb-3 rounded-xl bg-white/[0.03] border border-white/[0.04] p-3">
+        <p className="text-[11px] text-zinc-500 mb-2">{s.venue}</p>
+
+        {/* Drink emojis */}
+        {s.drinkEmojis.length > 0 && (
+          <div className="flex flex-wrap gap-px mb-2">
+            {s.drinkEmojis.slice(0, 15).map((emoji, i) => (
+              <span key={i} className="text-base">{emoji}</span>
+            ))}
+            {s.drinkEmojis.length > 15 && (
+              <span className="text-[11px] text-zinc-600 self-center ml-1">+{s.drinkEmojis.length - 15}</span>
+            )}
+          </div>
+        )}
+
+        {/* Stats row */}
+        <div className="flex items-center gap-4 text-[11px] text-zinc-500">
+          <span className="flex items-center gap-1">
+            <Wine className="w-3 h-3" />
+            {s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {formatDuration(s.durationMinutes)}
+          </span>
+          <span>{s.totalStandardDrinks.toFixed(1)} std</span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="px-4 pb-3 relative">
+        {/* Reaction picker */}
+        {showReactions && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-full mb-1 left-3 flex gap-1 px-2 py-1.5 rounded-full z-10"
+            style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={(e) => handleReact(emoji as ReactionEmoji, e)}
+                className="text-lg hover:scale-125 transition-transform px-0.5"
+              >
+                {emoji}
+              </button>
+            ))}
+          </motion.div>
+        )}
+        <div className="flex items-center gap-4">
+          <motion.button
+            whileTap={{ scale: 1.15 }}
+            onClick={handleLike}
+            className="flex items-center gap-1.5"
+          >
+            <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+            {item.likes.length > 0 && (
+              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>
+                {item.likes[0]?.emoji}{item.likes.length > 1 ? ` +${item.likes.length - 1}` : ''}
+              </span>
+            )}
+          </motion.button>
+
+          <button onClick={(e) => { e.stopPropagation(); openPost(); }} className="flex items-center gap-1.5">
+            <MessageCircle size={18} className="text-zinc-600" />
+            {item.comments.length > 0 && (
+              <span className="text-[11px] text-zinc-600">{item.comments.length}</span>
+            )}
+          </button>
+
+          <button onClick={handleShare}>
+            <Share2 size={18} className="text-zinc-600" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
