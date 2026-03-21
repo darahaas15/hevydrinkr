@@ -156,6 +156,35 @@ body {
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 }
 
+/* ── Performance: skip rendering off-screen content ── */
+
+.feed-card,
+.group-card,
+.leaderboard-entry {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
+/* ── Performance: layout containment on cards ── */
+
+.glass, .glass-card {
+  contain: layout style paint;
+}
+
+/* ── Performance: GPU layer for animated elements ── */
+
+.animate-pulse,
+.animate-slide-up,
+.animate-glow-pulse {
+  will-change: opacity, transform;
+}
+
+/* ── Performance: passive touch scrolling ── */
+
+.scrollbar-hide {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ── Input resets ───────────────────────────── */
 
 input[type="number"]::-webkit-inner-spin-button,

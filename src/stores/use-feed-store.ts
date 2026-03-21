@@ -631,7 +631,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 }), {
   name: 'hd-feed',
-  partialize: (s) => ({ items: s.items }),
+  partialize: (s) => ({ items: s.items.slice(0, 50) }),
   onRehydrateStorage: () => (state) => {
     if (state && state.items.length > 0) state.loading = false;
   },

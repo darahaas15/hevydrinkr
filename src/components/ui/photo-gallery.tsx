@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -15,6 +15,16 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const handleScroll = useCallback(() => {
+    if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    scrollTimer.current = setTimeout(() => {
+      if (!scrollRef.current) return;
+      const idx = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
+      setActiveSlide(idx);
+    }, 50);
+  }, []);
 
   if (photos.length === 0) return null;
 
@@ -26,11 +36,7 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
           <div
             ref={scrollRef}
             className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-            onScroll={() => {
-              if (!scrollRef.current) return;
-              const idx = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
-              setActiveSlide(idx);
-            }}
+            onScroll={handleScroll}
           >
             {photos.map((photo, i) => (
               <div

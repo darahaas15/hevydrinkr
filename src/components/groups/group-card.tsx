@@ -17,7 +17,7 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
     <motion.div
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className="w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-left active:bg-white/[0.05] transition-colors"
+      className="group-card w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-left active:bg-white/[0.05] transition-colors"
     >
       <div className="flex items-center gap-3">
         {group.iconUrl ? (

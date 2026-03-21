@@ -30,13 +30,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading || !isAuthenticated) {
+  // Show spinner only on very first load (no cached auth data).
+  // With persist, isAuthenticated is hydrated from localStorage instantly.
+  if (!isAuthenticated && isLoading) {
     return (
       <div className="h-dvh flex items-center justify-center" style={{ background: '#09090b' }}>
         <div className="text-3xl animate-pulse">🥃</div>
       </div>
     );
   }
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="h-dvh flex flex-col" style={{ background: '#09090b' }}>

@@ -506,5 +506,5 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     })),
 }), {
   name: 'hd-sessions',
-  partialize: (s) => ({ activeSession: s.activeSession, sessionHistory: s.sessionHistory }),
+  partialize: (s) => ({ activeSession: s.activeSession, sessionHistory: s.sessionHistory.slice(0, 100) }),
 }));

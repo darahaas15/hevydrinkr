@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, RefreshCw } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { FeedCard } from '@/components/feed/feed-card';
 import { Avatar } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase/client';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import type { UserProfile } from '@/types';
 
 export default function FeedPage() {
@@ -23,14 +24,6 @@ export default function FeedPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [searching, setSearching] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchFeed();
-    setRefreshing(false);
-  };
-
   useEffect(() => {
     fetchFeed();
     const refetch = () => fetchFeed();
@@ -103,13 +96,6 @@ export default function FeedPage() {
               hevy<span className="gradient-text">drinkr</span>
             </h1>
             <div className="flex items-center gap-1">
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="p-2 rounded-xl hover:bg-white/5"
-              >
-                <RefreshCw className={`w-4.5 h-4.5 text-zinc-500 ${refreshing ? 'animate-spin' : ''}`} />
-              </button>
               {tab !== 'discover' && (
                 <button
                   onClick={() => setTab('discover')}
@@ -171,6 +157,7 @@ export default function FeedPage() {
         )}
       </div>
 
+      <PullToRefresh onRefresh={fetchFeed}>
       {/* Search Results */}
       {showSearchResults && (
         <div className="px-4 py-3">
@@ -297,6 +284,7 @@ export default function FeedPage() {
           </motion.div>
         </AnimatePresence>
       )}
+      </PullToRefresh>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { DrinkPicker } from '@/components/session/drink-picker';
 import { pickImage, compressImage } from '@/lib/image-utils';
 import type { FeedItem, FeedComment } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
+import { getMilestoneBadge } from '@/lib/milestones';
 import { REACTION_EMOJIS } from '@/lib/constants';
 import type { ReactionEmoji } from '@/types';
 
@@ -59,6 +60,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+  const milestone = getMilestoneBadge(item, items);
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
   const s = item.sessionSummary;
@@ -175,7 +177,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </div>
           <div className="flex-1 cursor-pointer" onClick={() => goToUser(item.userId)}>
             <p className="text-sm font-semibold hover:underline">{item.userName}</p>
-            <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+              {milestone && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
+                  {milestone.label}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -393,36 +402,38 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <div className="h-16" />
       </div>
 
-      {/* Comment input — fixed above the bottom nav */}
-      <div className="fixed bottom-[72px] left-0 right-0 z-40" style={{ background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-        {replyingTo && (
-          <div className="px-5 pt-2 pb-0 max-w-lg mx-auto flex items-center gap-2">
-            <span className="text-[11px] text-zinc-500">
-              Replying to <span className="font-semibold text-zinc-400">@{replyingTo.userName}</span>
-            </span>
-            <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded hover:bg-white/5">
-              <X className="w-3 h-3 text-zinc-600" />
-            </button>
+      {/* Comment input — floating island above bottom nav */}
+      <div className="fixed bottom-[80px] left-0 right-0 z-40 px-4">
+        <div className="max-w-lg mx-auto rounded-2xl border border-white/[0.08] overflow-hidden" style={{ background: 'rgba(20,20,24,0.95)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+          {replyingTo && (
+            <div className="px-4 pt-2.5 pb-0 flex items-center gap-2">
+              <span className="text-[11px] text-zinc-500">
+                Replying to <span className="font-semibold text-zinc-400">@{replyingTo.userName}</span>
+              </span>
+              <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded hover:bg-white/5">
+                <X className="w-3 h-3 text-zinc-600" />
+              </button>
+            </div>
+          )}
+          <div className="px-3 py-2.5 flex gap-2.5 items-center">
+            <Avatar name={currentUser?.displayName || 'You'} size="sm" src={currentUser?.avatarUrl || null} />
+            <input
+              ref={inputRef}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder={replyingTo ? `Reply to @${replyingTo.userName}...` : 'Add a comment...'}
+              className="flex-1 px-3.5 py-2 rounded-full bg-white/[0.06] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && handleComment()}
+            />
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleComment}
+              disabled={!commentText.trim()}
+              className="p-2.5 rounded-full bg-accent disabled:opacity-20 transition-opacity"
+            >
+              <Send className="w-4 h-4 text-black" />
+            </motion.button>
           </div>
-        )}
-        <div className="px-5 py-2.5 flex gap-3 items-center max-w-lg mx-auto">
-          <Avatar name={currentUser?.displayName || 'You'} size="sm" src={currentUser?.avatarUrl || null} />
-          <input
-            ref={inputRef}
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder={replyingTo ? `Reply to @${replyingTo.userName}...` : 'Add a comment...'}
-            className="flex-1 px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
-            onKeyDown={(e) => e.key === 'Enter' && handleComment()}
-          />
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={handleComment}
-            disabled={!commentText.trim()}
-            className="p-2.5 rounded-full bg-accent disabled:opacity-20 transition-opacity"
-          >
-            <Send className="w-4 h-4 text-black" />
-          </motion.button>
         </div>
       </div>
       {/* Post Menu */}

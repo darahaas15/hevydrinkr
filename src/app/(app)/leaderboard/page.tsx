@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
@@ -25,7 +25,6 @@ const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
 ];
 
 export default function LeaderboardPage() {
-  const router = useRouter();
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
   const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all-time');
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
@@ -104,13 +103,12 @@ export default function LeaderboardPage() {
               const rankDisplay = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${entry.rank}`;
 
               return (
+                <Link key={entry.userId} href={isMe ? '/profile' : `/profile/${entry.userId}`} prefetch={false}>
                 <motion.div
-                  key={entry.userId}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.2 }}
-                  onClick={() => router.push(isMe ? '/profile' : `/profile/${entry.userId}`)}
-                  className={`rounded-xl p-3 flex items-center gap-3 cursor-pointer active:bg-white/[0.05] transition-colors ${
+                  className={`leaderboard-entry rounded-xl p-3 flex items-center gap-3 cursor-pointer active:bg-white/[0.05] transition-colors ${
                     isMe
                       ? 'bg-accent/[0.06] border border-accent/10'
                       : 'bg-white/[0.02] border border-white/[0.04]'
@@ -132,6 +130,7 @@ export default function LeaderboardPage() {
                   {entry.trend === 'down' && <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
                   {entry.trend === 'same' && <Minus className="w-3 h-3 text-zinc-700" />}
                 </motion.div>
+                </Link>
               );
             })}
           </div>

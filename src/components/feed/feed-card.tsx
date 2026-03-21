@@ -8,14 +8,17 @@ import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
+import { getMilestoneBadge } from '@/lib/milestones';
 import type { FeedItem, ReactionEmoji } from '@/types';
 import { REACTION_EMOJIS } from '@/lib/constants';
 
 export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
   const currentUser = useAuthStore((s) => s.currentUser);
+  const allItems = useFeedStore((s) => s.items);
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
   const [showReactions, setShowReactions] = useState(false);
+  const milestone = getMilestoneBadge(item, allItems);
 
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
@@ -60,7 +63,7 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
   return (
     <Link href={`/feed/${item.id}`} prefetch={false} className="block">
     <div
-      className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden active:bg-white/[0.05] transition-colors cursor-pointer"
+      className="feed-card rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden active:bg-white/[0.05] transition-colors cursor-pointer"
     >
       {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
@@ -69,7 +72,14 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
         </Link>
         <Link href={userProfileHref} onClick={(e) => e.stopPropagation()} className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate cursor-pointer hover:underline">{item.userName}</p>
-          <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+            {milestone && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
+                {milestone.label}
+              </span>
+            )}
+          </div>
         </Link>
       </div>
 

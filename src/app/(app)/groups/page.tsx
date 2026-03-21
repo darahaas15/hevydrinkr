@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Users, Link2, Search } from 'lucide-react';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { GroupCard } from '@/components/groups/group-card';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import type { Group, GroupMember } from '@/types';
 
 export default function GroupsPage() {
@@ -24,6 +25,10 @@ export default function GroupsPage() {
   const [emoji] = useState('');
   const [description, setDescription] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+
+  const handleRefresh = useCallback(async () => {
+    if (currentUser) await fetchGroups(currentUser.id);
+  }, [currentUser, fetchGroups]);
 
   useEffect(() => {
     const refetch = () => { if (currentUser) fetchGroups(currentUser.id); };
@@ -117,6 +122,7 @@ export default function GroupsPage() {
         </div>
       </div>
 
+      <PullToRefresh onRefresh={handleRefresh}>
       <div className="px-4 py-4">
         {loading && myGroups.length === 0 ? (
           /* Skeleton placeholders while loading */
@@ -162,6 +168,7 @@ export default function GroupsPage() {
           </div>
         )}
       </div>
+      </PullToRefresh>
 
       {/* Create Group Modal */}
       <AnimatePresence>
