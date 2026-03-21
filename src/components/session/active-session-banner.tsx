@@ -4,16 +4,18 @@ import { motion } from 'framer-motion';
 import { ChevronUp, Clock, Wine, MapPin } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
+import { useAuthStore } from '@/stores/use-auth-store';
 import { useTimer } from '@/hooks/use-timer';
 
 export function ActiveSessionBanner() {
   const router = useRouter();
   const pathname = usePathname();
   const activeSession = useSessionStore((s) => s.activeSession);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const timer = useTimer(activeSession?.startedAt || null);
 
-  // Don't show on the session page itself
-  if (!activeSession || pathname === '/session') return null;
+  // Only show YOUR active session, not on the session page
+  if (!activeSession || !currentUser || activeSession.userId !== currentUser.id || pathname === '/session') return null;
 
   return (
     <motion.button

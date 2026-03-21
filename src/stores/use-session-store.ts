@@ -182,10 +182,16 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
       );
     });
 
-    const active = sessions.find((s) => s.status === 'active') ?? null;
     const history = sessions.filter((s) => s.status !== 'active');
 
-    set({ activeSession: active, sessionHistory: history });
+    // Only set activeSession if fetching for a specific user (not leaderboard)
+    if (userId) {
+      const active = sessions.find((s) => s.status === 'active') ?? null;
+      set({ activeSession: active, sessionHistory: history });
+    } else {
+      // Leaderboard fetch — only update history, don't touch activeSession
+      set({ sessionHistory: history });
+    }
   },
 
   // -----------------------------------------------------------------------
