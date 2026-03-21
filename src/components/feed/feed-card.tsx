@@ -89,22 +89,15 @@ export function FeedCard({ item }: { item: FeedItem }) {
         <p className="px-4 pb-2 text-[13px] text-zinc-300">{item.caption}</p>
       )}
 
-      {/* Photos — clicking opens the post, not the image viewer */}
+      {/* Photos */}
       {item.photos && item.photos.length > 0 && (
-        <div className="mb-2">
-          <div className="px-4">
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
-              {item.photos.slice(0, 3).map((photo, i) => (
-                <div key={i} className="shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-white/5">
-                  <img src={photo} alt="" className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {item.photos.length > 3 && (
-                <div className="shrink-0 w-24 h-24 rounded-xl bg-white/[0.06] flex items-center justify-center">
-                  <span className="text-sm text-zinc-400">+{item.photos.length - 3}</span>
-                </div>
-              )}
-            </div>
+        <div className="mb-2 px-4">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            {item.photos.map((photo, i) => (
+              <div key={i} className="shrink-0 w-44 h-44 rounded-2xl overflow-hidden bg-white/5">
+                <img src={photo} alt="" className="w-full h-full object-cover" />
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -168,9 +161,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
           >
             <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
             {item.likes.length > 0 && (
-              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>
-                {item.likes[0]?.emoji}{item.likes.length > 1 ? ` +${item.likes.length - 1}` : ''}
-              </span>
+              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
             )}
           </motion.button>
 
