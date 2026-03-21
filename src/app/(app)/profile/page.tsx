@@ -278,7 +278,7 @@ export default function ProfilePage() {
                   <X className="w-5 h-5 text-zinc-500" />
                 </button>
               </div>
-              <div className="max-h-[60vh] overflow-y-auto">
+              <div className="max-h-[60dvh] overflow-y-auto">
                 {(() => {
                   const ids = showFollowList === 'followers' ? currentUser.followers : currentUser.following;
                   const users = ids.map((id) => allUsers.find((u) => u.id === id)).filter(Boolean);

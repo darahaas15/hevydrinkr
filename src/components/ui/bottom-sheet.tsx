@@ -48,7 +48,7 @@ export default function BottomSheet({
             onDragEnd={handleDragEnd}
             style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
             className={cn(
-              'absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[85vh] overflow-y-auto safe-bottom',
+              'absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[85dvh] overflow-y-auto safe-bottom',
               className
             )}
           >

@@ -405,7 +405,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto"
               style={{ background: '#111114' }}
             >
               <div>

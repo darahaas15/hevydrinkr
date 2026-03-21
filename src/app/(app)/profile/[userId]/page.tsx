@@ -185,7 +185,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
                   <X className="w-5 h-5 text-zinc-500" />
                 </button>
               </div>
-              <div className="max-h-[60vh] overflow-y-auto">
+              <div className="max-h-[60dvh] overflow-y-auto">
                 {(() => {
                   const ids = showFollowList === 'followers' ? user.followers : user.following;
                   const users = ids.map((fid) => allUsers.find((u) => u.id === fid)).filter(Boolean);

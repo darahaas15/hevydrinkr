@@ -183,7 +183,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
           if (info.offset.y > 120 || info.velocity.y > 500) onClose();
         }}
         className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl flex flex-col"
-        style={{ background: '#111114', height: '92vh', maxHeight: '92vh' }}
+        style={{ background: '#111114', height: '92dvh', maxHeight: '92dvh' }}
       >
         <div
           onPointerDown={(e) => dragControls.start(e)}
