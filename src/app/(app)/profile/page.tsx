@@ -9,6 +9,8 @@ import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
+import { useFeedStore } from '@/stores/use-feed-store';
+import { FeedCard } from '@/components/feed/feed-card';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { calculateWeeklyStreak } from '@/lib/algorithms/streaks';
 import { formatDuration } from '@/lib/utils';
@@ -25,6 +27,8 @@ export default function ProfilePage() {
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const addToast = useUIStore((s) => s.addToast);
+  const feedItems = useFeedStore((s) => s.items);
+  const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
@@ -38,6 +42,7 @@ export default function ProfilePage() {
         fetchSessions(currentUser.id);
         fetchPRs(currentUser.id);
         fetchAllUsers();
+        fetchFeed();
       }
     };
     refetch();
@@ -232,32 +237,21 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Session History */}
-        {mySessions.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Session History</h3>
-            <div className="space-y-1.5">
-              {mySessions.slice(0, 8).map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => router.push(`/session/${session.id}`)}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-left active:bg-white/[0.05] transition-colors"
-                >
-                  <span className="text-lg">{session.drinks[0]?.emoji || '🍻'}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{session.venue}</p>
-                    <p className="text-[10px] text-zinc-600">
-                      {session.drinks.length} drinks · {formatDuration(session.durationMinutes)}
-                    </p>
-                  </div>
-                  <p className="text-[10px] text-zinc-700 shrink-0">
-                    {new Date(session.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </p>
-                </button>
-              ))}
+        {/* My Posts */}
+        {(() => {
+          const myPosts = feedItems.filter((f) => f.userId === currentUser.id)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          return myPosts.length > 0 ? (
+            <div>
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
+              <div className="space-y-3">
+                {myPosts.map((post) => (
+                  <FeedCard key={post.id} item={post} />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })()}
       </div>
 
       {/* Followers / Following List Modal */}

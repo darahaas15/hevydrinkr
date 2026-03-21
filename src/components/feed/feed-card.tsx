@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
-import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem, ReactionEmoji } from '@/types';
 import { REACTION_EMOJIS } from '@/lib/constants';
@@ -90,10 +89,23 @@ export function FeedCard({ item }: { item: FeedItem }) {
         <p className="px-4 pb-2 text-[13px] text-zinc-300">{item.caption}</p>
       )}
 
-      {/* Photos */}
+      {/* Photos — clicking opens the post, not the image viewer */}
       {item.photos && item.photos.length > 0 && (
-        <div className="mb-2" onClick={(e) => e.stopPropagation()}>
-          <PhotoGallery photos={item.photos} variant="feed" />
+        <div className="mb-2">
+          <div className="px-4">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+              {item.photos.slice(0, 3).map((photo, i) => (
+                <div key={i} className="shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-white/5">
+                  <img src={photo} alt="" className="w-full h-full object-cover" />
+                </div>
+              ))}
+              {item.photos.length > 3 && (
+                <div className="shrink-0 w-24 h-24 rounded-xl bg-white/[0.06] flex items-center justify-center">
+                  <span className="text-sm text-zinc-400">+{item.photos.length - 3}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
