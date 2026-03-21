@@ -15,6 +15,7 @@ export default function FeedPage() {
   const router = useRouter();
   const [tab, setTab] = useState<'home' | 'discover'>('home');
   const items = useFeedStore((s) => s.items);
+  const loading = useFeedStore((s) => s.loading);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const currentUser = useAuthStore((s) => s.currentUser);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
@@ -230,7 +231,38 @@ export default function FeedPage() {
             transition={{ duration: 0.15 }}
             className="px-4 py-4 space-y-3"
           >
-            {sorted.length === 0 ? (
+            {loading && sorted.length === 0 ? (
+              /* Skeleton placeholders while loading */
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden animate-pulse">
+                  <div className="px-4 pt-4 pb-2 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/5" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 w-28 rounded bg-white/5" />
+                      <div className="h-2.5 w-16 rounded bg-white/5" />
+                    </div>
+                  </div>
+                  <div className="px-4 pb-3 space-y-2">
+                    <div className="h-3 w-full rounded bg-white/5" />
+                    <div className="h-3 w-3/4 rounded bg-white/5" />
+                  </div>
+                  <div className="mx-4 mb-3 rounded-xl bg-white/[0.02] p-3 space-y-2">
+                    <div className="h-2.5 w-24 rounded bg-white/5" />
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <div key={j} className="w-6 h-6 rounded bg-white/5" />
+                      ))}
+                    </div>
+                    <div className="h-2.5 w-40 rounded bg-white/5" />
+                  </div>
+                  <div className="px-4 pb-3 flex gap-4">
+                    <div className="h-4 w-10 rounded bg-white/5" />
+                    <div className="h-4 w-10 rounded bg-white/5" />
+                    <div className="h-4 w-10 rounded bg-white/5" />
+                  </div>
+                </div>
+              ))
+            ) : sorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <span className="text-4xl mb-4">🍻</span>
                 <h3 className="text-base font-semibold text-zinc-400 mb-1">

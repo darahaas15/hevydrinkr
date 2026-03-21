@@ -11,6 +11,7 @@ import type { Group, GroupMember } from '@/types';
 
 export default function GroupsPage() {
   const groups = useGroupsStore((s) => s.groups);
+  const loading = useGroupsStore((s) => s.loading);
   const addGroup = useGroupsStore((s) => s.addGroup);
   const fetchGroups = useGroupsStore((s) => s.fetchGroups);
   const joinGroup = useGroupsStore((s) => s.joinGroup);
@@ -117,7 +118,26 @@ export default function GroupsPage() {
       </div>
 
       <div className="px-4 py-4">
-        {myGroups.length === 0 ? (
+        {loading && myGroups.length === 0 ? (
+          /* Skeleton placeholders while loading */
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 animate-pulse">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 rounded bg-white/5" />
+                    <div className="h-3 w-48 rounded bg-white/5" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="h-3 w-20 rounded bg-white/5" />
+                  <div className="h-3 w-24 rounded bg-white/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : myGroups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
               <Users className="w-10 h-10 text-zinc-600" />
