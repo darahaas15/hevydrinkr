@@ -137,7 +137,7 @@ function mapDbChallengeToChallenge(
 export const useGroupsStore = create<GroupsState>()((set, get) => ({
   groups: [],
   challenges: [],
-  loading: false,
+  loading: true,
 
   fetchGroups: async (userId) => {
     set({ loading: true });

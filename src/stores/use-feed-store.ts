@@ -151,7 +151,7 @@ function mapRow(row: FeedItemRow): FeedItem {
 
 export const useFeedStore = create<FeedState>()((set, get) => ({
   items: [],
-  loading: false,
+  loading: true,
   error: null,
 
   fetchFeed: async () => {
