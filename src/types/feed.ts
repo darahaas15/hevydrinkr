@@ -15,6 +15,14 @@ export interface FeedItem {
     topDrink: string;
     topDrinkEmoji: string;
     drinkEmojis: string[];
+    drinks: {
+      name: string;
+      emoji: string;
+      category: string;
+      abvPercent: number;
+      volumeMl: number;
+      standardDrinks: number;
+    }[];
     mood: SessionMood | null;
     prsAchieved: PersonalRecord[];
   };

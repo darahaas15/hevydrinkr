@@ -144,6 +144,10 @@ export const MOCK_FEED: FeedItem[] = feedSessions
         topDrink: top.name,
         topDrinkEmoji: top.emoji,
         drinkEmojis: session.drinks.map((d) => d.emoji),
+        drinks: session.drinks.map((d) => ({
+          name: d.drinkName, emoji: d.emoji, category: d.category,
+          abvPercent: d.abvPercent, volumeMl: d.volumeMl, standardDrinks: d.standardDrinks,
+        })),
         mood: session.mood,
         prsAchieved: session.prsAchieved,
       },

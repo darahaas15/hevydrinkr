@@ -134,10 +134,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   getUserById: (id) => get().allUsers.find((u) => u.id === id),
 
   fetchAllUsers: async () => {
-    const { data: profiles } = await supabase.from('profiles').select('*');
+    const [{ data: profiles }, { data: allFollows }] = await Promise.all([
+      supabase.from('profiles').select('*'),
+      supabase.from('follows').select('follower_id, following_id'),
+    ]);
     if (!profiles) return;
 
-    const users = profiles.map((p) => profileFromRow(p));
+    const followsData = allFollows || [];
+    const users = profiles.map((p) => {
+      const id = p.id as string;
+      return profileFromRow({
+        ...p,
+        followers: followsData.filter((f) => f.following_id === id).map((f) => f.follower_id),
+        following: followsData.filter((f) => f.follower_id === id).map((f) => f.following_id),
+      });
+    });
     set({ allUsers: users });
   },
 

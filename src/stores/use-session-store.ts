@@ -298,32 +298,22 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   // Abandon the active session
   // -----------------------------------------------------------------------
   abandonSession: () => {
-    const { activeSession, sessionHistory } = get();
+    const { activeSession } = get();
     if (!activeSession) return;
 
-    const abandonedSession: DrinkSession = {
-      ...activeSession,
-      status: 'abandoned',
-      endedAt: new Date().toISOString(),
-    };
+    const sessionId = activeSession.id;
 
-    // Optimistic update
-    set({
-      activeSession: null,
-      sessionHistory: [abandonedSession, ...sessionHistory],
-    });
+    // Clear local state — don't add to history
+    set({ activeSession: null });
 
-    // Sync to Supabase
+    // Delete from Supabase entirely (cascades to drink_entries, photos, etc.)
     supabase
       .from('drink_sessions')
-      .update({
-        status: 'abandoned',
-        ended_at: abandonedSession.endedAt,
-      })
-      .eq('id', abandonedSession.id)
+      .delete()
+      .eq('id', sessionId)
       .then(({ error }) => {
         if (error)
-          console.error('Failed to abandon session in Supabase:', error);
+          console.error('Failed to delete abandoned session:', error);
       });
   },
 

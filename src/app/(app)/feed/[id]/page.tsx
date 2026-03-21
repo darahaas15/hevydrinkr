@@ -168,21 +168,43 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
-        {/* Session card */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 space-y-2.5 mb-4">
-          <p className="text-[11px] text-zinc-500">{s.venue}</p>
-          {s.drinkEmojis.length > 0 && (
-            <div className="flex flex-wrap gap-px">
-              {s.drinkEmojis.map((emoji, i) => (
-                <span key={i} className="text-lg">{emoji}</span>
+        {/* Session details */}
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-zinc-500">{s.venue}</p>
+            <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+              <span className="flex items-center gap-1"><Wine className="w-3 h-3" />{s.totalDrinks}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(s.durationMinutes)}</span>
+              <span>{s.totalStandardDrinks.toFixed(1)} std</span>
+            </div>
+          </div>
+
+          {/* Individual drinks */}
+          {s.drinks && s.drinks.length > 0 ? (
+            <div className="space-y-1.5">
+              {s.drinks.map((drink, i) => (
+                <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-white/[0.02]">
+                  <span className="text-xl">{drink.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{drink.name}</p>
+                    <p className="text-[10px] text-zinc-600">
+                      {drink.abvPercent}% · {drink.volumeMl}ml · {drink.standardDrinks.toFixed(1)} std
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-zinc-700 capitalize">{drink.category}</span>
+                </div>
               ))}
             </div>
+          ) : (
+            /* Fallback for old posts without drink details */
+            s.drinkEmojis.length > 0 && (
+              <div className="flex flex-wrap gap-0.5">
+                {s.drinkEmojis.map((emoji, i) => (
+                  <span key={i} className="text-lg">{emoji}</span>
+                ))}
+              </div>
+            )
           )}
-          <div className="flex items-center gap-4 text-[11px] text-zinc-500">
-            <span className="flex items-center gap-1"><Wine className="w-3 h-3" />{s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}</span>
-            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(s.durationMinutes)}</span>
-            <span>{s.totalStandardDrinks.toFixed(1)} std</span>
-          </div>
         </div>
 
         {/* Actions */}

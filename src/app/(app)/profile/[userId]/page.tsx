@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
+import { use, useMemo, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
@@ -49,6 +49,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   }
 
   const isFollowing = currentUser.following.includes(userId);
+  const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
 
   const userSessions = sessionHistory.filter(
     (s) => s.userId === userId && s.status === 'completed'
@@ -97,14 +98,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
         {/* Follow counts + button */}
         <div className="flex items-center gap-5">
-          <div>
+          <button onClick={() => setShowFollowList('following')} className="active:opacity-70">
             <span className="text-lg font-bold">{user.following.length}</span>
             <span className="text-xs text-zinc-600 ml-1">Following</span>
-          </div>
-          <div>
+          </button>
+          <button onClick={() => setShowFollowList('followers')} className="active:opacity-70">
             <span className="text-lg font-bold">{user.followers.length}</span>
             <span className="text-xs text-zinc-600 ml-1">Followers</span>
-          </div>
+          </button>
           <div className="flex-1" />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -159,6 +160,84 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
           </div>
         )}
       </div>
+
+      {/* Followers / Following List Modal */}
+      <AnimatePresence>
+        {showFollowList && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowFollowList(null)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
+              style={{ background: '#141418' }}
+            >
+              <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
+                <h3 className="text-base font-bold capitalize">{showFollowList}</h3>
+                <button onClick={() => setShowFollowList(null)} className="p-1 rounded-lg hover:bg-white/5">
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto">
+                {(() => {
+                  const ids = showFollowList === 'followers' ? user.followers : user.following;
+                  const users = ids.map((fid) => allUsers.find((u) => u.id === fid)).filter(Boolean);
+
+                  if (users.length === 0) {
+                    return (
+                      <div className="py-12 text-center">
+                        <p className="text-sm text-zinc-600">
+                          {showFollowList === 'followers' ? 'No followers yet' : 'Not following anyone'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return users.map((u) => {
+                    if (!u) return null;
+                    const iAmFollowing = currentUser.following.includes(u.id);
+                    const isMe = u.id === currentUser.id;
+                    return (
+                      <div key={u.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
+                        <div onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile/${u.id}`); }} className="cursor-pointer">
+                          <Avatar name={u.displayName} size="md" src={u.avatarUrl} />
+                        </div>
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile/${u.id}`); }}
+                        >
+                          <p className="text-sm font-semibold truncate">{isMe ? 'You' : u.displayName}</p>
+                          <p className="text-[11px] text-zinc-600">@{u.username}</p>
+                        </div>
+                        {!isMe && (
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => toggleFollow(u.id)}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                              iAmFollowing
+                                ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+                                : 'bg-accent text-black'
+                            }`}
+                          >
+                            {iAmFollowing ? 'Following' : 'Follow'}
+                          </motion.button>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Clock, Wine, ChevronRight, Camera } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useProfileStore } from '@/stores/use-profile-store';
@@ -32,16 +33,20 @@ export default function SessionPage() {
   const personalRecords = useProfileStore((s) => s.personalRecords);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
   const addPR = useProfileStore((s) => s.addPR);
+  const triggerCelebration = useUIStore((s) => s.triggerCelebration);
+  const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
+  const addToast = useUIStore((s) => s.addToast);
+  const feedItems = useFeedStore((s) => s.items);
+  const fetchFeed = useFeedStore((s) => s.fetchFeed);
+  const router = useRouter();
 
   useEffect(() => {
     if (currentUser) {
       fetchSessions(currentUser.id);
       fetchPRs(currentUser.id);
+      fetchFeed();
     }
-  }, [currentUser, fetchSessions, fetchPRs]);
-  const triggerCelebration = useUIStore((s) => s.triggerCelebration);
-  const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
-  const addToast = useUIStore((s) => s.addToast);
+  }, [currentUser, fetchSessions, fetchPRs, fetchFeed]);
 
   const [venue, setVenue] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -132,21 +137,28 @@ export default function SessionPage() {
             <div className="w-full mt-10">
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Recent</h3>
               <div className="space-y-1.5">
-                {mySessions.map((session) => (
-                  <div key={session.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                    <span className="text-xl">{session.drinks[0]?.emoji || '🍻'}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{session.venue}</p>
-                      <p className="text-[11px] text-zinc-600">
-                        {session.drinks.length} drinks · {Math.floor(session.durationMinutes / 60)}h {session.durationMinutes % 60}m
+                {mySessions.map((session) => {
+                  const feedPost = feedItems.find((f) => f.sessionId === session.id);
+                  return (
+                    <button
+                      key={session.id}
+                      onClick={() => router.push(feedPost ? `/feed/${feedPost.id}` : `/session/${session.id}`)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-left active:bg-white/[0.05] transition-colors"
+                    >
+                      <span className="text-xl">{session.drinks[0]?.emoji || '🍻'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{session.venue}</p>
+                        <p className="text-[11px] text-zinc-600">
+                          {session.drinks.length} drink{session.drinks.length !== 1 ? 's' : ''} · {Math.floor(session.durationMinutes / 60)}h {session.durationMinutes % 60}m
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-zinc-700">
+                        {new Date(session.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </p>
-                    </div>
-                    <p className="text-[11px] text-zinc-700">
-                      {new Date(session.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </p>
-                    <ChevronRight className="w-4 h-4 text-zinc-700" />
-                  </div>
-                ))}
+                      <ChevronRight className="w-4 h-4 text-zinc-700" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

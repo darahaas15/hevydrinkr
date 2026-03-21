@@ -8,6 +8,7 @@ import type {
   ReactionEmoji,
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { useSessionStore } from './use-session-store';
 
 interface FeedState {
   items: FeedItem[];
@@ -145,6 +146,14 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
       topDrink,
       topDrinkEmoji,
       drinkEmojis,
+      drinks: session.drinks.map((d) => ({
+        name: d.drinkName,
+        emoji: d.emoji,
+        category: d.category,
+        abvPercent: d.abvPercent,
+        volumeMl: d.volumeMl,
+        standardDrinks: d.standardDrinks,
+      })),
       mood: session.mood,
       prsAchieved: session.prsAchieved,
     };
@@ -317,10 +326,12 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
 
   deleteFeedItem: async (feedItemId) => {
     const prev = get().items;
+    const item = prev.find((i) => i.id === feedItemId);
     set((state) => ({
-      items: state.items.filter((item) => item.id !== feedItemId),
+      items: state.items.filter((i) => i.id !== feedItemId),
     }));
 
+    // Delete the feed item
     const { error } = await supabase
       .from('feed_items')
       .delete()
@@ -329,6 +340,21 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     if (error) {
       console.error('Failed to delete feed item:', error);
       set({ items: prev });
+      return;
+    }
+
+    // Also delete the linked session (cascades to drink_entries, session_photos, rounds)
+    if (item?.sessionId) {
+      await supabase
+        .from('drink_sessions')
+        .delete()
+        .eq('id', item.sessionId);
+
+      // Remove from session store's local state so profile stats update immediately
+      const sessionStore = useSessionStore.getState();
+      useSessionStore.setState({
+        sessionHistory: sessionStore.sessionHistory.filter((s) => s.id !== item.sessionId),
+      });
     }
   },
 
