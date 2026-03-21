@@ -2,12 +2,15 @@
 
 import { use, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { Avatar } from '@/components/ui/avatar';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
+import { DrinkPicker } from '@/components/session/drink-picker';
+import { pickImage, compressImage } from '@/lib/image-utils';
+import type { FeedItem } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { REACTION_EMOJIS } from '@/lib/constants';
 import type { ReactionEmoji } from '@/types';
@@ -27,8 +30,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const [showReactions, setShowReactions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [editCaption, setEditCaption] = useState('');
+  const [editDrinks, setEditDrinks] = useState<FeedItem['sessionSummary']['drinks']>([]);
+  const [editPhotos, setEditPhotos] = useState<string[]>([]);
+  const [showDrinkPicker, setShowDrinkPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -133,32 +140,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {editing ? (
-          <div className="mb-3 space-y-2">
-            <textarea
-              value={editCaption}
-              onChange={(e) => setEditCaption(e.target.value)}
-              rows={2}
-              autoFocus
-              className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-accent/30 text-sm text-white placeholder:text-zinc-600 focus:outline-none resize-none"
-            />
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 bg-white/[0.04]">Cancel</button>
-              <button
-                onClick={async () => {
-                  await updateFeedItem(item.id, { caption: editCaption });
-                  setEditing(false);
-                }}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-black bg-accent"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        ) : (
-          item.caption && (
-            <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
-          )
+        {item.caption && (
+          <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
         )}
 
         {/* Photos */}
@@ -339,12 +322,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 onClick={() => {
                   setShowMenu(false);
                   setEditCaption(item.caption);
-                  setEditing(true);
+                  setEditDrinks(s.drinks || []);
+                  setEditPhotos(item.photos || []);
+                  setShowEditModal(true);
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/5 transition-colors"
               >
                 <Pencil className="w-4 h-4 text-zinc-400" />
-                <span className="text-sm">Edit Caption</span>
+                <span className="text-sm">Edit Post</span>
               </button>
               <button
                 onClick={() => { setShowMenu(false); setShowDeleteConfirm(true); }}
@@ -363,6 +348,148 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Edit Post Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] bg-[#09090b] overflow-y-auto"
+          >
+            <div className="sticky top-0 z-10 safe-top" style={{ background: 'rgba(9,9,11,0.95)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div className="px-5 py-3 flex items-center justify-between">
+                <button onClick={() => setShowEditModal(false)} className="text-sm text-zinc-400">Cancel</button>
+                <h2 className="text-sm font-semibold">Edit Post</h2>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  disabled={saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    const totalStd = editDrinks.reduce((sum, d) => sum + d.standardDrinks, 0);
+                    await updateFeedItem(item.id, {
+                      caption: editCaption,
+                      photos: editPhotos,
+                      sessionSummary: {
+                        ...s,
+                        totalDrinks: editDrinks.length,
+                        totalStandardDrinks: totalStd,
+                        drinkEmojis: editDrinks.map((d) => d.emoji),
+                        drinks: editDrinks,
+                      },
+                    });
+                    setSaving(false);
+                    setShowEditModal(false);
+                  }}
+                  className="text-sm font-bold text-accent disabled:text-zinc-700"
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 space-y-5 max-w-lg mx-auto">
+              {/* Caption */}
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Caption</p>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  placeholder="Write a caption..."
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 resize-none"
+                />
+              </div>
+
+              {/* Drinks */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                    Drinks ({editDrinks.length})
+                  </p>
+                  <button
+                    onClick={() => setShowDrinkPicker(true)}
+                    className="flex items-center gap-1 text-xs text-accent font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+                {editDrinks.length === 0 ? (
+                  <p className="text-sm text-zinc-700 text-center py-4">No drinks — tap Add above</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {editDrinks.map((drink, i) => (
+                      <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                        <span className="text-xl">{drink.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{drink.name}</p>
+                          <p className="text-[10px] text-zinc-600">
+                            {drink.abvPercent}% · {drink.volumeMl}ml · {drink.standardDrinks.toFixed(1)} std
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setEditDrinks((prev) => prev.filter((_, j) => j !== i))}
+                          className="p-1.5 rounded-lg hover:bg-red-500/10"
+                        >
+                          <X className="w-4 h-4 text-zinc-600 hover:text-red-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-zinc-700 mt-2">
+                  Total: {editDrinks.reduce((sum, d) => sum + d.standardDrinks, 0).toFixed(1)} std drinks
+                </p>
+              </div>
+
+              {/* Photos */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Photos</p>
+                  <button
+                    onClick={async () => {
+                      const file = await pickImage();
+                      if (!file) return;
+                      const dataUrl = await compressImage(file);
+                      setEditPhotos((prev) => [...prev, dataUrl]);
+                    }}
+                    className="flex items-center gap-1 text-xs text-accent font-semibold"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+                {editPhotos.length > 0 && (
+                  <PhotoGallery
+                    photos={editPhotos}
+                    onRemove={(i) => setEditPhotos((prev) => prev.filter((_, j) => j !== i))}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Drink Picker */}
+            <AnimatePresence>
+              {showDrinkPicker && (
+                <DrinkPicker
+                  onSelect={(drink) => {
+                    setEditDrinks((prev) => [...prev, {
+                      name: drink.drinkName,
+                      emoji: drink.emoji,
+                      category: drink.category,
+                      abvPercent: drink.abvPercent,
+                      volumeMl: drink.volumeMl,
+                      standardDrinks: drink.standardDrinks,
+                    }]);
+                    setShowDrinkPicker(false);
+                  }}
+                  onClose={() => setShowDrinkPicker(false)}
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Delete Confirmation */}
       <AnimatePresence>
         {showDeleteConfirm && (

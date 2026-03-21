@@ -55,6 +55,7 @@ export default function SessionPage() {
   const [showPostPreview, setShowPostPreview] = useState(false);
   const [caption, setCaption] = useState('');
   const [selectedMood, setSelectedMood] = useState<'legendary' | 'great' | 'good' | 'meh' | 'rough'>('good');
+  const [posting, setPosting] = useState(false);
   const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['sessionHistory'][0] | null>(null);
 
   const timer = useTimer(activeSession?.startedAt || null);
@@ -76,7 +77,8 @@ export default function SessionPage() {
   };
 
   const handlePost = () => {
-    if (!activeSession || !currentUser) return;
+    if (!activeSession || !currentUser || posting) return;
+    setPosting(true);
     setShowPostPreview(false);
     endSession(selectedMood);
 
@@ -353,7 +355,8 @@ export default function SessionPage() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={handlePost}
-                  className="flex-1 py-3 rounded-xl bg-accent text-black font-bold text-sm"
+                  disabled={posting}
+                  className="flex-1 py-3 rounded-xl bg-accent text-black font-bold text-sm disabled:opacity-50"
                 >
                   Post
                 </motion.button>

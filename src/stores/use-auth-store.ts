@@ -92,8 +92,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (error) return error.message;
     if (!data.user) return 'Signup failed';
 
-    // Wait briefly for the trigger to create the profile
-    await new Promise((r) => setTimeout(r, 500));
+    // Poll for the profile to be created by the trigger (up to 5s)
+    const userId = data.user.id;
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile) break;
+    }
+
     await get().initialize();
     return null;
   },
@@ -153,31 +163,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   toggleFollow: async (userId) => {
-    const { currentUser } = get();
+    const { currentUser, allUsers } = get();
     if (!currentUser) return;
 
     const isFollowing = currentUser.following.includes(userId);
+    const prevCurrentUser = currentUser;
+    const prevAllUsers = allUsers;
 
-    if (isFollowing) {
-      await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', currentUser.id)
-        .eq('following_id', userId);
-    } else {
-      await supabase
-        .from('follows')
-        .insert({ follower_id: currentUser.id, following_id: userId });
-    }
-
-    // Update local state
+    // Optimistic update
     const updatedFollowing = isFollowing
       ? currentUser.following.filter((id) => id !== userId)
       : [...currentUser.following, userId];
 
     const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
 
-    const updatedAllUsers = get().allUsers.map((user) => {
+    const updatedAllUsers = allUsers.map((user) => {
       if (user.id === currentUser.id) return updatedCurrentUser;
       if (user.id === userId) {
         return {
@@ -191,5 +191,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     });
 
     set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
+
+    // Sync to DB
+    const { error } = isFollowing
+      ? await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId)
+      : await supabase
+          .from('follows')
+          .insert({ follower_id: currentUser.id, following_id: userId });
+
+    if (error) {
+      console.error('Failed to toggle follow:', error);
+      set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
+    }
   },
 }));

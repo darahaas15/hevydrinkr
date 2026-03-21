@@ -36,8 +36,11 @@ export default function GroupsPage() {
     g.members.some((m) => m.userId === currentUser?.id)
   );
 
-  const handleCreate = () => {
-    if (!name.trim() || !currentUser) return;
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    if (!name.trim() || !currentUser || creating) return;
+    setCreating(true);
 
     const member: GroupMember = {
       userId: currentUser.id,
@@ -60,7 +63,8 @@ export default function GroupsPage() {
       isActive: true,
     };
 
-    addGroup(group);
+    await addGroup(group);
+    setCreating(false);
     setShowCreate(false);
     setName('');
     setDescription('');

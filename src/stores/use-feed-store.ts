@@ -4,6 +4,7 @@ import type {
   FeedLike,
   FeedComment,
   DrinkSession,
+  DrinkCategory,
   UserProfile,
   ReactionEmoji,
 } from '@/types';
@@ -26,7 +27,11 @@ interface FeedState {
     caption: string
   ) => Promise<void>;
   deleteFeedItem: (feedItemId: string) => Promise<void>;
-  updateFeedItem: (feedItemId: string, updates: { caption?: string }) => Promise<void>;
+  updateFeedItem: (feedItemId: string, updates: {
+    caption?: string;
+    photos?: string[];
+    sessionSummary?: FeedItem['sessionSummary'];
+  }) => Promise<void>;
   deleteComment: (feedItemId: string, commentId: string) => Promise<void>;
 }
 
@@ -360,14 +365,17 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
 
   updateFeedItem: async (feedItemId, updates) => {
     const prev = get().items;
+    const item = prev.find((i) => i.id === feedItemId);
     set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId ? { ...item, ...updates } : item
+      items: state.items.map((i) =>
+        i.id === feedItemId ? { ...i, ...updates } : i
       ),
     }));
 
     const dbUpdates: Record<string, unknown> = {};
     if (updates.caption !== undefined) dbUpdates.caption = updates.caption;
+    if (updates.photos !== undefined) dbUpdates.photos = updates.photos;
+    if (updates.sessionSummary !== undefined) dbUpdates.session_summary = updates.sessionSummary;
 
     const { error } = await supabase
       .from('feed_items')
@@ -377,6 +385,64 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     if (error) {
       console.error('Failed to update feed item:', error);
       set({ items: prev });
+      return;
+    }
+
+    // If session summary changed, sync drink_entries and drink_sessions
+    if (updates.sessionSummary && item?.sessionId) {
+      const s = updates.sessionSummary;
+
+      // Update session totals
+      await supabase.from('drink_sessions').update({
+        total_standard_drinks: s.totalStandardDrinks,
+        duration_minutes: s.durationMinutes,
+        venue: s.venue,
+      }).eq('id', item.sessionId);
+
+      // Replace all drink entries: delete old, insert new
+      await supabase.from('drink_entries').delete().eq('session_id', item.sessionId);
+      if (s.drinks && s.drinks.length > 0) {
+        await supabase.from('drink_entries').insert(
+          s.drinks.map((d) => ({
+            id: crypto.randomUUID(),
+            session_id: item.sessionId,
+            drink_definition_id: 'edited',
+            drink_name: d.name,
+            emoji: d.emoji,
+            category: d.category,
+            abv_percent: d.abvPercent,
+            volume_ml: d.volumeMl,
+            standard_drinks: d.standardDrinks,
+            timestamp: new Date().toISOString(),
+          }))
+        );
+      }
+
+      // Update session store so profile stats reflect changes
+      const sessionStore = useSessionStore.getState();
+      const updatedHistory = sessionStore.sessionHistory.map((sess) => {
+        if (sess.id !== item.sessionId) return sess;
+        return {
+          ...sess,
+          venue: s.venue,
+          totalStandardDrinks: s.totalStandardDrinks,
+          durationMinutes: s.durationMinutes,
+          drinks: (s.drinks || []).map((d, i) => ({
+            id: crypto.randomUUID(),
+            drinkDefinitionId: 'edited',
+            drinkName: d.name,
+            emoji: d.emoji,
+            category: d.category as DrinkCategory,
+            abvPercent: d.abvPercent,
+            volumeMl: d.volumeMl,
+            standardDrinks: d.standardDrinks,
+            timestamp: new Date().toISOString(),
+            roundId: null,
+            notes: '',
+          } as DrinkSession['drinks'][0])),
+        };
+      });
+      useSessionStore.setState({ sessionHistory: updatedHistory });
     }
   },
 

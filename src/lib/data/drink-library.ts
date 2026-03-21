@@ -114,8 +114,8 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('wh-rampur-double',    'Rampur Double Cask',      '🥃', 'whiskey', 45.0, 30),
 
   // Whiskey — generic
-  d('wh-neat',             'Whiskey Neat',            '🥃', 'whiskey', 40.0, 45),
-  d('wh-on-rocks',         'Whiskey on the Rocks',    '🥃', 'whiskey', 40.0, 45),
+  d('wh-neat',             'Whiskey Neat',            '🥃', 'whiskey', 40.0, 30),
+  d('wh-on-rocks',         'Whiskey on the Rocks',    '🥃', 'whiskey', 40.0, 30),
 
   // ═══════════════════════════════════════════════════════════
   // VODKA
@@ -134,9 +134,9 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('vk-vladivar',         'Vladivar',                '🍸', 'vodka', 37.5, 30),
   d('vk-fuel',             'Fuel',                    '🍸', 'vodka', 42.8, 30),
   // Vodka — mixed
-  d('vk-soda',             'Vodka Soda',              '🍸', 'vodka', 14.0, 150),
-  d('vk-cranberry',        'Vodka Cranberry',         '🍸', 'vodka', 12.0, 180),
-  d('vk-redbull',          'Vodka Red Bull',          '🍸', 'vodka', 12.0, 200),
+  d('vk-soda',             'Vodka Soda',              '🍸', 'vodka', 40.0,  30),
+  d('vk-cranberry',        'Vodka Cranberry',         '🍸', 'vodka', 40.0,  30),
+  d('vk-redbull',          'Vodka Red Bull',           '🍸', 'vodka', 40.0,  30),
 
   // ═══════════════════════════════════════════════════════════
   // RUM
@@ -150,8 +150,8 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('rum-havana-club',     'Havana Club',             '🥃', 'rum', 40.0, 30),
   d('rum-malibu',          'Malibu',                  '🥃', 'rum', 21.0, 30),
   // Rum — mixed
-  d('rum-coke',            'Rum & Coke',              '🥃', 'rum', 10.0, 200),
-  d('rum-old-monk-coke',   'Old Monk & Coke',         '🥃', 'rum', 10.0, 200),
+  d('rum-coke',            'Rum & Coke',              '🥃', 'rum', 40.0,  30),
+  d('rum-old-monk-coke',   'Old Monk & Coke',         '🥃', 'rum', 42.8, 30),
 
   // ═══════════════════════════════════════════════════════════
   // GIN
@@ -168,7 +168,7 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('gin-beefeater',       'Beefeater',               '🫒', 'gin', 40.0, 30),
   d('gin-hendricks',       'Hendrick\'s',             '🫒', 'gin', 41.4, 30),
   // Gin — mixed
-  d('gin-tonic',           'Gin & Tonic',             '🫒', 'gin', 10.0, 200),
+  d('gin-tonic',           'Gin & Tonic',             '🫒', 'gin', 40.0, 30),
 
   // ═══════════════════════════════════════════════════════════
   // WINE
@@ -226,20 +226,20 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   // ═══════════════════════════════════════════════════════════
   // COCKTAILS
   // ═══════════════════════════════════════════════════════════
-  d('ck-margarita',        'Margarita',               '🍹', 'cocktail', 13.0, 240),
-  d('ck-old-fashioned',    'Old Fashioned',           '🍹', 'cocktail', 32.0,  90),
-  d('ck-mojito',           'Mojito',                  '🍹', 'cocktail', 10.0, 240),
-  d('ck-espresso-martini', 'Espresso Martini',        '🍹', 'cocktail', 15.0, 180),
-  d('ck-negroni',          'Negroni',                 '🍹', 'cocktail', 24.0,  90),
-  d('ck-aperol-spritz',    'Aperol Spritz',           '🍹', 'cocktail',  8.0, 200),
-  d('ck-long-island',      'Long Island Iced Tea',    '🍹', 'cocktail', 22.0, 240),
-  d('ck-moscow-mule',      'Moscow Mule',             '🍹', 'cocktail', 10.0, 240),
-  d('ck-pina-colada',      'Piña Colada',             '🍹', 'cocktail', 13.0, 240),
-  d('ck-daiquiri',         'Daiquiri',                '🍹', 'cocktail', 15.0, 180),
-  d('ck-cosmopolitan',     'Cosmopolitan',            '🍹', 'cocktail', 15.0, 180),
-  d('ck-whiskey-sour',     'Whiskey Sour',            '🍹', 'cocktail', 15.0, 180),
-  d('ck-mai-tai',          'Mai Tai',                 '🍹', 'cocktail', 14.0, 240),
-  d('ck-liiit',            'LIIT',                    '🍹', 'cocktail', 22.0, 240),
+  d('ck-margarita',        'Margarita',               '🍹', 'cocktail', 40.0,  60),  // 60ml tequila+triple sec
+  d('ck-old-fashioned',    'Old Fashioned',           '🍹', 'cocktail', 40.0,  60),  // 60ml whiskey
+  d('ck-mojito',           'Mojito',                  '🍹', 'cocktail', 40.0,  30),  // 30ml rum
+  d('ck-espresso-martini', 'Espresso Martini',        '🍹', 'cocktail', 40.0,  60),  // 30ml vodka + 30ml kahlua
+  d('ck-negroni',          'Negroni',                 '🍹', 'cocktail', 30.0,  90),  // 30ml each gin+vermouth+campari
+  d('ck-aperol-spritz',    'Aperol Spritz',           '🍹', 'cocktail', 11.0,  60),  // 60ml aperol
+  d('ck-long-island',      'Long Island Iced Tea',    '🍹', 'cocktail', 40.0, 150),  // 30ml x5 spirits
+  d('ck-moscow-mule',      'Moscow Mule',             '🍹', 'cocktail', 40.0,  30),  // 30ml vodka
+  d('ck-pina-colada',      'Piña Colada',             '🍹', 'cocktail', 40.0,  30),  // 30ml rum
+  d('ck-daiquiri',         'Daiquiri',                '🍹', 'cocktail', 40.0,  60),  // 60ml rum
+  d('ck-cosmopolitan',     'Cosmopolitan',            '🍹', 'cocktail', 40.0,  60),  // 30ml vodka + 30ml triple sec
+  d('ck-whiskey-sour',     'Whiskey Sour',            '🍹', 'cocktail', 40.0,  60),  // 60ml whiskey
+  d('ck-mai-tai',          'Mai Tai',                 '🍹', 'cocktail', 40.0,  60),  // 60ml rum
+  d('ck-liiit',            'LIIT',                    '🍹', 'cocktail', 40.0, 150),  // 30ml x5 spirits
 
   // ═══════════════════════════════════════════════════════════
   // SHOTS
