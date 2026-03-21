@@ -2,7 +2,7 @@
 
 import { use, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -10,10 +10,12 @@ import { Avatar } from '@/components/ui/avatar';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { pickImage, compressImage } from '@/lib/image-utils';
-import type { FeedItem } from '@/types';
+import type { FeedItem, FeedComment } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { REACTION_EMOJIS } from '@/lib/constants';
 import type { ReactionEmoji } from '@/types';
+
+const MAX_VISIBLE_REPLIES = 2;
 
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -25,8 +27,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const deleteFeedItem = useFeedStore((s) => s.deleteFeedItem);
   const updateFeedItem = useFeedStore((s) => s.updateFeedItem);
   const deleteComment = useFeedStore((s) => s.deleteComment);
+  const likeComment = useFeedStore((s) => s.likeComment);
+  const unlikeComment = useFeedStore((s) => s.unlikeComment);
   const currentUser = useAuthStore((s) => s.currentUser);
   const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<{ commentId: string; userName: string } | null>(null);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [showReactions, setShowReactions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -96,18 +102,51 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const totalCommentCount = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
+
   const handleComment = () => {
     if (!commentText.trim() || !currentUser) return;
-    addComment(item.id, {
-      id: crypto.randomUUID(),
-      userId: currentUser.id,
-      userName: currentUser.displayName,
-      userAvatar: currentUser.avatarUrl,
-      text: commentText.trim(),
-      createdAt: new Date().toISOString(),
-    });
+    const parentId = replyingTo?.commentId ?? null;
+    addComment(
+      item.id,
+      {
+        id: crypto.randomUUID(),
+        userId: currentUser.id,
+        userName: currentUser.displayName,
+        userAvatar: currentUser.avatarUrl,
+        text: commentText.trim(),
+        parentCommentId: parentId,
+        likes: [],
+        replies: [],
+        createdAt: new Date().toISOString(),
+      },
+      parentId,
+    );
+    // Auto-expand the thread when a reply is posted
+    if (parentId) {
+      setExpandedThreads((prev) => new Set(prev).add(parentId));
+    }
     setCommentText('');
+    setReplyingTo(null);
     inputRef.current?.focus();
+  };
+
+  const handleReply = (comment: FeedComment) => {
+    // Replying to a reply targets the parent thread (1-level nesting)
+    const targetId = comment.parentCommentId ?? comment.id;
+    const targetName = comment.userName;
+    setReplyingTo({ commentId: targetId, userName: targetName });
+    inputRef.current?.focus();
+  };
+
+  const handleCommentLike = (comment: FeedComment) => {
+    if (!currentUser) return;
+    const existingLike = comment.likes.find((l) => l.userId === currentUser.id);
+    if (existingLike) {
+      unlikeComment(item.id, comment.id, existingLike.id);
+    } else {
+      likeComment(item.id, comment.id);
+    }
   };
 
   return (
@@ -222,7 +261,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             </motion.button>
             <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
             <span className="text-[11px] text-zinc-700 ml-auto">
-              {item.comments.length} comment{item.comments.length !== 1 ? 's' : ''}
+              {totalCommentCount} comment{totalCommentCount !== 1 ? 's' : ''}
             </span>
           </div>
           {/* Reaction summary */}
@@ -243,34 +282,110 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           <p className="text-sm text-zinc-700 text-center py-6">No comments yet — be the first</p>
         ) : (
           <div className="space-y-4">
-            {item.comments.map((comment, i) => (
-              <motion.div
-                key={comment.id}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="flex gap-3 group"
-              >
-                <div onClick={() => goToUser(comment.userId)} className="cursor-pointer">
-                  <Avatar name={comment.userName} size="sm" src={comment.userAvatar} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[13px]">
-                    <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(comment.userId)}>{comment.userName}</span>{' '}
-                    <span className="text-zinc-400">{comment.text}</span>
-                  </p>
-                  <p className="text-[10px] text-zinc-700 mt-0.5">{formatTimeAgo(comment.createdAt)}</p>
-                </div>
-                {comment.userId === currentUser?.id && (
-                  <button
-                    onClick={() => deleteComment(item.id, comment.id)}
-                    className="p-1 rounded-lg hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-1"
+            {item.comments.map((comment, i) => {
+              const commentLiked = !!comment.likes.find((l) => l.userId === currentUser?.id);
+              const isExpanded = expandedThreads.has(comment.id);
+              const visibleReplies = isExpanded ? comment.replies : comment.replies.slice(0, MAX_VISIBLE_REPLIES);
+              const hiddenCount = comment.replies.length - MAX_VISIBLE_REPLIES;
+
+              return (
+                <div key={comment.id}>
+                  {/* Top-level comment */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="flex gap-3 group"
                   >
-                    <Trash2 className="w-3 h-3 text-zinc-700 hover:text-red-400" />
-                  </button>
-                )}
-              </motion.div>
-            ))}
+                    <div onClick={() => goToUser(comment.userId)} className="cursor-pointer">
+                      <Avatar name={comment.userName} size="sm" src={comment.userAvatar} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px]">
+                        <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(comment.userId)}>{comment.userName}</span>{' '}
+                        <span className="text-zinc-400">{comment.text}</span>
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[10px] text-zinc-700">{formatTimeAgo(comment.createdAt)}</span>
+                        <button onClick={() => handleReply(comment)} className="text-[10px] text-zinc-600 font-semibold hover:text-zinc-400">
+                          Reply
+                        </button>
+                        <button onClick={() => handleCommentLike(comment)} className="flex items-center gap-1">
+                          <Heart className={`w-3 h-3 transition-colors ${commentLiked ? 'fill-red-500 text-red-500' : 'text-zinc-700 hover:text-zinc-500'}`} />
+                          {comment.likes.length > 0 && (
+                            <span className={`text-[10px] ${commentLiked ? 'text-red-500' : 'text-zinc-700'}`}>{comment.likes.length}</span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {comment.userId === currentUser?.id && (
+                      <button
+                        onClick={() => deleteComment(item.id, comment.id)}
+                        className="p-1 rounded-lg hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-1"
+                      >
+                        <Trash2 className="w-3 h-3 text-zinc-700 hover:text-red-400" />
+                      </button>
+                    )}
+                  </motion.div>
+
+                  {/* Replies */}
+                  {comment.replies.length > 0 && (
+                    <div className="ml-11 mt-2 space-y-3">
+                      {visibleReplies.map((reply) => {
+                        const replyLiked = !!reply.likes.find((l) => l.userId === currentUser?.id);
+                        return (
+                          <motion.div
+                            key={reply.id}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex gap-3 group"
+                          >
+                            <div onClick={() => goToUser(reply.userId)} className="cursor-pointer">
+                              <Avatar name={reply.userName} size="sm" src={reply.userAvatar} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[12px]">
+                                <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(reply.userId)}>{reply.userName}</span>{' '}
+                                <span className="text-zinc-400">{reply.text}</span>
+                              </p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-[10px] text-zinc-700">{formatTimeAgo(reply.createdAt)}</span>
+                                <button onClick={() => handleReply(reply)} className="text-[10px] text-zinc-600 font-semibold hover:text-zinc-400">
+                                  Reply
+                                </button>
+                                <button onClick={() => handleCommentLike(reply)} className="flex items-center gap-1">
+                                  <Heart className={`w-2.5 h-2.5 transition-colors ${replyLiked ? 'fill-red-500 text-red-500' : 'text-zinc-700 hover:text-zinc-500'}`} />
+                                  {reply.likes.length > 0 && (
+                                    <span className={`text-[10px] ${replyLiked ? 'text-red-500' : 'text-zinc-700'}`}>{reply.likes.length}</span>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            {reply.userId === currentUser?.id && (
+                              <button
+                                onClick={() => deleteComment(item.id, reply.id)}
+                                className="p-1 rounded-lg hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-0.5"
+                              >
+                                <Trash2 className="w-3 h-3 text-zinc-700 hover:text-red-400" />
+                              </button>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                      {!isExpanded && hiddenCount > 0 && (
+                        <button
+                          onClick={() => setExpandedThreads((prev) => new Set(prev).add(comment.id))}
+                          className="flex items-center gap-1.5 text-[11px] text-zinc-600 font-semibold hover:text-zinc-400 py-1"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          View {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
         <div ref={bottomRef} />
@@ -280,13 +395,23 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Comment input — fixed above the bottom nav */}
       <div className="fixed bottom-[72px] left-0 right-0 z-40" style={{ background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+        {replyingTo && (
+          <div className="px-5 pt-2 pb-0 max-w-lg mx-auto flex items-center gap-2">
+            <span className="text-[11px] text-zinc-500">
+              Replying to <span className="font-semibold text-zinc-400">@{replyingTo.userName}</span>
+            </span>
+            <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded hover:bg-white/5">
+              <X className="w-3 h-3 text-zinc-600" />
+            </button>
+          </div>
+        )}
         <div className="px-5 py-2.5 flex gap-3 items-center max-w-lg mx-auto">
           <Avatar name={currentUser?.displayName || 'You'} size="sm" src={currentUser?.avatarUrl || null} />
           <input
             ref={inputRef}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Add a comment..."
+            placeholder={replyingTo ? `Reply to @${replyingTo.userName}...` : 'Add a comment...'}
             className="flex-1 px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
             onKeyDown={(e) => e.key === 'Enter' && handleComment()}
           />

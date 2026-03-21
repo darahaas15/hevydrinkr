@@ -85,6 +85,9 @@ function makeComments(
       userName: user.displayName,
       userAvatar: user.avatarUrl,
       text: pick(COMMENT_TEXTS, seed + i * 11),
+      parentCommentId: null,
+      likes: [],
+      replies: [],
       createdAt: new Date(Date.now() - (seed + i) * 1800000).toISOString(),
     });
   }

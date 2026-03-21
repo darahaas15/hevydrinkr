@@ -171,9 +171,10 @@ export function FeedCard({ item }: { item: FeedItem }) {
 
           <button onClick={(e) => { e.stopPropagation(); openPost(); }} className="flex items-center gap-1.5">
             <MessageCircle size={18} className="text-zinc-600" />
-            {item.comments.length > 0 && (
-              <span className="text-[11px] text-zinc-600">{item.comments.length}</span>
-            )}
+            {(() => {
+              const total = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
+              return total > 0 ? <span className="text-[11px] text-zinc-600">{total}</span> : null;
+            })()}
           </button>
 
           <button onClick={handleShare}>

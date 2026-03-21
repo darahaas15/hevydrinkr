@@ -43,11 +43,20 @@ export interface FeedLike {
   createdAt: string;
 }
 
+export interface CommentLike {
+  id: string;
+  userId: string;
+  createdAt: string;
+}
+
 export interface FeedComment {
   id: string;
   userId: string;
   userName: string;
   userAvatar: string | null;
   text: string;
+  parentCommentId: string | null;
+  likes: CommentLike[];
+  replies: FeedComment[];
   createdAt: string;
 }

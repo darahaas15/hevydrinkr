@@ -3,6 +3,7 @@ import type {
   FeedItem,
   FeedLike,
   FeedComment,
+  CommentLike,
   DrinkSession,
   DrinkCategory,
   UserProfile,
@@ -19,8 +20,10 @@ interface FeedState {
   fetchFeed: () => Promise<void>;
   addLike: (feedItemId: string, like: FeedLike) => Promise<void>;
   removeLike: (feedItemId: string, likeId: string) => Promise<void>;
-  addComment: (feedItemId: string, comment: FeedComment) => Promise<void>;
+  addComment: (feedItemId: string, comment: FeedComment, parentCommentId?: string | null) => Promise<void>;
   getFeedForUser: (userId: string) => FeedItem[];
+  likeComment: (feedItemId: string, commentId: string) => Promise<void>;
+  unlikeComment: (feedItemId: string, commentId: string, likeId: string) => Promise<void>;
   createFeedItemFromSession: (
     session: DrinkSession,
     user: UserProfile,
@@ -55,9 +58,73 @@ interface FeedItemRow {
     id: string;
     user_id: string;
     text: string;
+    parent_comment_id: string | null;
     created_at: string;
     commenter: { display_name: string; avatar_url: string | null };
+    comment_likes: Array<{ id: string; user_id: string; created_at: string }>;
   }>;
+}
+
+function threadComments(
+  raw: FeedItemRow['feed_comments']
+): FeedComment[] {
+  // Pass 1: flat map all comments
+  const map = new Map<string, FeedComment>();
+  for (const c of raw) {
+    map.set(c.id, {
+      id: c.id,
+      userId: c.user_id,
+      userName: c.commenter.display_name,
+      userAvatar: c.commenter.avatar_url,
+      text: c.text,
+      parentCommentId: c.parent_comment_id,
+      likes: (c.comment_likes ?? []).map((l) => ({
+        id: l.id,
+        userId: l.user_id,
+        createdAt: l.created_at,
+      })),
+      replies: [],
+      createdAt: c.created_at,
+    });
+  }
+  // Pass 2: group replies under parents, keep top-level only
+  const topLevel: FeedComment[] = [];
+  for (const comment of map.values()) {
+    if (comment.parentCommentId) {
+      const parent = map.get(comment.parentCommentId);
+      if (parent) {
+        parent.replies.push(comment);
+      }
+    } else {
+      topLevel.push(comment);
+    }
+  }
+  // Sort replies chronologically
+  for (const c of topLevel) {
+    c.replies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+  return topLevel;
+}
+
+/** Recursively find a comment in the tree (top-level or nested reply). */
+function findComment(comments: FeedComment[], commentId: string): FeedComment | undefined {
+  for (const c of comments) {
+    if (c.id === commentId) return c;
+    const found = findComment(c.replies, commentId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** Return a new comments array with a mapper applied to the target comment. */
+function mapComment(comments: FeedComment[], commentId: string, fn: (c: FeedComment) => FeedComment): FeedComment[] {
+  return comments.map((c) => {
+    if (c.id === commentId) return fn(c);
+    if (c.replies.length > 0) {
+      return { ...c, replies: mapComment(c.replies, commentId, fn) };
+    }
+    return c;
+  });
 }
 
 function mapRow(row: FeedItemRow): FeedItem {
@@ -77,14 +144,7 @@ function mapRow(row: FeedItemRow): FeedItem {
       emoji: l.emoji as ReactionEmoji,
       createdAt: l.created_at,
     })),
-    comments: (row.feed_comments ?? []).map((c) => ({
-      id: c.id,
-      userId: c.user_id,
-      userName: c.commenter.display_name,
-      userAvatar: c.commenter.avatar_url,
-      text: c.text,
-      createdAt: c.created_at,
-    })),
+    comments: threadComments(row.feed_comments ?? []),
     createdAt: row.created_at,
   };
 }
@@ -104,7 +164,7 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
         *,
         profile:profiles!feed_items_user_id_fkey(display_name, avatar_url),
         feed_likes(id, user_id, emoji, created_at, liker:profiles!feed_likes_user_id_fkey(display_name)),
-        feed_comments(id, user_id, text, created_at, commenter:profiles!feed_comments_user_id_fkey(display_name, avatar_url))
+        feed_comments(id, user_id, text, parent_comment_id, created_at, commenter:profiles!feed_comments_user_id_fkey(display_name, avatar_url), comment_likes(id, user_id, created_at))
       `
       )
       .order('created_at', { ascending: false });
@@ -275,14 +335,23 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     }
   },
 
-  addComment: async (feedItemId, comment) => {
+  addComment: async (feedItemId, comment, parentCommentId) => {
     // Optimistic update
     set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? { ...item, comments: [...item.comments, comment] }
-          : item
-      ),
+      items: state.items.map((item) => {
+        if (item.id !== feedItemId) return item;
+        if (parentCommentId) {
+          // Push reply into parent's replies[]
+          return {
+            ...item,
+            comments: mapComment(item.comments, parentCommentId, (parent) => ({
+              ...parent,
+              replies: [...parent.replies, comment],
+            })),
+          };
+        }
+        return { ...item, comments: [...item.comments, comment] };
+      }),
     }));
 
     const { data: inserted, error } = await supabase
@@ -291,6 +360,7 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
         feed_item_id: feedItemId,
         user_id: comment.userId,
         text: comment.text,
+        parent_comment_id: parentCommentId ?? null,
       })
       .select()
       .single();
@@ -298,14 +368,19 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     if (error) {
       // Roll back optimistic update
       set((state) => ({
-        items: state.items.map((item) =>
-          item.id === feedItemId
-            ? {
-                ...item,
-                comments: item.comments.filter((c) => c.id !== comment.id),
-              }
-            : item
-        ),
+        items: state.items.map((item) => {
+          if (item.id !== feedItemId) return item;
+          if (parentCommentId) {
+            return {
+              ...item,
+              comments: mapComment(item.comments, parentCommentId, (parent) => ({
+                ...parent,
+                replies: parent.replies.filter((r) => r.id !== comment.id),
+              })),
+            };
+          }
+          return { ...item, comments: item.comments.filter((c) => c.id !== comment.id) };
+        }),
         error: error.message,
       }));
       return;
@@ -313,16 +388,13 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
 
     // Replace the temp comment id with the real DB id
     set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? {
-              ...item,
-              comments: item.comments.map((c) =>
-                c.id === comment.id ? { ...c, id: inserted.id } : c
-              ),
-            }
-          : item
-      ),
+      items: state.items.map((item) => {
+        if (item.id !== feedItemId) return item;
+        return {
+          ...item,
+          comments: mapComment(item.comments, comment.id, (c) => ({ ...c, id: inserted.id })),
+        };
+      }),
     }));
   },
 
@@ -458,15 +530,26 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
     // Auth check: only comment author can delete
     const { data: { session } } = await supabase.auth.getSession();
     const feedItem = prev.find((i) => i.id === feedItemId);
-    const comment = feedItem?.comments.find((c) => c.id === commentId);
+    const comment = feedItem ? findComment(feedItem.comments, commentId) : undefined;
     if (!comment || comment.userId !== session?.user?.id) return;
 
     set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? { ...item, comments: item.comments.filter((c) => c.id !== commentId) }
-          : item
-      ),
+      items: state.items.map((item) => {
+        if (item.id !== feedItemId) return item;
+        // Try removing from top-level first
+        const filtered = item.comments.filter((c) => c.id !== commentId);
+        if (filtered.length < item.comments.length) {
+          return { ...item, comments: filtered };
+        }
+        // Otherwise remove from a parent's replies
+        return {
+          ...item,
+          comments: item.comments.map((c) => ({
+            ...c,
+            replies: c.replies.filter((r) => r.id !== commentId),
+          })),
+        };
+      }),
     }));
 
     const { error } = await supabase
@@ -476,6 +559,69 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
 
     if (error) {
       console.error('Failed to delete comment:', error);
+      set({ items: prev });
+    }
+  },
+
+  likeComment: async (feedItemId, commentId) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    const tempId = crypto.randomUUID();
+    const optimisticLike: CommentLike = { id: tempId, userId, createdAt: new Date().toISOString() };
+
+    // Optimistic update
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === feedItemId
+          ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: [...c.likes, optimisticLike] })) }
+          : item
+      ),
+    }));
+
+    const { data: inserted, error } = await supabase
+      .from('comment_likes')
+      .insert({ comment_id: commentId, user_id: userId })
+      .select()
+      .single();
+
+    if (error) {
+      // Roll back
+      set((state) => ({
+        items: state.items.map((item) =>
+          item.id === feedItemId
+            ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.filter((l) => l.id !== tempId) })) }
+            : item
+        ),
+      }));
+      return;
+    }
+
+    // Replace temp id with real id
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === feedItemId
+          ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.map((l) => l.id === tempId ? { ...l, id: inserted.id } : l) })) }
+          : item
+      ),
+    }));
+  },
+
+  unlikeComment: async (feedItemId, commentId, likeId) => {
+    const prev = get().items;
+
+    // Optimistic update
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === feedItemId
+          ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.filter((l) => l.id !== likeId) })) }
+          : item
+      ),
+    }));
+
+    const { error } = await supabase.from('comment_likes').delete().eq('id', likeId);
+    if (error) {
       set({ items: prev });
     }
   },
