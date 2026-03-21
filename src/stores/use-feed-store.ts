@@ -332,6 +332,9 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
   deleteFeedItem: async (feedItemId) => {
     const prev = get().items;
     const item = prev.find((i) => i.id === feedItemId);
+    // Auth check: only the post owner can delete
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!item || item.userId !== session?.user?.id) return;
     set((state) => ({
       items: state.items.filter((i) => i.id !== feedItemId),
     }));
@@ -366,6 +369,10 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
   updateFeedItem: async (feedItemId, updates) => {
     const prev = get().items;
     const item = prev.find((i) => i.id === feedItemId);
+    // Auth check: only the post owner can edit
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!item || item.userId !== session?.user?.id) return;
+
     set((state) => ({
       items: state.items.map((i) =>
         i.id === feedItemId ? { ...i, ...updates } : i
@@ -448,6 +455,12 @@ export const useFeedStore = create<FeedState>()((set, get) => ({
 
   deleteComment: async (feedItemId, commentId) => {
     const prev = get().items;
+    // Auth check: only comment author can delete
+    const { data: { session } } = await supabase.auth.getSession();
+    const feedItem = prev.find((i) => i.id === feedItemId);
+    const comment = feedItem?.comments.find((c) => c.id === commentId);
+    if (!comment || comment.userId !== session?.user?.id) return;
+
     set((state) => ({
       items: state.items.map((item) =>
         item.id === feedItemId

@@ -310,7 +310,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                       key={drink.id}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleSelect(drink)}
-                      className="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl active:bg-white/[0.05] transition-colors text-left min-h-[52px]"
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl active:bg-white/[0.05] transition-colors text-left"
                     >
                       <span className="text-xl w-7 text-center shrink-0">{drink.emoji}</span>
                       <div className="flex-1 min-w-0">

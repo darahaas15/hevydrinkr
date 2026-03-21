@@ -116,7 +116,7 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   // Fetch sessions from Supabase and hydrate local state
   // -----------------------------------------------------------------------
   fetchSessions: async (userId: string) => {
-    // If userId is empty, fetch all sessions (for leaderboard)
+    // If userId is empty, fetch all sessions (for leaderboard) — only completed, no active
     let query = supabase
       .from('drink_sessions')
       .select('*')
@@ -124,6 +124,9 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
 
     if (userId) {
       query = query.eq('user_id', userId);
+    } else {
+      // Leaderboard: only completed sessions, skip active ones
+      query = query.eq('status', 'completed');
     }
 
     const { data: sessionRows, error: sessionsError } = await query;
@@ -184,13 +187,14 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
 
     const history = sessions.filter((s) => s.status !== 'active');
 
-    // Only set activeSession if fetching for a specific user (not leaderboard)
     if (userId) {
+      // User-specific fetch — set active session and history
       const active = sessions.find((s) => s.status === 'active') ?? null;
       set({ activeSession: active, sessionHistory: history });
     } else {
-      // Leaderboard fetch — only update history, don't touch activeSession
-      set({ sessionHistory: history });
+      // Leaderboard fetch — merge into history without overwriting user's own active session
+      // Keep existing activeSession untouched
+      set((state) => ({ sessionHistory: history, activeSession: state.activeSession }));
     }
   },
 

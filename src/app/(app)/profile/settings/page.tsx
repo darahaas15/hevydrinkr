@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Scale, Camera, Type, FileText } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
@@ -16,8 +16,6 @@ export default function SettingsPage() {
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const addToast = useUIStore((s) => s.addToast);
 
-  const [weight, setWeight] = useState(currentUser?.weightKg?.toString() || '75');
-  const [gender, setGender] = useState(currentUser?.gender || 'male');
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
   const [bio, setBio] = useState(currentUser?.bio || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -130,39 +128,6 @@ export default function SettingsPage() {
                 rows={2}
                 className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.05] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 resize-none"
               />
-            </div>
-            <div className="px-4 py-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Scale className="w-4 h-4 text-zinc-500" />
-                <span className="text-sm">Weight</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  value={weight}
-                  onChange={(e) => { setWeight(e.target.value); updateProfile({ weightKg: parseFloat(e.target.value) || 70 }); }}
-                  className="w-16 text-right text-sm bg-transparent text-white focus:outline-none font-mono"
-                />
-                <span className="text-xs text-zinc-600">kg</span>
-              </div>
-            </div>
-            <div className="px-4 py-3.5">
-              <p className="text-sm mb-2.5">Gender</p>
-              <div className="flex gap-2">
-                {(['male', 'female', 'other'] as const).map((g) => (
-                  <button
-                    key={g}
-                    onClick={() => { setGender(g); updateProfile({ gender: g }); }}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
-                      gender === g
-                        ? 'bg-accent text-black'
-                        : 'bg-white/[0.04] text-zinc-500'
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>

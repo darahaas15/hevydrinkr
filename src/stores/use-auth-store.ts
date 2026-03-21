@@ -145,7 +145,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   fetchAllUsers: async () => {
     const [{ data: profiles }, { data: allFollows }] = await Promise.all([
-      supabase.from('profiles').select('*'),
+      supabase.from('profiles').select('id, username, display_name, avatar_url, bio, created_at'),
       supabase.from('follows').select('follower_id, following_id'),
     ]);
     if (!profiles) return;

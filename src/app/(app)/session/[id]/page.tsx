@@ -23,10 +23,11 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [currentUser, session, fetchSessions]);
 
-  if (!session) {
+  // Only show your own sessions
+  if (!session || (currentUser && session.userId !== currentUser.id)) {
     return (
       <div className="min-h-full flex items-center justify-center">
-        <div className="text-2xl animate-pulse">🥃</div>
+        <p className="text-sm text-zinc-500">{session ? 'Not your session' : 'Session not found'}</p>
       </div>
     );
   }
