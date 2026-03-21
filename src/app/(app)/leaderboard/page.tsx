@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
@@ -24,6 +25,7 @@ const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
 ];
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
   const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all-time');
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
@@ -33,9 +35,10 @@ export default function LeaderboardPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
 
   useEffect(() => {
-    fetchAllUsers();
-    // Fetch all sessions (pass empty to get all)
-    fetchSessions('');
+    const refetch = () => { fetchAllUsers(); fetchSessions(''); };
+    refetch();
+    window.addEventListener('focus', refetch);
+    return () => window.removeEventListener('focus', refetch);
   }, [fetchAllUsers, fetchSessions]);
 
   const leaderboard = useMemo(
@@ -106,7 +109,8 @@ export default function LeaderboardPage() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.2 }}
-                  className={`rounded-xl p-3 flex items-center gap-3 ${
+                  onClick={() => router.push(isMe ? '/profile' : `/profile/${entry.userId}`)}
+                  className={`rounded-xl p-3 flex items-center gap-3 cursor-pointer active:bg-white/[0.05] transition-colors ${
                     isMe
                       ? 'bg-accent/[0.06] border border-accent/10'
                       : 'bg-white/[0.02] border border-white/[0.04]'

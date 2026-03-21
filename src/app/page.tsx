@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -9,7 +9,17 @@ import { useAuthStore } from '@/stores/use-auth-store';
 type Screen = 'landing' | 'signup' | 'login';
 
 export default function LandingPage() {
+  return (
+    <Suspense fallback={<div className="h-dvh flex items-center justify-center" style={{ background: '#09090b' }}><div className="text-3xl animate-pulse">🥃</div></div>}>
+      <LandingContent />
+    </Suspense>
+  );
+}
+
+function LandingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteCode = searchParams.get('invite');
   const authSignup = useAuthStore((s) => s.signup);
   const authLogin = useAuthStore((s) => s.login);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -32,9 +42,9 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace('/feed');
+      router.replace(inviteCode ? `/invite/${inviteCode}` : '/feed');
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, inviteCode]);
 
   if (isLoading || isAuthenticated) {
     return (
@@ -64,7 +74,7 @@ export default function LandingPage() {
     if (err) {
       setError(err);
     } else {
-      router.push('/feed');
+      router.push(inviteCode ? `/invite/${inviteCode}` : '/feed');
     }
   };
 
@@ -80,7 +90,7 @@ export default function LandingPage() {
     if (err) {
       setError(err);
     } else {
-      router.push('/feed');
+      router.push(inviteCode ? `/invite/${inviteCode}` : '/feed');
     }
   };
 

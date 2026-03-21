@@ -32,6 +32,9 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchFeed();
+    const refetch = () => fetchFeed();
+    window.addEventListener('focus', refetch);
+    return () => window.removeEventListener('focus', refetch);
   }, [fetchFeed]);
 
   // Search users when query changes

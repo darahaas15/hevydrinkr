@@ -25,8 +25,12 @@ export default function GroupsPage() {
   const [inviteCode, setInviteCode] = useState('');
 
   useEffect(() => {
-    if (currentUser) fetchGroups(currentUser.id);
-  }, [currentUser, fetchGroups]);
+    const refetch = () => { if (currentUser) fetchGroups(currentUser.id); };
+    refetch();
+    window.addEventListener('focus', refetch);
+    return () => window.removeEventListener('focus', refetch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   const myGroups = groups.filter((g) =>
     g.members.some((m) => m.userId === currentUser?.id)

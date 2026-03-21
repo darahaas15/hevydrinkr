@@ -26,12 +26,19 @@ export default function ProfilePage() {
   const personalRecords = useProfileStore((s) => s.personalRecords);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
 
+  // Fetch on mount and refetch when page regains focus
   useEffect(() => {
-    if (currentUser) {
-      fetchSessions(currentUser.id);
-      fetchPRs(currentUser.id);
-    }
-  }, [currentUser, fetchSessions, fetchPRs]);
+    const refetch = () => {
+      if (currentUser) {
+        fetchSessions(currentUser.id);
+        fetchPRs(currentUser.id);
+      }
+    };
+    refetch();
+    window.addEventListener('focus', refetch);
+    return () => window.removeEventListener('focus', refetch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   const mySessions = sessionHistory.filter(
     (s) => s.userId === currentUser?.id && s.status === 'completed'
