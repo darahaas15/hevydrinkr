@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus } from 'lucide-react';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
@@ -115,11 +116,20 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       <div className="mx-4 mb-3 rounded-xl bg-white/[0.03] border border-white/[0.04] p-3">
         <p className="text-[11px] text-zinc-500 mb-2">{s.venue}</p>
 
-        {/* Drink emojis */}
-        {s.drinkEmojis.length > 0 && (
-          <div className="flex flex-wrap gap-px mb-2">
-            {s.drinkEmojis.slice(0, 15).map((emoji, i) => (
-              <span key={i} className="text-base">{emoji}</span>
+        {/* Drink icons */}
+        {s.drinks && s.drinks.length > 0 ? (
+          <div className="flex flex-wrap gap-0.5 mb-2">
+            {s.drinks.slice(0, 15).map((drink, i) => (
+              <DrinkIcon key={i} category={drink.category} className="w-4 h-4" />
+            ))}
+            {s.drinks.length > 15 && (
+              <span className="text-[11px] text-zinc-600 self-center ml-1">+{s.drinks.length - 15}</span>
+            )}
+          </div>
+        ) : s.drinkEmojis.length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mb-2">
+            {s.drinkEmojis.slice(0, 15).map((_, i) => (
+              <DrinkIcon key={i} category="custom" className="w-4 h-4" />
             ))}
             {s.drinkEmojis.length > 15 && (
               <span className="text-[11px] text-zinc-600 self-center ml-1">+{s.drinkEmojis.length - 15}</span>

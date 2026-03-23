@@ -43,21 +43,39 @@ export const DRINK_CATEGORY_COLORS: Record<string, string> = {
   custom: '#71717a',
 };
 
-export const DRINK_CATEGORY_EMOJIS: Record<string, string> = {
-  beer: '🍺',
-  wine: '🍷',
-  cocktail: '🍹',
-  whiskey: '🥃',
-  vodka: '🍸',
-  rum: '🥃',
-  gin: '🫒',
-  brandy: '🍷',
-  tequila: '🌵',
-  shot: '🥂',
-  cider: '🍏',
-  seltzer: '🫧',
-  desi: '🫗',
-  custom: '🍸',
+import type { ComponentType } from 'react';
+import {
+  IconBeer,
+  IconGlassCocktail,
+  IconGlass,
+  IconBottle,
+  IconBarrel,
+  IconGlassGin,
+  IconGlassFull,
+  IconCactus,
+  IconFlask,
+  IconApple,
+  IconDroplets,
+  IconFlame,
+  IconGlassChampagne,
+  IconCup,
+} from '@tabler/icons-react';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const DRINK_CATEGORY_ICONS: Record<string, ComponentType<any>> = {
+  beer: IconBeer,
+  wine: IconGlass,
+  cocktail: IconGlassChampagne,
+  whiskey: IconGlassFull,
+  vodka: IconGlassCocktail,
+  rum: IconBarrel,
+  gin: IconGlassGin,
+  brandy: IconGlassFull,
+  tequila: IconCactus,
+  shot: IconFlask,
+  cider: IconApple,
+  seltzer: IconDroplets,
+  desi: IconFlame,
+  custom: IconCup,
 };
 
 export const STORAGE_KEYS = {

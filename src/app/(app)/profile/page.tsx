@@ -16,7 +16,7 @@ import { calculateWeeklyStreak } from '@/lib/algorithms/streaks';
 import { formatDuration } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { PR_LABELS, PR_ICONS } from '@/types/pr';
-import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_EMOJIS } from '@/lib/constants';
+import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import { getBaseUrl, shareLink } from '@/lib/share';
 
 export default function ProfilePage() {

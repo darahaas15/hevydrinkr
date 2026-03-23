@@ -96,5 +96,6 @@ export interface PartyDrinkEvent {
   userName: string;
   drinkName: string;
   drinkEmoji: string;
+  drinkCategory: string;
   timestamp: string;
 }

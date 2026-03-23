@@ -2,18 +2,18 @@
 
 import { use, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Plus, Trophy } from 'lucide-react';
+import { ChevronLeft, Plus, Trophy, Beer, Calendar, Timer, Palette } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { Avatar } from '@/components/ui/avatar';
 import type { Challenge, ChallengeMetric } from '@/types';
 
-const METRICS: { value: ChallengeMetric; label: string; emoji: string }[] = [
-  { value: 'total_drinks', label: 'Most Drinks', emoji: '🍺' },
-  { value: 'unique_drinks', label: 'Most Variety', emoji: '🌈' },
-  { value: 'session_duration', label: 'Longest Session', emoji: '⏱️' },
-  { value: 'most_sessions', label: 'Most Sessions', emoji: '📅' },
+const METRICS: { value: ChallengeMetric; label: string; icon: typeof Beer }[] = [
+  { value: 'total_drinks', label: 'Most Drinks', icon: Beer },
+  { value: 'unique_drinks', label: 'Most Variety', icon: Palette },
+  { value: 'session_duration', label: 'Longest Session', icon: Timer },
+  { value: 'most_sessions', label: 'Most Sessions', icon: Calendar },
 ];
 
 export default function ChallengesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -170,7 +170,7 @@ export default function ChallengesPage({ params }: { params: Promise<{ id: strin
                         metric === m.value ? 'bg-white/[0.04] border border-white/[0.06] ring-1 ring-accent/30' : 'bg-white/5'
                       }`}
                     >
-                      <span className="text-lg">{m.emoji}</span>
+                      <m.icon className="w-5 h-5" />
                       <span className="text-sm">{m.label}</span>
                     </button>
                   ))}

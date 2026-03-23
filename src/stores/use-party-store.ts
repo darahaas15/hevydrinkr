@@ -54,6 +54,7 @@ function mapDbPartyToPartySession(
       userName: profile?.display_name ?? 'Unknown',
       drinkName: de.drink_name as string,
       drinkEmoji: de.drink_emoji as string,
+      drinkCategory: (de.drink_category as string) || 'custom',
       timestamp: de.timestamp as string,
     };
   });

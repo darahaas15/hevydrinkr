@@ -8,7 +8,8 @@ import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { formatDuration } from '@/lib/utils';
-import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_EMOJIS } from '@/lib/constants';
+import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 
 export default function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -94,7 +95,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
               .sort(([, a], [, b]) => b - a)
               .map(([category, count]) => (
                 <div key={category} className="flex items-center gap-2 py-1.5">
-                  <span>{DRINK_CATEGORY_EMOJIS[category] || '🍸'}</span>
+                  {(() => { const Icon = DRINK_CATEGORY_ICONS[category] || DRINK_CATEGORY_ICONS.custom; return <Icon className="w-4 h-4 shrink-0" style={{ color: DRINK_CATEGORY_COLORS[category] || '#71717a' }} stroke={1.5} />; })()}
                   <span className="text-sm capitalize flex-1">{category}</span>
                   <span className="text-sm font-mono text-zinc-400">{count}</span>
                   <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -124,7 +125,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                   transition={{ delay: i * 0.03 }}
                   className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3 flex items-center gap-3"
                 >
-                  <span className="text-2xl">{drink.emoji}</span>
+                  <DrinkIcon category={drink.category} className="w-6 h-6" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">{drink.drinkName}</p>
                     <p className="text-[10px] text-zinc-500">

@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Copy, Plus, Swords, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2 } from 'lucide-react';
+import { ChevronLeft, Copy, Plus, Swords, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2, Beer, Calendar, Timer, Palette } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -12,11 +12,11 @@ import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib
 import { getBaseUrl, shareLink } from '@/lib/share';
 import type { Challenge, ChallengeMetric } from '@/types';
 
-const METRICS: { value: ChallengeMetric; label: string; emoji: string }[] = [
-  { value: 'total_drinks', label: 'Most Drinks', emoji: '🍺' },
-  { value: 'most_sessions', label: 'Most Sessions', emoji: '📅' },
-  { value: 'session_duration', label: 'Longest Session', emoji: '⏱️' },
-  { value: 'unique_drinks', label: 'Most Variety', emoji: '🌈' },
+const METRICS: { value: ChallengeMetric; label: string; icon: typeof Beer }[] = [
+  { value: 'total_drinks', label: 'Most Drinks', icon: Beer },
+  { value: 'most_sessions', label: 'Most Sessions', icon: Calendar },
+  { value: 'session_duration', label: 'Longest Session', icon: Timer },
+  { value: 'unique_drinks', label: 'Most Variety', icon: Palette },
 ];
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -430,7 +430,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                         metric === m.value ? 'bg-accent/10 border border-accent/20' : 'bg-white/[0.03] border border-white/[0.05]'
                       }`}
                     >
-                      <span className="text-lg">{m.emoji}</span>
+                      <m.icon className="w-5 h-5" />
                       <span className={`text-sm ${metric === m.value ? 'text-accent font-medium' : 'text-zinc-400'}`}>{m.label}</span>
                     </button>
                   ))}

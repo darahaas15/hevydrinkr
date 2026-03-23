@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { DrinkEntry } from '@/types';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 
 interface DrinkListProps {
   drinks: DrinkEntry[];
@@ -13,7 +14,7 @@ export function DrinkList({ drinks, onRemove }: DrinkListProps) {
   if (drinks.length === 0) {
     return (
       <div className="flex flex-col items-center py-8 text-center">
-        <span className="text-4xl mb-3">🍻</span>
+        <DrinkIcon category="beer" className="w-10 h-10 mb-3" />
         <p className="text-sm text-zinc-500">No drinks yet</p>
         <p className="text-xs text-zinc-600">Tap + to add your first drink</p>
       </div>
@@ -46,7 +47,7 @@ export function DrinkList({ drinks, onRemove }: DrinkListProps) {
               transition={{ duration: 0.2 }}
               className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3 flex items-center gap-3"
             >
-              <span className="text-2xl">{drink.emoji}</span>
+              <DrinkIcon category={drink.category} className="w-6 h-6" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{drink.drinkName}</p>
                 <p className="text-[10px] text-zinc-500">

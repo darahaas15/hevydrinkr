@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, MapPin, Clock, Wine, ChevronRight, Camera } from 'lucide-react';
+import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -17,6 +17,7 @@ import { DrinkList } from '@/components/session/drink-list';
 import { SessionSummary } from '@/components/session/session-summary';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, compressImage } from '@/lib/image-utils';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 
 export default function SessionPage() {
   const activeSession = useSessionStore((s) => s.activeSession);
@@ -108,7 +109,7 @@ export default function SessionPage() {
           transition={{ duration: 0.25 }}
           className="flex flex-col items-center pt-8"
         >
-          <span className="text-5xl mb-5">🍻</span>
+          <DrinkIcon category="beer" className="w-12 h-12 mb-5" />
           <h1 className="text-2xl font-extrabold tracking-tight mb-1">Start a Sesh</h1>
           <p className="text-zinc-500 text-sm mb-8">Log drinks, track your score, beat PRs</p>
 
@@ -147,7 +148,7 @@ export default function SessionPage() {
                       onClick={() => router.push(feedPost ? `/feed/${feedPost.id}` : `/session/${session.id}`)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-left active:bg-white/[0.05] transition-colors"
                     >
-                      <span className="text-xl">{session.drinks[0]?.emoji || '🍻'}</span>
+                      {session.drinks[0] ? <DrinkIcon category={session.drinks[0].category} className="w-5 h-5" /> : <DrinkIcon category="beer" className="w-5 h-5" />}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{session.venue}</p>
                         <p className="text-[11px] text-zinc-600">
@@ -301,7 +302,7 @@ export default function SessionPage() {
                 </div>
                 <div className="flex flex-wrap gap-0.5 max-w-[80px] justify-end">
                   {activeSession.drinks.slice(0, 6).map((d) => (
-                    <span key={d.id} className="text-base">{d.emoji}</span>
+                    <DrinkIcon key={d.id} category={d.category} className="w-4 h-4" />
                   ))}
                   {activeSession.drinks.length > 6 && (
                     <span className="text-[10px] text-zinc-600">+{activeSession.drinks.length - 6}</span>
@@ -383,7 +384,7 @@ export default function SessionPage() {
               className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
               style={{ background: '#141418' }}
             >
-              <div className="text-3xl mb-3">🗑️</div>
+              <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
               <h3 className="text-lg font-bold mb-1">Cancel session?</h3>
               <p className="text-sm text-zinc-500 mb-5">This session won&apos;t be saved</p>
               <div className="flex gap-3">

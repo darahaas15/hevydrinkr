@@ -13,6 +13,7 @@ import { pickImage, compressImage } from '@/lib/image-utils';
 import type { FeedItem, FeedComment } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { getMilestoneBadge } from '@/lib/milestones';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 
 const MAX_VISIBLE_REPLIES = 2;
 
@@ -203,7 +204,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             <div className="space-y-1.5">
               {s.drinks.map((drink, i) => (
                 <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-white/[0.02]">
-                  <span className="text-xl">{drink.emoji}</span>
+                  <DrinkIcon category={drink.category} className="w-5 h-5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{drink.name}</p>
                     <p className="text-[10px] text-zinc-600">
@@ -218,8 +219,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             /* Fallback for old posts without drink details */
             s.drinkEmojis.length > 0 && (
               <div className="flex flex-wrap gap-0.5">
-                {s.drinkEmojis.map((emoji, i) => (
-                  <span key={i} className="text-lg">{emoji}</span>
+                {s.drinkEmojis.map((_, i) => (
+                  <DrinkIcon key={i} category="custom" className="w-4 h-4" />
                 ))}
               </div>
             )
@@ -516,7 +517,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="space-y-1.5">
                     {editDrinks.map((drink, i) => (
                       <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                        <span className="text-xl">{drink.emoji}</span>
+                        <DrinkIcon category={drink.category} className="w-5 h-5" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{drink.name}</p>
                           <p className="text-[10px] text-zinc-600">

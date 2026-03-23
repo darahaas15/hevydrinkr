@@ -11,6 +11,7 @@ import { useTimer } from '@/hooks/use-timer';
 import { Avatar } from '@/components/ui/avatar';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { useSessionStore } from '@/stores/use-session-store';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 
 export default function PartyModePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -213,7 +214,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-2 text-sm py-1"
                       >
-                        <span className="text-lg">{event.drinkEmoji}</span>
+                        <DrinkIcon category={event.drinkCategory || 'custom'} className="w-4 h-4" />
                         <span className="text-zinc-400">
                           <span className="text-white font-medium">{event.userName}</span> had a {event.drinkName}
                         </span>
@@ -239,6 +240,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                 userName: currentUser.displayName,
                 drinkName: drink.drinkName,
                 drinkEmoji: drink.emoji,
+                drinkCategory: drink.category,
                 timestamp: new Date().toISOString(),
               });
               // Update participant total

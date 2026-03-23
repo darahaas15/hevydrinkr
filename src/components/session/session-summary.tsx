@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import { Clock, Wine, Droplets, TrendingUp } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
-import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_EMOJIS } from '@/lib/constants';
+import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import type { DrinkSession } from '@/types';
 
@@ -77,7 +78,7 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
           {/* Emoji row */}
           <div className="flex flex-wrap gap-0.5 mb-3">
             {session.drinks.map((d) => (
-              <span key={d.id} className="text-xl">{d.emoji}</span>
+              <DrinkIcon key={d.id} category={d.category} className="w-5 h-5" />
             ))}
           </div>
 
@@ -85,7 +86,7 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
           <div className="space-y-2">
             {sortedCategories.map(([category, count]) => (
               <div key={category} className="flex items-center gap-2">
-                <span>{DRINK_CATEGORY_EMOJIS[category] || '🍸'}</span>
+                {(() => { const Icon = DRINK_CATEGORY_ICONS[category] || DRINK_CATEGORY_ICONS.custom; return <Icon className="w-4 h-4 shrink-0" style={{ color: DRINK_CATEGORY_COLORS[category] || '#71717a' }} stroke={1.5} />; })()}
                 <span className="text-sm capitalize flex-1">{category}</span>
                 <span className="text-sm font-mono text-zinc-400">{count}</span>
                 <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">

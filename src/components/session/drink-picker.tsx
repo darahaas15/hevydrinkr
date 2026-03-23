@@ -6,6 +6,7 @@ import { Search, X, Plus, ChevronLeft } from 'lucide-react';
 import { DRINK_LIBRARY, getDrinksByCategory, searchDrinks } from '@/lib/data/drink-library';
 import { calculateStandardDrinks } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/use-auth-store';
 import type { DrinkCategory, DrinkEntry, DrinkDefinition } from '@/types';
@@ -312,7 +313,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                       onClick={() => handleSelect(drink)}
                       className="w-full flex items-center gap-3 px-3 py-2 rounded-xl active:bg-white/[0.05] transition-colors text-left"
                     >
-                      <span className="text-xl w-7 text-center shrink-0">{drink.emoji}</span>
+                      <span className="w-7 flex items-center justify-center shrink-0"><DrinkIcon category={drink.category} className="w-5 h-5" /></span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
                           {drink.name}
