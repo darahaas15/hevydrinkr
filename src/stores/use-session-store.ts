@@ -105,6 +105,10 @@ function drinkEntryToRow(entry: DrinkEntry, sessionId: string) {
   };
 }
 
+// Resolves when the active session row exists in Supabase so that
+// drink_entries inserts (which reference session_id via FK) never race ahead.
+let sessionInsertReady: PromiseLike<void> = Promise.resolve();
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -228,8 +232,10 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     // Optimistic update
     set({ activeSession: session });
 
-    // Persist to Supabase, then reconcile the id
-    supabase
+    // Persist to Supabase, then reconcile the id.
+    // Store the promise so addDrink can await it before inserting drink_entries
+    // (otherwise the FK on session_id fails if the row doesn't exist yet).
+    sessionInsertReady = supabase
       .from('drink_sessions')
       .insert(sessionToRow(session))
       .select()
@@ -335,7 +341,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     const { activeSession } = get();
     if (!activeSession) return;
 
-    // Optimistic update
+    // Optimistic update — UI reflects the drink immediately
     set({
       activeSession: {
         ...activeSession,
@@ -346,13 +352,17 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       },
     });
 
-    // Insert into Supabase
-    supabase
-      .from('drink_entries')
-      .insert(drinkEntryToRow(drink, activeSession.id))
-      .then(({ error }) => {
-        if (error) console.error('Failed to insert drink entry:', error);
-      });
+    // Wait for the session row to exist in Supabase before inserting the
+    // drink_entry (its session_id FK would fail otherwise).
+    sessionInsertReady.then(() => {
+      const sid = get().activeSession?.id ?? activeSession.id;
+      supabase
+        .from('drink_entries')
+        .insert(drinkEntryToRow(drink, sid))
+        .then(({ error }) => {
+          if (error) console.error('Failed to insert drink entry:', error);
+        });
+    });
   },
 
   // -----------------------------------------------------------------------
@@ -404,18 +414,21 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       },
     });
 
-    // Insert into session_photos
-    supabase
-      .from('session_photos')
-      .insert({
-        session_id: activeSession.id,
-        storage_path: '',
-        url: photoDataUrl,
-        sort_order: newPhotos.length - 1,
-      })
-      .then(({ error }) => {
-        if (error) console.error('Failed to insert session photo:', error);
-      });
+    // Wait for session row to exist, then insert photo
+    sessionInsertReady.then(() => {
+      const sid = get().activeSession?.id ?? activeSession.id;
+      supabase
+        .from('session_photos')
+        .insert({
+          session_id: sid,
+          storage_path: '',
+          url: photoDataUrl,
+          sort_order: newPhotos.length - 1,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Failed to insert session photo:', error);
+        });
+    });
   },
 
   // -----------------------------------------------------------------------

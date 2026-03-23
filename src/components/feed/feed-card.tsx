@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { memo } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
@@ -12,6 +12,7 @@ import { getMilestoneBadge } from '@/lib/milestones';
 import type { FeedItem } from '@/types';
 
 export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
+  const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allItems = useFeedStore((s) => s.items);
   const addLike = useFeedStore((s) => s.addLike);
@@ -21,6 +22,10 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
   const userProfileHref = item.userId === currentUser?.id ? '/profile' : `/profile/${item.userId}`;
+
+  const handleCardClick = () => {
+    router.push(`/feed/${item.id}`);
+  };
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -47,20 +52,25 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
     }
   };
 
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(userProfileHref);
+  };
+
   const { sessionSummary: s } = item;
 
   return (
-    <Link href={`/feed/${item.id}`} prefetch={false} className="block">
     <div
+      onClick={handleCardClick}
       className="feed-card rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden active:bg-white/[0.05] transition-colors cursor-pointer"
     >
       {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
-        <Link href={userProfileHref} onClick={(e) => e.stopPropagation()} className="cursor-pointer">
+        <div onClick={goToProfile} className="cursor-pointer">
           <Avatar name={item.userName} size="md" src={item.userAvatar} />
-        </Link>
-        <Link href={userProfileHref} onClick={(e) => e.stopPropagation()} className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate cursor-pointer hover:underline">{item.userName}</p>
+        </div>
+        <div onClick={goToProfile} className="flex-1 min-w-0 cursor-pointer">
+          <p className="text-sm font-semibold truncate hover:underline">{item.userName}</p>
           <div className="flex items-center gap-1.5">
             <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
             {milestone && (
@@ -69,7 +79,7 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
               </span>
             )}
           </div>
-        </Link>
+        </div>
       </div>
 
       {/* Caption */}
@@ -152,6 +162,5 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
         </div>
       </div>
     </div>
-    </Link>
   );
 });
