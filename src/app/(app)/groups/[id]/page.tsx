@@ -17,7 +17,6 @@ const METRICS: { value: ChallengeMetric; label: string; emoji: string }[] = [
   { value: 'most_sessions', label: 'Most Sessions', emoji: '📅' },
   { value: 'session_duration', label: 'Longest Session', emoji: '⏱️' },
   { value: 'unique_drinks', label: 'Most Variety', emoji: '🌈' },
-  { value: 'most_rounds_bought', label: 'Most Generous', emoji: '💰' },
 ];
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {

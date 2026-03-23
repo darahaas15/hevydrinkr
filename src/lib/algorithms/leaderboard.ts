@@ -1,4 +1,4 @@
-import type { DrinkSession } from '@/types/session';
+import type { FeedItem } from '@/types/feed';
 import type { LeaderboardEntry, LeaderboardMetric, LeaderboardTimeframe } from '@/types/leaderboard';
 import type { UserProfile } from '@/types/user';
 
@@ -15,52 +15,48 @@ function getTimeframeStart(timeframe: LeaderboardTimeframe): Date {
 }
 
 function computeMetric(
-  sessions: DrinkSession[],
+  posts: FeedItem[],
   metric: LeaderboardMetric
 ): number {
   switch (metric) {
     case 'total_standard_drinks':
-      return sessions.reduce((sum, s) => sum + s.totalStandardDrinks, 0);
+      return posts.reduce((sum, p) => sum + (p.sessionSummary.totalStandardDrinks ?? 0), 0);
     case 'total_sessions':
-      return sessions.length;
+      return posts.length;
     case 'longest_session':
-      return sessions.reduce((max, s) => Math.max(max, s.durationMinutes), 0);
+      return posts.reduce((max, p) => Math.max(max, p.sessionSummary.durationMinutes ?? 0), 0);
     case 'most_diverse': {
       const allDrinks = new Set<string>();
-      sessions.forEach(s => s.drinks.forEach(d => allDrinks.add(d.drinkDefinitionId)));
+      posts.forEach(p => (p.sessionSummary.drinks ?? []).forEach(d => allDrinks.add(d.name)));
       return allDrinks.size;
     }
-    case 'most_rounds_bought':
-      return sessions.reduce((sum, s) => sum + s.rounds.length, 0);
-    case 'longest_streak':
-      return 0; // Computed separately
   }
 }
 
 export function buildLeaderboard(
-  allSessions: DrinkSession[],
+  allPosts: FeedItem[],
   users: UserProfile[],
   metric: LeaderboardMetric,
   timeframe: LeaderboardTimeframe
 ): LeaderboardEntry[] {
   const start = getTimeframeStart(timeframe);
 
-  const filteredSessions = allSessions.filter(
-    s => s.status === 'completed' && new Date(s.startedAt) >= start
+  const filteredPosts = allPosts.filter(
+    p => new Date(p.createdAt) >= start
   );
 
-  const sessionsByUser = new Map<string, DrinkSession[]>();
-  filteredSessions.forEach(s => {
-    const existing = sessionsByUser.get(s.userId) || [];
-    existing.push(s);
-    sessionsByUser.set(s.userId, existing);
+  const postsByUser = new Map<string, FeedItem[]>();
+  filteredPosts.forEach(p => {
+    const existing = postsByUser.get(p.userId) || [];
+    existing.push(p);
+    postsByUser.set(p.userId, existing);
   });
 
   const entries: LeaderboardEntry[] = [];
 
   for (const user of users) {
-    const userSessions = sessionsByUser.get(user.id) || [];
-    const value = computeMetric(userSessions, metric);
+    const userPosts = postsByUser.get(user.id) || [];
+    const value = computeMetric(userPosts, metric);
 
     entries.push({
       rank: 0,
@@ -102,9 +98,5 @@ function formatMetricValue(metric: LeaderboardMetric, value: number): string {
     }
     case 'most_diverse':
       return `${value} types`;
-    case 'most_rounds_bought':
-      return `${value} rounds`;
-    case 'longest_streak':
-      return `${value} weeks`;
   }
 }

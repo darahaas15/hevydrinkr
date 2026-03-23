@@ -7,6 +7,7 @@ import type {
   ChallengeParticipant,
   Wager,
   WagerParticipant,
+  FeedItem,
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
@@ -492,46 +493,43 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
     const challenge = get().challenges.find((c) => c.id === challengeId);
     if (!challenge || challenge.status !== 'active') return;
 
-    // Fetch sessions for all participants within the challenge timeframe
+    // Fetch feed items (posts) for all participants within the challenge timeframe
     const participantIds = challenge.participants.map((p) => p.userId);
-    const { data: sessions } = await supabase
-      .from('drink_sessions')
-      .select('user_id, drinks:drink_entries(standard_drinks), duration_minutes, rounds(id)')
+    const { data: posts } = await supabase
+      .from('feed_items')
+      .select('user_id, session_summary')
       .in('user_id', participantIds)
-      .eq('status', 'completed')
-      .gte('started_at', challenge.startDate)
-      .lte('started_at', challenge.endDate);
+      .gte('created_at', challenge.startDate)
+      .lte('created_at', challenge.endDate);
 
-    if (!sessions) return;
+    if (!posts) return;
 
     // Compute values per participant based on metric
     const values: Record<string, number> = {};
-    for (const s of sessions) {
-      const uid = s.user_id as string;
+    for (const p of posts) {
+      const uid = p.user_id as string;
       if (!values[uid]) values[uid] = 0;
-      const drinks = (s.drinks as { standard_drinks: number }[]) || [];
-      const totalStd = drinks.reduce((sum, d) => sum + d.standard_drinks, 0);
-      const rounds = (s.rounds as { id: string }[]) || [];
+      const summary = p.session_summary as FeedItem['sessionSummary'] | null;
+      if (!summary) continue;
 
       switch (challenge.metric) {
         case 'total_drinks':
-          values[uid] += drinks.length;
+          values[uid] += summary.totalDrinks ?? 0;
           break;
         case 'total_standard_drinks':
-          values[uid] += totalStd;
+          values[uid] += summary.totalStandardDrinks ?? 0;
           break;
         case 'most_sessions':
           values[uid] += 1;
           break;
         case 'session_duration':
-          values[uid] = Math.max(values[uid], (s.duration_minutes as number) || 0);
+          values[uid] = Math.max(values[uid], summary.durationMinutes ?? 0);
           break;
-        case 'unique_drinks':
-          values[uid] += drinks.length; // approximation
+        case 'unique_drinks': {
+          const names = new Set((summary.drinks ?? []).map(d => d.name));
+          values[uid] += names.size;
           break;
-        case 'most_rounds_bought':
-          values[uid] += rounds.length;
-          break;
+        }
       }
     }
 

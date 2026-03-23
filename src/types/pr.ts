@@ -3,7 +3,6 @@ export type PRCategory =
   | 'most_standard_drinks'
   | 'longest_session'
   | 'most_unique_drinks'
-  | 'most_rounds_bought'
   | 'fastest_drink'
   | 'longest_streak'
   | 'most_sessions_week';
@@ -13,7 +12,6 @@ export const PR_LABELS: Record<PRCategory, string> = {
   most_standard_drinks: 'Highest Drink Score',
   longest_session: 'Longest Session',
   most_unique_drinks: 'Most Variety',
-  most_rounds_bought: 'Most Generous',
   fastest_drink: 'Fastest Back-to-Back',
   longest_streak: 'Longest Streak',
   most_sessions_week: 'Most Sessions in a Week',
@@ -24,7 +22,6 @@ export const PR_EMOJIS: Record<PRCategory, string> = {
   most_standard_drinks: '🥇',
   longest_session: '⏱️',
   most_unique_drinks: '🌈',
-  most_rounds_bought: '💰',
   fastest_drink: '⚡',
   longest_streak: '🔥',
   most_sessions_week: '📅',

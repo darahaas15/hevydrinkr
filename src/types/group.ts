@@ -6,8 +6,7 @@ export type ChallengeMetric =
   | 'total_standard_drinks'
   | 'unique_drinks'
   | 'session_duration'
-  | 'most_sessions'
-  | 'most_rounds_bought';
+  | 'most_sessions';
 
 export interface Group {
   id: string;

@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Link from 'next/link';
-import { useSessionStore } from '@/stores/use-session-store';
+import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
 import { Avatar } from '@/components/ui/avatar';
@@ -15,7 +15,6 @@ const METRICS: { value: LeaderboardMetric; label: string }[] = [
   { value: 'total_sessions', label: 'Sessions' },
   { value: 'longest_session', label: 'Longest' },
   { value: 'most_diverse', label: 'Variety' },
-  { value: 'most_rounds_bought', label: 'Rounds' },
 ];
 
 const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
@@ -27,22 +26,22 @@ const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
 export default function LeaderboardPage() {
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
   const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all-time');
-  const sessionHistory = useSessionStore((s) => s.sessionHistory);
-  const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const feedItems = useFeedStore((s) => s.items);
+  const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const currentUser = useAuthStore((s) => s.currentUser);
 
   useEffect(() => {
-    const refetch = () => { fetchAllUsers(); fetchSessions(''); };
+    const refetch = () => { fetchAllUsers(); fetchFeed(); };
     refetch();
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
-  }, [fetchAllUsers, fetchSessions]);
+  }, [fetchAllUsers, fetchFeed]);
 
   const leaderboard = useMemo(
-    () => buildLeaderboard(sessionHistory, allUsers, metric, timeframe),
-    [sessionHistory, allUsers, metric, timeframe]
+    () => buildLeaderboard(feedItems, allUsers, metric, timeframe),
+    [feedItems, allUsers, metric, timeframe]
   );
 
   return (

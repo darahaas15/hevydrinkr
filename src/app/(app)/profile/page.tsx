@@ -54,23 +54,25 @@ export default function ProfilePage() {
   const mySessions = sessionHistory.filter(
     (s) => s.userId === currentUser?.id && s.status === 'completed'
   );
+  const myPosts = feedItems.filter((f) => f.userId === currentUser?.id);
 
   const streak = useMemo(() => calculateWeeklyStreak(mySessions), [mySessions]);
 
   const stats = useMemo(() => {
-    const totalDrinks = mySessions.reduce((sum, s) => sum + s.drinks.length, 0);
-    const totalMinutes = mySessions.reduce((sum, s) => sum + s.durationMinutes, 0);
-    const avgDrinksPerSession = mySessions.length > 0 ? totalDrinks / mySessions.length : 0;
+    const totalSessions = myPosts.length;
+    const totalDrinks = myPosts.reduce((sum, p) => sum + (p.sessionSummary.totalDrinks ?? 0), 0);
+    const totalMinutes = myPosts.reduce((sum, p) => sum + (p.sessionSummary.durationMinutes ?? 0), 0);
+    const avgDrinksPerSession = totalSessions > 0 ? totalDrinks / totalSessions : 0;
 
     const categoryCounts: Record<string, number> = {};
-    mySessions.forEach((s) =>
-      s.drinks.forEach((d) => {
+    myPosts.forEach((p) =>
+      (p.sessionSummary.drinks ?? []).forEach((d) => {
         categoryCounts[d.category] = (categoryCounts[d.category] || 0) + 1;
       })
     );
 
-    return { totalSessions: mySessions.length, totalDrinks, totalMinutes, avgDrinksPerSession, categoryCounts };
-  }, [mySessions]);
+    return { totalSessions, totalDrinks, totalMinutes, avgDrinksPerSession, categoryCounts };
+  }, [myPosts]);
 
   const myPRs = personalRecords.filter((pr) => pr.userId === currentUser?.id);
   if (!currentUser) return null;
@@ -239,13 +241,12 @@ export default function ProfilePage() {
 
         {/* My Posts */}
         {(() => {
-          const myPosts = feedItems.filter((f) => f.userId === currentUser.id)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          return myPosts.length > 0 ? (
+          const sortedPosts = [...myPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          return sortedPosts.length > 0 ? (
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
               <div className="space-y-3">
-                {myPosts.map((post) => (
+                {sortedPosts.map((post) => (
                   <FeedCard key={post.id} item={post} />
                 ))}
               </div>

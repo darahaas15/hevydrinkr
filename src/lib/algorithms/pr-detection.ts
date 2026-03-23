@@ -11,8 +11,6 @@ function formatPrValue(category: PRCategory, value: number): string {
       return `${Math.floor(value / 60)}h ${value % 60}m`;
     case 'most_unique_drinks':
       return `${value} types`;
-    case 'most_rounds_bought':
-      return `${value} rounds`;
     case 'fastest_drink':
       return `${value}m between drinks`;
     case 'longest_streak':
@@ -35,9 +33,6 @@ function computeSessionMetric(session: DrinkSession, category: PRCategory): numb
     case 'most_unique_drinks': {
       const unique = new Set(session.drinks.map(d => d.drinkDefinitionId));
       return unique.size;
-    }
-    case 'most_rounds_bought': {
-      return session.rounds.filter(r => r.boughtByUserId === session.userId).length;
     }
     case 'fastest_drink': {
       if (session.drinks.length < 2) return null;
@@ -66,7 +61,6 @@ export function detectPRs(
     'most_standard_drinks',
     'longest_session',
     'most_unique_drinks',
-    'most_rounds_bought',
     'fastest_drink',
   ];
 
