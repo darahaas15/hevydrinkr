@@ -21,16 +21,19 @@ export default function FeedPage() {
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const currentUser = useAuthStore((s) => s.currentUser);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
+  const allUsers = useAuthStore((s) => s.allUsers);
+  const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [searching, setSearching] = useState(false);
   useEffect(() => {
     fetchFeed();
-    const refetch = () => fetchFeed();
+    fetchAllUsers();
+    const refetch = () => { fetchFeed(); fetchAllUsers(); };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
-  }, [fetchFeed]);
+  }, [fetchFeed, fetchAllUsers]);
 
   // Search users when query changes
   useEffect(() => {
@@ -86,6 +89,12 @@ export default function FeedPage() {
   }, [items, followingIds, currentUser?.id, tab]);
 
   const showSearchResults = tab === 'discover' && searchQuery.trim().length > 0;
+
+  // All other users (for discover with no search)
+  const discoverUsers = useMemo(() => {
+    if (!currentUser || tab !== 'discover') return [];
+    return allUsers.filter((u) => u.id !== currentUser.id);
+  }, [allUsers, currentUser, tab]);
 
   return (
     <div className="min-h-full">
@@ -159,7 +168,7 @@ export default function FeedPage() {
       </div>
 
       <PullToRefresh onRefresh={fetchFeed}>
-      {/* Search Results */}
+      {/* Discover: Search Results */}
       {showSearchResults && (
         <div className="px-4 py-3">
           {searching && (
@@ -208,6 +217,46 @@ export default function FeedPage() {
         </div>
       )}
 
+      {/* Discover: All users (no search query) */}
+      {tab === 'discover' && !showSearchResults && discoverUsers.length > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">People</p>
+          <div className="space-y-1.5">
+            {discoverUsers.map((user) => {
+              const isFollowing = followingIds.includes(user.id);
+              return (
+                <div
+                  key={user.id}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] transition-colors"
+                >
+                  <div onClick={() => router.push(`/profile/${user.id}`)} className="cursor-pointer">
+                    <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
+                  </div>
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => router.push(`/profile/${user.id}`)}
+                  >
+                    <p className="text-sm font-semibold truncate">{user.displayName}</p>
+                    <p className="text-[11px] text-zinc-600">@{user.username}</p>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => toggleFollow(user.id)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      isFollowing
+                        ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+                        : 'bg-accent text-black'
+                    }`}
+                  >
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </motion.button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Feed */}
       {!showSearchResults && (
         <AnimatePresence mode="wait">
@@ -220,7 +269,6 @@ export default function FeedPage() {
             className="px-4 py-4 space-y-3"
           >
             {loading && sorted.length === 0 ? (
-              /* Skeleton placeholders while loading */
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden animate-pulse">
                   <div className="px-4 pt-4 pb-2 flex items-center gap-3">
@@ -259,7 +307,7 @@ export default function FeedPage() {
                 <p className="text-sm text-zinc-600 max-w-[240px] mb-4">
                   {tab === 'home'
                     ? 'Start a session to see your first post'
-                    : 'Search for people to follow'}
+                    : 'No new posts to discover'}
                 </p>
                 {tab === 'home' && (
                   <button
@@ -278,7 +326,7 @@ export default function FeedPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.2 }}
                 >
-                  <FeedCard item={item} milestone={getMilestoneBadge(item, items)} />
+                  <FeedCard item={item} milestone={getMilestoneBadge(item, items)} showFollowButton={tab === 'discover'} />
                 </motion.div>
               ))
             )}

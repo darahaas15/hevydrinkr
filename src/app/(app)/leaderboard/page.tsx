@@ -39,9 +39,16 @@ export default function LeaderboardPage() {
     return () => window.removeEventListener('focus', refetch);
   }, [fetchAllUsers, fetchFeed]);
 
+  const circleUsers = useMemo(() => {
+    if (!currentUser) return [];
+    const followingSet = new Set(currentUser.following);
+    followingSet.add(currentUser.id);
+    return allUsers.filter((u) => followingSet.has(u.id));
+  }, [allUsers, currentUser]);
+
   const leaderboard = useMemo(
-    () => buildLeaderboard(feedItems, allUsers, metric, timeframe),
-    [feedItems, allUsers, metric, timeframe]
+    () => buildLeaderboard(feedItems, circleUsers, metric, timeframe),
+    [feedItems, circleUsers, metric, timeframe]
   );
 
   return (

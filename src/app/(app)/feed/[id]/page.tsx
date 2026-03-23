@@ -40,6 +40,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const [editPhotos, setEditPhotos] = useState<string[]>([]);
   const [showDrinkPicker, setShowDrinkPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showLikesList, setShowLikesList] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -232,10 +233,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           <div className="flex items-center gap-5">
             <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike} className="flex items-center gap-1.5">
               <Heart className={`w-5 h-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
-              {item.likes.length > 0 && (
-                <span className={`text-xs ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
-              )}
             </motion.button>
+            {item.likes.length > 0 && (
+              <button onClick={() => setShowLikesList(true)} className="flex items-center">
+                <span className={`text-xs ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
+              </button>
+            )}
             <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
             <span className="text-[11px] text-zinc-700 ml-auto">
               {totalCommentCount} comment{totalCommentCount !== 1 ? 's' : ''}
@@ -621,6 +624,55 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 >
                   Delete
                 </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Likes List Modal */}
+      <AnimatePresence>
+        {showLikesList && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowLikesList(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
+              style={{ background: '#141418' }}
+            >
+              <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
+                <h3 className="text-base font-bold">Likes</h3>
+                <button onClick={() => setShowLikesList(false)} className="p-1 rounded-lg hover:bg-white/5">
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
+              </div>
+              <div className="max-h-[60dvh] overflow-y-auto">
+                {item.likes.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <p className="text-sm text-zinc-600">No likes yet</p>
+                  </div>
+                ) : (
+                  item.likes.map((like) => (
+                    <div
+                      key={like.id}
+                      onClick={() => { setShowLikesList(false); goToUser(like.userId); }}
+                      className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03] cursor-pointer"
+                    >
+                      <Avatar name={like.userName} size="sm" src={null} />
+                      <p className="text-sm font-medium truncate flex-1">
+                        {like.userId === currentUser?.id ? 'You' : like.userName}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </motion.div>
           </motion.div>

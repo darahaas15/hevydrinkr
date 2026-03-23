@@ -3,18 +3,20 @@
 import { motion } from 'framer-motion';
 import { memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus } from 'lucide-react';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem } from '@/types';
 
-export const FeedCard = memo(function FeedCard({ item, milestone }: { item: FeedItem; milestone?: { label: string } | null }) {
+export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButton }: { item: FeedItem; milestone?: { label: string } | null; showFollowButton?: boolean }) {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
+  const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
+  const isFollowing = currentUser?.following.includes(item.userId) ?? false;
 
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
@@ -63,11 +65,9 @@ export const FeedCard = memo(function FeedCard({ item, milestone }: { item: Feed
     >
       {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
-        <div onClick={goToProfile} className="cursor-pointer">
-          <Avatar name={item.userName} size="md" src={item.userAvatar} />
-        </div>
-        <div onClick={goToProfile} className="flex-1 min-w-0 cursor-pointer">
-          <p className="text-sm font-semibold truncate hover:underline">{item.userName}</p>
+        <Avatar name={item.userName} size="md" src={item.userAvatar} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate hover:underline cursor-pointer" onClick={goToProfile}>{item.userName}</p>
           <div className="flex items-center gap-1.5">
             <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
             {milestone && (
@@ -77,6 +77,16 @@ export const FeedCard = memo(function FeedCard({ item, milestone }: { item: Feed
             )}
           </div>
         </div>
+        {showFollowButton && !isFollowing && item.userId !== currentUser?.id && (
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={(e) => { e.stopPropagation(); toggleFollow(item.userId); }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Follow
+          </motion.button>
+        )}
       </div>
 
       {/* Caption */}
