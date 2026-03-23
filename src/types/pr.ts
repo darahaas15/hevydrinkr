@@ -17,14 +17,16 @@ export const PR_LABELS: Record<PRCategory, string> = {
   most_sessions_week: 'Most Sessions in a Week',
 };
 
-export const PR_EMOJIS: Record<PRCategory, string> = {
-  most_drinks_session: '🏆',
-  most_standard_drinks: '🥇',
-  longest_session: '⏱️',
-  most_unique_drinks: '🌈',
-  fastest_drink: '⚡',
-  longest_streak: '🔥',
-  most_sessions_week: '📅',
+import { Trophy, Medal, Timer, Palette, Zap, Flame, Calendar, type LucideIcon } from 'lucide-react';
+
+export const PR_ICONS: Record<PRCategory, LucideIcon> = {
+  most_drinks_session: Trophy,
+  most_standard_drinks: Medal,
+  longest_session: Timer,
+  most_unique_drinks: Palette,
+  fastest_drink: Zap,
+  longest_streak: Flame,
+  most_sessions_week: Calendar,
 };
 
 export interface PersonalRecord {

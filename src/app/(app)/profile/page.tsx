@@ -15,7 +15,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import { calculateWeeklyStreak } from '@/lib/algorithms/streaks';
 import { formatDuration } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
-import { PR_LABELS, PR_EMOJIS } from '@/types/pr';
+import { PR_LABELS, PR_ICONS } from '@/types/pr';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_EMOJIS } from '@/lib/constants';
 import { getBaseUrl, shareLink } from '@/lib/share';
 
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                   transition={{ delay: i * 0.04 }}
                   className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex items-center gap-3"
                 >
-                  <span className="text-xl">{PR_EMOJIS[pr.category]}</span>
+                  {(() => { const Icon = PR_ICONS[pr.category]; return <Icon className="w-5 h-5 text-accent" />; })()}
                   <div className="flex-1">
                     <p className="text-sm font-medium">{PR_LABELS[pr.category]}</p>
                     <p className="text-[10px] text-zinc-600">

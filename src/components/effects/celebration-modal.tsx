@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/stores/use-ui-store';
-import { PR_EMOJIS, PR_LABELS } from '@/types/pr';
+import { PR_ICONS, PR_LABELS } from '@/types/pr';
 import { ConfettiBurst } from './confetti-burst';
 
 export function CelebrationModal() {
@@ -42,7 +42,7 @@ export function CelebrationModal() {
                 transition={{ type: 'spring', delay: 0.1, damping: 12 }}
                 className="text-6xl mb-5"
               >
-                {PR_EMOJIS[celebrationPR.category]}
+                {(() => { const Icon = PR_ICONS[celebrationPR.category]; return <Icon className="w-16 h-16 text-accent" />; })()}
               </motion.div>
 
               <motion.p
