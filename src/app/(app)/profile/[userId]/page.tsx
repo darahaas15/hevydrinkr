@@ -51,18 +51,15 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   const isFollowing = currentUser.following.includes(userId);
   const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
 
-  const userSessions = sessionHistory.filter(
-    (s) => s.userId === userId && s.status === 'completed'
-  );
-
   const userPosts = feedItems.filter((f) => f.userId === userId);
 
   const stats = useMemo(() => {
-    const totalDrinks = userSessions.reduce((sum, s) => sum + s.drinks.length, 0);
-    const totalMinutes = userSessions.reduce((sum, s) => sum + s.durationMinutes, 0);
-    const avgDrinks = userSessions.length > 0 ? totalDrinks / userSessions.length : 0;
-    return { totalSessions: userSessions.length, totalDrinks, totalMinutes, avgDrinks };
-  }, [userSessions]);
+    const totalSessions = userPosts.length;
+    const totalDrinks = userPosts.reduce((sum, p) => sum + (p.sessionSummary.totalDrinks ?? 0), 0);
+    const totalMinutes = userPosts.reduce((sum, p) => sum + (p.sessionSummary.durationMinutes ?? 0), 0);
+    const avgDrinks = totalSessions > 0 ? totalDrinks / totalSessions : 0;
+    return { totalSessions, totalDrinks, totalMinutes, avgDrinks };
+  }, [userPosts]);
 
   return (
     <div className="min-h-full pb-8">

@@ -8,16 +8,13 @@ import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
-import { getMilestoneBadge } from '@/lib/milestones';
 import type { FeedItem } from '@/types';
 
-export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
+export const FeedCard = memo(function FeedCard({ item, milestone }: { item: FeedItem; milestone?: { label: string } | null }) {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const allItems = useFeedStore((s) => s.items);
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
-  const milestone = getMilestoneBadge(item, allItems);
 
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;

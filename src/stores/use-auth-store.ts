@@ -19,6 +19,9 @@ interface AuthState {
   toggleFollow: (userId: string) => Promise<void>;
 }
 
+// Guard against rapid follow/unfollow taps causing conflicting DB operations
+const followInFlight = new Set<string>();
+
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
     id: row.id as string,
@@ -176,7 +179,8 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
 
   toggleFollow: async (userId) => {
     const { currentUser, allUsers } = get();
-    if (!currentUser) return;
+    if (!currentUser || followInFlight.has(userId)) return;
+    followInFlight.add(userId);
 
     const isFollowing = currentUser.following.includes(userId);
     const prevCurrentUser = currentUser;
@@ -219,6 +223,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       console.error('Failed to toggle follow:', error);
       set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
     }
+    followInFlight.delete(userId);
   },
 }), {
   name: 'hd-auth',

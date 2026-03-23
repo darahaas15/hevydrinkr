@@ -10,6 +10,7 @@ import { FeedCard } from '@/components/feed/feed-card';
 import { Avatar } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase/client';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { getMilestoneBadge } from '@/lib/milestones';
 import type { UserProfile } from '@/types';
 
 export default function FeedPage() {
@@ -277,7 +278,7 @@ export default function FeedPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.2 }}
                 >
-                  <FeedCard item={item} />
+                  <FeedCard item={item} milestone={getMilestoneBadge(item, items)} />
                 </motion.div>
               ))
             )}

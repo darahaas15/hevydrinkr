@@ -10,6 +10,7 @@ import type {
   UserProfile,
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
 
 interface FeedState {
@@ -153,7 +154,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   error: null,
 
   fetchFeed: async () => {
-    set({ loading: true, error: null });
+    // Only show loading skeleton on initial load, not refetches
+    if (get().items.length === 0) set({ loading: true });
+    set({ error: null });
 
     const { data, error } = await supabase
       .from('feed_items')
@@ -401,9 +404,8 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   deleteFeedItem: async (feedItemId) => {
     const prev = get().items;
     const item = prev.find((i) => i.id === feedItemId);
-    // Auth check: only the post owner can delete
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!item || item.userId !== session?.user?.id) return;
+    const currentUserId = useAuthStore.getState().currentUser?.id;
+    if (!item || item.userId !== currentUserId) return;
     set((state) => ({
       items: state.items.filter((i) => i.id !== feedItemId),
     }));
@@ -438,9 +440,8 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   updateFeedItem: async (feedItemId, updates) => {
     const prev = get().items;
     const item = prev.find((i) => i.id === feedItemId);
-    // Auth check: only the post owner can edit
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!item || item.userId !== session?.user?.id) return;
+    const currentUserId = useAuthStore.getState().currentUser?.id;
+    if (!item || item.userId !== currentUserId) return;
 
     set((state) => ({
       items: state.items.map((i) =>
@@ -527,11 +528,10 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
   deleteComment: async (feedItemId, commentId) => {
     const prev = get().items;
-    // Auth check: only comment author can delete
-    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = useAuthStore.getState().currentUser?.id;
     const feedItem = prev.find((i) => i.id === feedItemId);
     const comment = feedItem ? findComment(feedItem.comments, commentId) : undefined;
-    if (!comment || comment.userId !== session?.user?.id) return;
+    if (!comment || comment.userId !== currentUserId) return;
 
     set((state) => ({
       items: state.items.map((item) => {
@@ -564,8 +564,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 
   likeComment: async (feedItemId, commentId) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
+    const userId = useAuthStore.getState().currentUser?.id;
     if (!userId) return;
 
     const tempId = crypto.randomUUID();
