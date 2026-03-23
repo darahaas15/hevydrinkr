@@ -144,16 +144,17 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       {/* Actions */}
       <div className="px-4 pb-3">
         <div className="flex items-center gap-4">
-          <motion.button
-            whileTap={{ scale: 1.15 }}
-            onClick={handleLike}
-            className="flex items-center gap-1.5"
-          >
-            <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+          <div className="flex items-center gap-1">
+            <motion.button
+              whileTap={{ scale: 1.15 }}
+              onClick={handleLike}
+            >
+              <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+            </motion.button>
             {item.likes.length > 0 && (
               <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
             )}
-          </motion.button>
+          </div>
 
           <span className="flex items-center gap-1.5">
             <MessageCircle size={18} className="text-zinc-600" />

@@ -162,11 +162,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       <div className="flex-1 px-5 py-4">
         {/* User row */}
         <div className="flex items-center gap-3 mb-4">
-          <div onClick={() => goToUser(item.userId)} className="cursor-pointer">
-            <Avatar name={item.userName} size="md" src={item.userAvatar} />
-          </div>
-          <div className="flex-1 cursor-pointer" onClick={() => goToUser(item.userId)}>
-            <p className="text-sm font-semibold hover:underline">{item.userName}</p>
+          <Avatar name={item.userName} size="md" src={item.userAvatar} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold hover:underline cursor-pointer" onClick={() => goToUser(item.userId)}>{item.userName}</p>
             <div className="flex items-center gap-1.5">
               <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
               {milestone && (
@@ -230,15 +228,17 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Actions */}
         <div className="pb-4 mb-4 border-b border-white/[0.05]">
-          <div className="flex items-center gap-5">
-            <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike} className="flex items-center gap-1.5">
-              <Heart className={`w-5 h-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
-            </motion.button>
-            {item.likes.length > 0 && (
-              <button onClick={() => setShowLikesList(true)} className="flex items-center">
-                <span className={`text-xs ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
-              </button>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike}>
+                <Heart className={`w-5 h-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+              </motion.button>
+              {item.likes.length > 0 && (
+                <button onClick={() => setShowLikesList(true)}>
+                  <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
+                </button>
+              )}
+            </div>
             <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
             <span className="text-[11px] text-zinc-700 ml-auto">
               {totalCommentCount} comment{totalCommentCount !== 1 ? 's' : ''}
