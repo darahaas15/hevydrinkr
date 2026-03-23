@@ -1,13 +1,7 @@
-import type { FeedItem, FeedLike, FeedComment, ReactionEmoji } from '@/types';
+import type { FeedItem, FeedLike, FeedComment } from '@/types';
 import { MOCK_SESSIONS } from './mock-sessions';
 import { MOCK_USERS } from './mock-users';
 import { generateId } from '@/lib/utils';
-
-// ── Helpers ─────────────────────────────────────────────────
-
-const REACTION_EMOJIS: ReactionEmoji[] = [
-  '\u{1F525}', '\u{1F37B}', '\u{1F480}', '\u{1F602}', '\u{1F389}', '\u{1F451}',
-];
 
 const CAPTIONS = [
   'Epic night at {venue}!',
@@ -63,7 +57,6 @@ function makeLikes(seed: number, count: number): FeedLike[] {
       id: generateId(),
       userId: user.id,
       userName: user.displayName,
-      emoji: pick(REACTION_EMOJIS, seed + i * 7),
       createdAt: new Date(Date.now() - (seed + i) * 3600000).toISOString(),
     });
   }

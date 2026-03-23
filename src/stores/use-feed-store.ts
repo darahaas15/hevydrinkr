@@ -8,7 +8,6 @@ import type {
   DrinkSession,
   DrinkCategory,
   UserProfile,
-  ReactionEmoji,
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useSessionStore } from './use-session-store';
@@ -51,7 +50,6 @@ interface FeedItemRow {
   feed_likes: Array<{
     id: string;
     user_id: string;
-    emoji: string;
     created_at: string;
     liker: { display_name: string };
   }>;
@@ -142,7 +140,6 @@ function mapRow(row: FeedItemRow): FeedItem {
       id: l.id,
       userId: l.user_id,
       userName: l.liker.display_name,
-      emoji: l.emoji as ReactionEmoji,
       createdAt: l.created_at,
     })),
     comments: threadComments(row.feed_comments ?? []),
@@ -164,7 +161,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
         `
         *,
         profile:profiles!feed_items_user_id_fkey(display_name, avatar_url),
-        feed_likes(id, user_id, emoji, created_at, liker:profiles!feed_likes_user_id_fkey(display_name)),
+        feed_likes(id, user_id, created_at, liker:profiles!feed_likes_user_id_fkey(display_name)),
         feed_comments(id, user_id, text, parent_comment_id, created_at, commenter:profiles!feed_comments_user_id_fkey(display_name, avatar_url), comment_likes(id, user_id, created_at))
       `
       )
@@ -275,7 +272,6 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       .insert({
         feed_item_id: feedItemId,
         user_id: like.userId,
-        emoji: like.emoji,
       })
       .select()
       .single();

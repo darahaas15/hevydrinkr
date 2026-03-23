@@ -18,8 +18,6 @@ export const BAC_COLORS = {
   WASTED: '#dc2626',
 } as const;
 
-export const REACTION_EMOJIS = ['🔥', '🍻', '💀', '😂', '🎉', '👑'] as const;
-
 export const SESSION_MOODS = [
   { value: 'legendary' as const, emoji: '🤩', label: 'Legendary' },
   { value: 'great' as const, emoji: '😄', label: 'Great' },

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle, Share2, Clock, Wine } from 'lucide-react';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -9,15 +9,13 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { Avatar } from '@/components/ui/avatar';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { getMilestoneBadge } from '@/lib/milestones';
-import type { FeedItem, ReactionEmoji } from '@/types';
-import { REACTION_EMOJIS } from '@/lib/constants';
+import type { FeedItem } from '@/types';
 
 export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
   const currentUser = useAuthStore((s) => s.currentUser);
   const allItems = useFeedStore((s) => s.items);
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
-  const [showReactions, setShowReactions] = useState(false);
   const milestone = getMilestoneBadge(item, allItems);
 
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
@@ -29,23 +27,14 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
     if (!currentUser) return;
     if (isLiked) {
       removeLike(item.id, userLike!.id);
-      setShowReactions(false);
     } else {
-      setShowReactions(true);
+      addLike(item.id, {
+        id: crypto.randomUUID(),
+        userId: currentUser.id,
+        userName: currentUser.displayName,
+        createdAt: new Date().toISOString(),
+      });
     }
-  };
-
-  const handleReact = (emoji: ReactionEmoji, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentUser) return;
-    addLike(item.id, {
-      id: crypto.randomUUID(),
-      userId: currentUser.id,
-      userName: currentUser.displayName,
-      emoji,
-      createdAt: new Date().toISOString(),
-    });
-    setShowReactions(false);
   };
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -136,26 +125,7 @@ export const FeedCard = memo(function FeedCard({ item }: { item: FeedItem }) {
       </div>
 
       {/* Actions */}
-      <div className="px-4 pb-3 relative">
-        {/* Reaction picker */}
-        {showReactions && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute bottom-full mb-1 left-3 flex gap-1 px-2 py-1.5 rounded-full z-10"
-            style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            {REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={(e) => handleReact(emoji as ReactionEmoji, e)}
-                className="text-lg hover:scale-125 transition-transform px-0.5"
-              >
-                {emoji}
-              </button>
-            ))}
-          </motion.div>
-        )}
+      <div className="px-4 pb-3">
         <div className="flex items-center gap-4">
           <motion.button
             whileTap={{ scale: 1.15 }}

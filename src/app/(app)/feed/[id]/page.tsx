@@ -13,8 +13,6 @@ import { pickImage, compressImage } from '@/lib/image-utils';
 import type { FeedItem, FeedComment } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { getMilestoneBadge } from '@/lib/milestones';
-import { REACTION_EMOJIS } from '@/lib/constants';
-import type { ReactionEmoji } from '@/types';
 
 const MAX_VISIBLE_REPLIES = 2;
 
@@ -34,7 +32,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; userName: string } | null>(null);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [showReactions, setShowReactions] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -69,22 +66,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     if (!currentUser) return;
     if (isLiked) {
       removeLike(item.id, userLike!.id);
-      setShowReactions(false);
     } else {
-      setShowReactions(true);
+      addLike(item.id, {
+        id: crypto.randomUUID(),
+        userId: currentUser.id,
+        userName: currentUser.displayName,
+        createdAt: new Date().toISOString(),
+      });
     }
-  };
-
-  const handleReact = (emoji: ReactionEmoji) => {
-    if (!currentUser) return;
-    addLike(item.id, {
-      id: crypto.randomUUID(),
-      userId: currentUser.id,
-      userName: currentUser.displayName,
-      emoji,
-      createdAt: new Date().toISOString(),
-    });
-    setShowReactions(false);
   };
 
   const goToUser = (userId: string) => {
@@ -239,28 +228,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Actions */}
-        <div className="relative pb-4 mb-4 border-b border-white/[0.05]">
-          <AnimatePresence>
-            {showReactions && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                className="absolute bottom-full mb-1 left-0 flex gap-1.5 px-3 py-2 rounded-full z-10"
-                style={{ background: '#1a1a1e', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                {REACTION_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleReact(emoji as ReactionEmoji)}
-                    className="text-xl hover:scale-125 transition-transform"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="pb-4 mb-4 border-b border-white/[0.05]">
           <div className="flex items-center gap-5">
             <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike} className="flex items-center gap-1.5">
               <Heart className={`w-5 h-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
@@ -273,17 +241,6 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
               {totalCommentCount} comment{totalCommentCount !== 1 ? 's' : ''}
             </span>
           </div>
-          {/* Reaction summary */}
-          {item.likes.length > 0 && (
-            <div className="flex items-center gap-1 mt-2">
-              {[...new Set(item.likes.map((l) => l.emoji))].map((emoji) => (
-                <span key={emoji} className="text-sm">{emoji}</span>
-              ))}
-              <span className="text-[11px] text-zinc-600 ml-1">
-                {item.likes.length === 1 ? item.likes[0].userName : `${item.likes[0].userName} and ${item.likes.length - 1} other${item.likes.length > 2 ? 's' : ''}`}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Comments */}

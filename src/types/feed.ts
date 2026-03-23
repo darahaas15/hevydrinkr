@@ -33,13 +33,10 @@ export interface FeedItem {
   createdAt: string;
 }
 
-export type ReactionEmoji = '🔥' | '🍻' | '💀' | '😂' | '🎉' | '👑';
-
 export interface FeedLike {
   id: string;
   userId: string;
   userName: string;
-  emoji: ReactionEmoji;
   createdAt: string;
 }
 
