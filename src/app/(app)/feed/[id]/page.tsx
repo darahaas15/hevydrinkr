@@ -164,7 +164,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-center gap-3 mb-4">
           <Avatar name={item.userName} size="md" src={item.userAvatar} />
           <div className="flex-1">
-            <p className="text-sm font-semibold hover:underline cursor-pointer" onClick={() => goToUser(item.userId)}>{item.userName}</p>
+            <p className="text-sm font-semibold cursor-pointer" onClick={() => goToUser(item.userId)}>{item.userName}</p>
             <div className="flex items-center gap-1.5">
               <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
               {milestone && (

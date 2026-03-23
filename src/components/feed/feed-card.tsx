@@ -67,7 +67,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
         <Avatar name={item.userName} size="md" src={item.userAvatar} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate hover:underline cursor-pointer" onClick={goToProfile}>{item.userName}</p>
+          <p className="text-sm font-semibold truncate cursor-pointer" onClick={goToProfile}>{item.userName}</p>
           <div className="flex items-center gap-1.5">
             <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
             {milestone && (
