@@ -454,13 +454,15 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (updates.photos !== undefined) dbUpdates.photos = updates.photos;
     if (updates.sessionSummary !== undefined) dbUpdates.session_summary = updates.sessionSummary;
 
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('feed_items')
       .update(dbUpdates)
-      .eq('id', feedItemId);
+      .eq('id', feedItemId)
+      .select('id')
+      .maybeSingle();
 
-    if (error) {
-      console.error('Failed to update feed item:', error);
+    if (error || !updated) {
+      console.error('Failed to update feed item:', error ?? 'No rows updated (RLS policy may be missing)');
       set({ items: prev });
       return;
     }
