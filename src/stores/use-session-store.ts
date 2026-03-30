@@ -16,6 +16,7 @@ interface SessionState {
   addPhoto: (photoDataUrl: string) => void;
   removePhoto: (photoIndex: number) => void;
   addRound: (round: Round) => void;
+  updateVenue: (venue: string) => void;
   updatePeakBac: (bac: number) => void;
   getSessionById: (id: string) => DrinkSession | undefined;
   getSessionsByUser: (userId: string) => DrinkSession[];
@@ -473,6 +474,24 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
         rounds: [...activeSession.rounds, round],
       },
     });
+  },
+
+  // -----------------------------------------------------------------------
+  // Update the venue of the active session
+  // -----------------------------------------------------------------------
+  updateVenue: (venue) => {
+    const { activeSession } = get();
+    if (!activeSession) return;
+
+    set({ activeSession: { ...activeSession, venue } });
+
+    supabase
+      .from('drink_sessions')
+      .update({ venue })
+      .eq('id', activeSession.id)
+      .then(({ error }) => {
+        if (error) console.error('Failed to update venue:', error);
+      });
   },
 
   // -----------------------------------------------------------------------

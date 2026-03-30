@@ -331,6 +331,7 @@ CREATE POLICY "prs_update" ON personal_records FOR UPDATE TO authenticated USING
 -- Feed items
 CREATE POLICY "feed_select" ON feed_items FOR SELECT TO authenticated USING (true);
 CREATE POLICY "feed_insert" ON feed_items FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "feed_update" ON feed_items FOR UPDATE TO authenticated USING (auth.uid() = user_id);
 CREATE POLICY "feed_delete" ON feed_items FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
 -- Feed likes

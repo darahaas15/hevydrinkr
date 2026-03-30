@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2 } from 'lucide-react';
+import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -25,6 +25,7 @@ export default function SessionPage() {
   const endSession = useSessionStore((s) => s.endSession);
   const addDrink = useSessionStore((s) => s.addDrink);
   const removeDrink = useSessionStore((s) => s.removeDrink);
+  const updateVenue = useSessionStore((s) => s.updateVenue);
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const addPhoto = useSessionStore((s) => s.addPhoto);
   const removePhoto = useSessionStore((s) => s.removePhoto);
@@ -54,6 +55,8 @@ export default function SessionPage() {
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showPostPreview, setShowPostPreview] = useState(false);
+  const [editingVenue, setEditingVenue] = useState(false);
+  const [venueEdit, setVenueEdit] = useState('');
   const [caption, setCaption] = useState('');
   const [selectedMood, setSelectedMood] = useState<'legendary' | 'great' | 'good' | 'meh' | 'rough'>('good');
   const [posting, setPosting] = useState(false);
@@ -189,10 +192,48 @@ export default function SessionPage() {
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <div>
-            <p className="text-[11px] text-zinc-500 flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {activeSession.venue}
-            </p>
+            {editingVenue ? (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3 h-3 text-zinc-500" />
+                <input
+                  autoFocus
+                  value={venueEdit}
+                  onChange={(e) => setVenueEdit(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && venueEdit.trim()) {
+                      updateVenue(venueEdit.trim());
+                      setEditingVenue(false);
+                    } else if (e.key === 'Escape') {
+                      setEditingVenue(false);
+                    }
+                  }}
+                  className="px-2 py-0.5 rounded-lg bg-white/[0.06] border border-accent/30 text-[11px] text-white focus:outline-none w-32"
+                />
+                <button
+                  onClick={() => {
+                    if (venueEdit.trim()) {
+                      updateVenue(venueEdit.trim());
+                      setEditingVenue(false);
+                    }
+                  }}
+                  className="p-0.5 rounded hover:bg-white/5"
+                >
+                  <Check className="w-3.5 h-3.5 text-accent" />
+                </button>
+                <button onClick={() => setEditingVenue(false)} className="p-0.5 rounded hover:bg-white/5">
+                  <X className="w-3.5 h-3.5 text-zinc-500" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setVenueEdit(activeSession.venue); setEditingVenue(true); }}
+                className="text-[11px] text-zinc-500 flex items-center gap-1 hover:text-zinc-400 transition-colors"
+              >
+                <MapPin className="w-3 h-3" />
+                {activeSession.venue}
+                <Pencil className="w-2.5 h-2.5 ml-0.5" />
+              </button>
+            )}
             <div className="flex items-center gap-2 mt-0.5">
               <Clock className="w-4 h-4 text-accent" />
               <span className="text-lg font-mono font-bold text-white">{timer.formatted}</span>
