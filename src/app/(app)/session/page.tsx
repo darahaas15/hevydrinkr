@@ -87,6 +87,7 @@ function SessionPageInner() {
   const timer = useTimer(activeSession?.startedAt || null);
 
   const totalStdDrinks = activeSession?.drinks.reduce((sum, d) => sum + d.standardDrinks, 0) || 0;
+  const totalVolumeMl = activeSession?.drinks.reduce((sum, d) => sum + d.volumeMl, 0) || 0;
 
   // Pace & context calculations
   const myPosts = feedItems.filter((f) => f.userId === currentUser?.id);
@@ -333,8 +334,8 @@ function SessionPageInner() {
               <p className="text-[11px] text-zinc-500">drinks</p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-zinc-300">{totalStdDrinks.toFixed(1)}</p>
-              <p className="text-[10px] text-zinc-600">std drinks</p>
+              <p className="text-lg font-bold text-zinc-300">{totalVolumeMl >= 1000 ? `${(totalVolumeMl / 1000).toFixed(1)}L` : `${Math.round(totalVolumeMl)}ml`}</p>
+              <p className="text-[10px] text-zinc-600">volume</p>
             </div>
           </div>
           <div className="flex gap-3">
