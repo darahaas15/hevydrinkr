@@ -292,12 +292,10 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike}>
-                <Heart className={`w-5 h-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+                <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
               </motion.button>
               {item.likes.length > 0 && (
-                <button onClick={() => setShowLikesList(true)}>
-                  <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
-                </button>
+                <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
               )}
             </div>
             <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
