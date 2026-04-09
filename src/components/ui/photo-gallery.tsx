@@ -96,7 +96,7 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
               <div
                 role="button"
                 onClick={(e) => { e.stopPropagation(); onRemove(i); }}
-                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center cursor-pointer"
+                className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 active:bg-black/80 flex items-center justify-center cursor-pointer"
               >
                 <X className="w-3 h-3 text-white" />
               </div>
@@ -158,10 +158,12 @@ function PhotoViewer({
             <button
               key={i}
               onClick={(e) => { e.stopPropagation(); setIndex(i); }}
-              className={`w-2 h-2 rounded-full transition-colors ${
+              className="flex items-center justify-center min-w-[44px] min-h-[44px]"
+            >
+              <div className={`w-2 h-2 rounded-full transition-colors ${
                 i === index ? 'bg-white' : 'bg-white/30'
-              }`}
-            />
+              }`} />
+            </button>
           ))}
         </div>
       )}

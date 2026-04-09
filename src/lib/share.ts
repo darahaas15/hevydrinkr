@@ -4,13 +4,20 @@ export function getBaseUrl(): string {
 }
 
 export async function shareLink(url: string, title: string, text?: string) {
-  if (navigator.share) {
+  if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({ url, title, text });
-    } catch {}
-  } else {
+      return 'shared';
+    } catch {
+      return 'cancelled';
+    }
+  }
+
+  // Fallback: copy to clipboard
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
     await navigator.clipboard.writeText(url);
     return 'copied';
   }
-  return 'shared';
+
+  return 'cancelled';
 }

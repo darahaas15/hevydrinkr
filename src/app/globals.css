@@ -42,11 +42,27 @@
 
 * {
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable selection in inputs/textareas */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* Prevent image save dialog on long-press */
+img {
+  -webkit-touch-callout: none;
 }
 
 html {
   height: 100%;
   overflow: hidden;
+  touch-action: manipulation; /* eliminate 300ms tap delay */
 }
 
 body {
@@ -58,6 +74,24 @@ body {
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Comment input bar ─────────────────────── */
+/* The bar slides above the on-screen keyboard via the `--keyboard-height`
+   CSS variable that `useKeyboardHeight` updates from
+   the `visualViewport` API.
+   The `bottom` transition is set inline alongside the var read.
+   When the keyboard is up, its height already covers the home-indicator
+   safe area, so we cancel the bar's own safe-area padding to avoid an
+   extra gap between the bar and the keyboard. */
+
+.comment-input-bar {
+  padding-bottom: max(
+    0px,
+    calc(env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px))
+  );
+  overflow: visible;
+  transition: padding-bottom 280ms cubic-bezier(0.17, 0.59, 0.4, 0.77);
 }
 
 /* ── Cards ──────────────────────────────────── */
@@ -152,8 +186,8 @@ body {
 /* ── Safe areas ─────────────────────────────── */
 
 @supports (padding: env(safe-area-inset-top)) {
-  .safe-top { padding-top: env(safe-area-inset-top); }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-top { padding-top: calc(env(safe-area-inset-top) - 8px); }
+  .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) - 14px); }
 }
 
 /* ── Performance: skip rendering off-screen content ── */
@@ -179,10 +213,69 @@ body {
   will-change: opacity, transform;
 }
 
-/* ── Performance: passive touch scrolling ── */
+/* ── Performance: GPU compositing for nav elements ── */
 
-.scrollbar-hide {
+nav.fixed {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* ── Performance: smooth momentum scrolling ── */
+
+.overflow-y-auto, .overflow-x-auto, .scrollbar-hide {
   -webkit-overflow-scrolling: touch;
+}
+
+/* ── View Transitions ──────────────────────── */
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: vt-fade-out 0.12s ease-out;
+}
+
+::view-transition-new(root) {
+  animation: vt-fade-in 0.12s ease-in;
+}
+
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Touch: expanded hit area without visual change ── */
+
+.touch-target {
+  position: relative;
+}
+.touch-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ── Touch: carousel scroll locking ────────── */
+
+.snap-x {
+  touch-action: pan-x pinch-zoom;
+  overscroll-behavior-x: contain;
+}
+
+/* ── Touch: modal overlay blocks background ── */
+
+.modal-overlay {
+  touch-action: none;
 }
 
 /* ── Input resets ───────────────────────────── */

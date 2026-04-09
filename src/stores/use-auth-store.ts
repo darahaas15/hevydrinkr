@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { UserProfile } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { hapticMedium } from '@/lib/haptics';
 
 interface AuthState {
   currentUser: UserProfile | null;
@@ -15,12 +16,14 @@ interface AuthState {
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'avatarUrl'>>) => Promise<void>;
   getUserById: (id: string) => UserProfile | undefined;
-  fetchAllUsers: () => Promise<void>;
+  fetchAllUsers: (force?: boolean) => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
 }
 
 // Guard against rapid follow/unfollow taps causing conflicting DB operations
 const followInFlight = new Set<string>();
+const USERS_STALE_MS = 30_000;
+let _usersLastFetched = 0;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -147,7 +150,9 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
 
   getUserById: (id) => get().allUsers.find((u) => u.id === id),
 
-  fetchAllUsers: async () => {
+  fetchAllUsers: async (force?: boolean) => {
+    if (!force && Date.now() - _usersLastFetched < USERS_STALE_MS) return;
+    _usersLastFetched = Date.now();
     const [{ data: profiles }, { data: allFollows }] = await Promise.all([
       supabase.from('profiles').select('id, username, display_name, avatar_url, bio, created_at'),
       supabase.from('follows').select('follower_id, following_id'),
@@ -181,6 +186,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     const { currentUser, allUsers } = get();
     if (!currentUser || followInFlight.has(userId)) return;
     followInFlight.add(userId);
+    hapticMedium();
 
     const isFollowing = currentUser.following.includes(userId);
     const prevCurrentUser = currentUser;

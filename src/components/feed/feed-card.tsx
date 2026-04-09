@@ -1,13 +1,15 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { memo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X, Flag, MoreHorizontal } from 'lucide-react';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
+import { hapticLight } from '@/lib/haptics';
 import { Avatar } from '@/components/ui/avatar';
+import { ReportModal } from '@/components/moderation/report-modal';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem } from '@/types';
 
@@ -19,17 +21,21 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const removeLike = useFeedStore((s) => s.removeLike);
   const isFollowing = currentUser?.following.includes(item.userId) ?? false;
 
+  const getUserById = useAuthStore((s) => s.getUserById);
+  const [showLikesList, setShowLikesList] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
-  const userProfileHref = item.userId === currentUser?.id ? '/profile' : `/profile/${item.userId}`;
-
   const handleCardClick = () => {
-    router.push(`/feed/${item.id}`);
+    hapticLight();
+    router.push(`/feed?post=${item.id}`);
   };
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentUser) return;
+    hapticLight();
     if (isLiked) {
       removeLike(item.id, userLike!.id);
     } else {
@@ -54,7 +60,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
 
   const goToProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(userProfileHref);
+    router.push(item.userId === currentUser?.id ? '/profile' : `/profile?user=${item.userId}`);
   };
 
   const { sessionSummary: s } = item;
@@ -99,13 +105,13 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       {item.photos && item.photos.length > 0 && (
         item.photos.length === 1 ? (
           <div className="mb-2">
-            <img src={item.photos[0]} alt="" loading="lazy" className="w-full aspect-[4/3] object-cover" />
+            <img src={item.photos[0]} alt="" loading="lazy" decoding="async" className="w-full aspect-[4/3] object-cover" />
           </div>
         ) : (
           <div className="mb-2 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
             {item.photos.map((photo, i) => (
               <div key={i} className="w-full shrink-0 snap-center">
-                <img src={photo} alt="" loading="lazy" className="w-full aspect-[4/3] object-cover" />
+                <img src={photo} alt="" loading="lazy" decoding="async" className="w-full aspect-[4/3] object-cover" />
               </div>
             ))}
           </div>
@@ -177,8 +183,100 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           <button onClick={handleShare}>
             <Share2 size={18} className="text-zinc-600" />
           </button>
+
+          {item.userId !== currentUser?.id && (
+            <button onClick={(e) => { e.stopPropagation(); setShowReport(true); }}>
+              <Flag size={16} className="text-zinc-700" />
+            </button>
+          )}
         </div>
+
+        {/* Liked by */}
+        {item.likes.length > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowLikesList(true); }}
+            className="flex items-center gap-2 mt-2"
+          >
+            <div className="flex -space-x-1.5">
+              {item.likes.slice(0, 3).map((like) => {
+                const user = getUserById(like.userId);
+                return (
+                  <Avatar
+                    key={like.id}
+                    name={like.userName}
+                    size="xs"
+                    src={user?.avatarUrl ?? null}
+                    className="ring-1 ring-black"
+                  />
+                );
+              })}
+            </div>
+            <p className="text-[12px] text-zinc-400">
+              Liked by <span className="font-semibold text-zinc-200">{item.likes[0].userId === currentUser?.id ? 'you' : item.likes[0].userName}</span>
+              {item.likes.length > 1 && <> and <span className="font-semibold text-zinc-200">{item.likes.length - 1} other{item.likes.length - 1 !== 1 ? 's' : ''}</span></>}
+            </p>
+          </button>
+        )}
       </div>
+
+      <ReportModal
+        open={showReport}
+        onClose={() => setShowReport(false)}
+        targetType="post"
+        targetId={item.id}
+        targetLabel={`Post by ${item.userName}`}
+      />
+
+      {/* Likes List Modal */}
+      <AnimatePresence>
+        {showLikesList && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowLikesList(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
+              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+            >
+              <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
+                <h3 className="text-base font-bold">Likes</h3>
+                <button onClick={() => setShowLikesList(false)} className="p-2 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
+              </div>
+              <div className="max-h-[60dvh] overflow-y-auto">
+                {item.likes.map((like) => {
+                  const user = getUserById(like.userId);
+                  return (
+                    <div
+                      key={like.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLikesList(false);
+                        router.push(like.userId === currentUser?.id ? '/profile' : `/profile?user=${like.userId}`);
+                      }}
+                      className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03] cursor-pointer"
+                    >
+                      <Avatar name={like.userName} size="sm" src={user?.avatarUrl ?? null} />
+                      <p className="text-sm font-medium truncate flex-1">
+                        {like.userId === currentUser?.id ? 'You' : like.userName}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

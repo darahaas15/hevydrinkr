@@ -58,7 +58,7 @@ export function DrinkList({ drinks, onRemove }: DrinkListProps) {
               <motion.button
                 whileTap={{ scale: 0.8 }}
                 onClick={() => onRemove(drink.id)}
-                className="p-1.5 rounded-lg hover:bg-white/5"
+                className="p-2.5 -mr-1 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
               >
                 <X className="w-4 h-4 text-zinc-600" />
               </motion.button>

@@ -1,4 +1,4 @@
-export const APP_NAME = 'hevydrinkr';
+export const APP_NAME = 'Drinkr';
 export const APP_DESCRIPTION = 'Track your party sessions like a pro';
 
 
@@ -79,12 +79,12 @@ export const DRINK_CATEGORY_ICONS: Record<string, ComponentType<any>> = {
 };
 
 export const STORAGE_KEYS = {
-  AUTH: 'hevydrinkr-auth',
-  SESSIONS: 'hevydrinkr-sessions',
-  FEED: 'hevydrinkr-feed',
-  GROUPS: 'hevydrinkr-groups',
-  PROFILE: 'hevydrinkr-profile',
-  PARTY: 'hevydrinkr-party',
-  UI: 'hevydrinkr-ui',
-  SEEDED: 'hevydrinkr-seeded',
+  AUTH: 'drinkr-auth',
+  SESSIONS: 'drinkr-sessions',
+  FEED: 'drinkr-feed',
+  GROUPS: 'drinkr-groups',
+  PROFILE: 'drinkr-profile',
+  PARTY: 'drinkr-party',
+  UI: 'drinkr-ui',
+  SEEDED: 'drinkr-seeded',
 } as const;

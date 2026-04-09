@@ -1,19 +1,21 @@
 'use client';
 
 import { memo } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users } from 'lucide-react';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { Avatar } from '@/components/ui/avatar';
+import { hapticLight } from '@/lib/haptics';
 import type { Group } from '@/types';
 
 export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
+  const router = useRouter();
   const allChallenges = useGroupsStore((s) => s.challenges);
   const activeChallenges = allChallenges.filter((c) => c.groupId === group.id && c.status === 'active');
 
   return (
-    <Link href={`/groups/${group.id}`} prefetch>
+    <div onClick={() => { hapticLight(); router.push(`/groups?id=${group.id}`); }} className="cursor-pointer">
     <motion.div
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
@@ -60,6 +62,6 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
         <ChevronRight className="w-5 h-5 text-zinc-600 shrink-0" />
       </div>
     </motion.div>
-    </Link>
+    </div>
   );
 });

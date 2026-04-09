@@ -3,9 +3,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
+import { hapticSelection, hapticLight } from '@/lib/haptics';
+import { ErrorBanner } from '@/components/ui/error-banner';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
 import { Avatar } from '@/components/ui/avatar';
 import type { LeaderboardMetric, LeaderboardTimeframe } from '@/types';
@@ -24,9 +26,11 @@ const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
 ];
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
   const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all-time');
   const feedItems = useFeedStore((s) => s.items);
+  const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
@@ -54,7 +58,7 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 pt-3 pb-0">
           <h1 className="text-xl font-extrabold flex items-center gap-2 mb-3">
             <Trophy className="w-5 h-5 text-accent" />
@@ -66,8 +70,8 @@ export default function LeaderboardPage() {
             {METRICS.map((m) => (
               <button
                 key={m.value}
-                onClick={() => setMetric(m.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                onClick={() => { hapticSelection(); setMetric(m.value); }}
+                className={`px-3 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap active:scale-[0.97] ${
                   metric === m.value
                     ? 'bg-accent text-black'
                     : 'bg-white/[0.04] text-zinc-500'
@@ -83,8 +87,8 @@ export default function LeaderboardPage() {
             {TIMEFRAMES.map((t) => (
               <button
                 key={t.value}
-                onClick={() => setTimeframe(t.value)}
-                className={`flex-1 py-1.5 text-center text-[11px] font-medium rounded-lg transition-all ${
+                onClick={() => { hapticSelection(); setTimeframe(t.value); }}
+                className={`flex-1 py-2.5 text-center text-[11px] font-medium rounded-lg transition-all active:scale-[0.97] ${
                   timeframe === t.value ? 'text-white bg-white/[0.06]' : 'text-zinc-600'
                 }`}
               >
@@ -95,9 +99,22 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
+      {feedError && <ErrorBanner message={feedError} onRetry={() => fetchFeed(true)} />}
+
       {/* Rankings */}
       <div className="px-4 py-4">
-        {leaderboard.length === 0 ? (
+        {feedItems.length === 0 && !feedError ? (
+          <div className="space-y-1.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 flex items-center gap-3 animate-pulse">
+                <div className="w-8 h-4 rounded bg-white/5" />
+                <div className="w-8 h-8 rounded-full bg-white/5" />
+                <div className="flex-1 h-3.5 rounded bg-white/5 max-w-[120px]" />
+                <div className="w-12 h-3.5 rounded bg-white/5 ml-auto" />
+              </div>
+            ))}
+          </div>
+        ) : leaderboard.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Trophy className="w-10 h-10 text-zinc-700 mb-3" />
             <p className="text-zinc-600 text-sm">No data for this timeframe</p>
@@ -109,7 +126,7 @@ export default function LeaderboardPage() {
               const rankDisplay = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${entry.rank}`;
 
               return (
-                <Link key={entry.userId} href={isMe ? '/profile' : `/profile/${entry.userId}`} prefetch={false}>
+                <div key={entry.userId} onClick={() => { hapticLight(); router.push(isMe ? '/profile' : `/profile?user=${entry.userId}`); }}>
                 <motion.div
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -136,7 +153,7 @@ export default function LeaderboardPage() {
                   {entry.trend === 'down' && <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
                   {entry.trend === 'same' && <Minus className="w-3 h-3 text-zinc-700" />}
                 </motion.div>
-                </Link>
+                </div>
               );
             })}
           </div>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { scheduleSessionReminder, cancelSessionReminder } from '@/lib/local-notifications';
 
 interface SessionState {
   activeSession: DrinkSession | null;
@@ -106,9 +107,9 @@ function drinkEntryToRow(entry: DrinkEntry, sessionId: string) {
   };
 }
 
-// Resolves when the active session row exists in Supabase so that
-// drink_entries inserts (which reference session_id via FK) never race ahead.
-let sessionInsertReady: PromiseLike<void> = Promise.resolve();
+// Maps session temp-ID → promise that resolves when the row exists in Supabase.
+// Scoped per session so abandoning session A doesn't affect session B.
+const sessionInsertPromises = new Map<string, PromiseLike<void>>();
 
 // ---------------------------------------------------------------------------
 // Store
@@ -233,10 +234,14 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     // Optimistic update
     set({ activeSession: session });
 
+    // Schedule local notification reminder at 2 hours
+    scheduleSessionReminder(session.startedAt);
+
     // Persist to Supabase, then reconcile the id.
-    // Store the promise so addDrink can await it before inserting drink_entries
-    // (otherwise the FK on session_id fails if the row doesn't exist yet).
-    sessionInsertReady = supabase
+    // Store the promise per session so addDrink can await it before inserting
+    // drink_entries (otherwise the FK on session_id fails).
+    const sessionTempId = session.id;
+    sessionInsertPromises.set(sessionTempId, supabase
       .from('drink_sessions')
       .insert(sessionToRow(session))
       .select()
@@ -248,12 +253,12 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
         }
         if (data) {
           set((s) => ({
-            activeSession: s.activeSession
+            activeSession: s.activeSession && s.activeSession.id === sessionTempId
               ? { ...s.activeSession, id: data.id as string }
-              : null,
+              : s.activeSession,
           }));
         }
-      });
+      }));
   },
 
   // -----------------------------------------------------------------------
@@ -294,6 +299,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       sessionHistory: [completedSession, ...sessionHistory],
     });
 
+    // Cancel the 2-hour session reminder
+    cancelSessionReminder();
+
     // Sync to Supabase
     supabase
       .from('drink_sessions')
@@ -320,9 +328,13 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     if (!activeSession) return;
 
     const sessionId = activeSession.id;
+    sessionInsertPromises.delete(sessionId);
 
     // Clear local state — don't add to history
     set({ activeSession: null });
+
+    // Cancel the 2-hour session reminder
+    cancelSessionReminder();
 
     // Delete from Supabase entirely (cascades to drink_entries, photos, etc.)
     supabase
@@ -343,20 +355,26 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     if (!activeSession) return;
 
     // Optimistic update — UI reflects the drink immediately
+    const newDrinks = [...activeSession.drinks, drink];
+    const newTotalStd = activeSession.totalStandardDrinks + drink.standardDrinks;
     set({
       activeSession: {
         ...activeSession,
-        drinks: [...activeSession.drinks, drink],
-        totalStandardDrinks:
-          activeSession.totalStandardDrinks + drink.standardDrinks,
+        drinks: newDrinks,
+        totalStandardDrinks: newTotalStd,
         totalVolumeMl: activeSession.totalVolumeMl + drink.volumeMl,
       },
     });
 
     // Wait for the session row to exist in Supabase before inserting the
     // drink_entry (its session_id FK would fail otherwise).
-    sessionInsertReady.then(() => {
-      const sid = get().activeSession?.id ?? activeSession.id;
+    const insertPromise = sessionInsertPromises.get(activeSession.id) ?? Promise.resolve();
+    const expectedSessionId = activeSession.id;
+    insertPromise.then(() => {
+      // Verify this session is still the active one (guards against abandoned sessions)
+      const current = get().activeSession;
+      if (!current || (current.id !== expectedSessionId && current.id !== get().activeSession?.id)) return;
+      const sid = current.id;
       supabase
         .from('drink_entries')
         .insert(drinkEntryToRow(drink, sid))
@@ -377,14 +395,14 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     if (!drinkToRemove) return;
 
     // Optimistic update
+    const remainingDrinks = activeSession.drinks.filter((d) => d.id !== drinkId);
+    const remainingStd = activeSession.totalStandardDrinks - drinkToRemove.standardDrinks;
     set({
       activeSession: {
         ...activeSession,
-        drinks: activeSession.drinks.filter((d) => d.id !== drinkId),
-        totalStandardDrinks:
-          activeSession.totalStandardDrinks - drinkToRemove.standardDrinks,
-        totalVolumeMl:
-          activeSession.totalVolumeMl - drinkToRemove.volumeMl,
+        drinks: remainingDrinks,
+        totalStandardDrinks: remainingStd,
+        totalVolumeMl: activeSession.totalVolumeMl - drinkToRemove.volumeMl,
       },
     });
 
@@ -416,8 +434,11 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     });
 
     // Wait for session row to exist, then insert photo
-    sessionInsertReady.then(() => {
-      const sid = get().activeSession?.id ?? activeSession.id;
+    const photoInsertPromise = sessionInsertPromises.get(activeSession.id) ?? Promise.resolve();
+    photoInsertPromise.then(() => {
+      const current = get().activeSession;
+      if (!current) return;
+      const sid = current.id;
       supabase
         .from('session_photos')
         .insert({

@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, WifiOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/stores/use-ui-store';
 
 interface HeaderProps {
   title: string;
@@ -17,6 +18,7 @@ export default function Header({
   rightAction,
 }: HeaderProps) {
   const router = useRouter();
+  const isOffline = useUIStore((s) => s.isOffline);
 
   return (
     <header
@@ -30,14 +32,17 @@ export default function Header({
         {showBack && (
           <button
             onClick={() => router.back()}
-            className="p-1 -ml-1 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 -ml-2 text-zinc-400 hover:text-white active:text-white transition-colors"
           >
             <ChevronLeft size={24} />
           </button>
         )}
       </div>
 
-      <h1 className="text-base font-semibold text-white truncate">{title}</h1>
+      <div className="flex items-center gap-1.5">
+        {isOffline && <WifiOff size={14} className="text-red-400 shrink-0" />}
+        <h1 className="text-base font-semibold text-white truncate">{title}</h1>
+      </div>
 
       <div className="w-10 flex items-center justify-end">
         {rightAction}

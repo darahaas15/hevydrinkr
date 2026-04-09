@@ -1,16 +1,37 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Users, Link2, Search } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { GroupCard } from '@/components/groups/group-card';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import GroupDetailPage from './[id]/group-detail';
 import type { Group, GroupMember } from '@/types';
 
 export default function GroupsPage() {
+  return (
+    <Suspense>
+      <GroupsPageInner />
+    </Suspense>
+  );
+}
+
+function GroupsPageInner() {
+  const searchParams = useSearchParams();
+  const groupId = searchParams.get('id');
+
+  if (groupId) {
+    return <GroupDetailPage groupId={groupId} />;
+  }
+
+  return <GroupsPageList />;
+}
+
+function GroupsPageList() {
   const groups = useGroupsStore((s) => s.groups);
   const loading = useGroupsStore((s) => s.loading);
   const addGroup = useGroupsStore((s) => s.addGroup);
@@ -100,7 +121,7 @@ export default function GroupsPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className="text-xl font-extrabold">Groups</h1>
           <div className="flex gap-2">

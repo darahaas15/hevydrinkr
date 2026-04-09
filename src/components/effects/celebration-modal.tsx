@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/stores/use-ui-store';
+import { hapticSuccess } from '@/lib/haptics';
 import { PR_ICONS, PR_LABELS } from '@/types/pr';
 import { ConfettiBurst } from './confetti-burst';
 
@@ -11,8 +12,10 @@ export function CelebrationModal() {
 
   useEffect(() => {
     if (showCelebration) {
+      hapticSuccess();
+      document.body.style.overflow = 'hidden';
       const timer = setTimeout(dismissCelebration, 4000);
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); document.body.style.overflow = ''; };
     }
   }, [showCelebration, dismissCelebration]);
 

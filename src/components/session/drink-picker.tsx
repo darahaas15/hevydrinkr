@@ -9,6 +9,7 @@ import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/use-auth-store';
+import { hapticMedium, hapticSelection } from '@/lib/haptics';
 import type { DrinkCategory, DrinkEntry, DrinkDefinition } from '@/types';
 
 const CATEGORIES: { value: DrinkCategory | 'all' | 'custom'; label: string }[] = [
@@ -53,6 +54,12 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
 
   const dragControls = useDragControls();
 
+  // Body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   // Fetch user's custom drinks
   useEffect(() => {
     if (!currentUser) return;
@@ -92,6 +99,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   }, [query, category, customDrinks]);
 
   const handleSelect = (def: DrinkDefinition) => {
+    hapticMedium();
     onSelect({
       id: crypto.randomUUID(),
       drinkDefinitionId: def.id,
@@ -183,7 +191,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
         onDragEnd={(_, info) => {
           if (info.offset.y > 120 || info.velocity.y > 500) onClose();
         }}
-        className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl flex flex-col"
+        className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl flex flex-col safe-bottom"
         style={{ background: '#111114', height: '92dvh', maxHeight: '92dvh' }}
       >
         <div
@@ -196,7 +204,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
         {showCustom ? (
           <div className="flex-1 flex flex-col px-5">
             <div className="flex items-center gap-2 mb-4">
-              <button onClick={() => setShowCustom(false)} className="p-1 -ml-1">
+              <button onClick={() => setShowCustom(false)} className="p-2 -ml-2 active:text-white">
                 <ChevronLeft className="w-5 h-5 text-zinc-400" />
               </button>
               <h2 className="text-base font-bold">Custom Drink</h2>
@@ -207,6 +215,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="What are you drinking?"
                 autoFocus
+                autoCapitalize="words"
+                enterKeyHint="done"
                 className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40"
               />
               <div className="grid grid-cols-2 gap-2.5">
@@ -214,6 +224,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                   <label className="text-[10px] text-zinc-600 mb-1 block">ABV %</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     value={customAbv}
                     onChange={(e) => setCustomAbv(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.06] text-sm text-white focus:outline-none focus:border-accent/40"
@@ -223,6 +234,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                   <label className="text-[10px] text-zinc-600 mb-1 block">Volume (ml)</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     value={customVol}
                     onChange={(e) => setCustomVol(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.06] text-sm text-white focus:outline-none focus:border-accent/40"
@@ -250,7 +262,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
             <div className="shrink-0 px-5 pb-2.5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-bold">Add Drink</h2>
-                <button onClick={onClose} className="p-1.5 -mr-1.5 rounded-lg hover:bg-white/5">
+                <button onClick={onClose} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
                   <X className="w-4 h-4 text-zinc-500" />
                 </button>
               </div>
@@ -261,6 +273,9 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search drinks..."
+                  enterKeyHint="search"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40"
                   autoFocus
                 />
@@ -271,8 +286,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                   {CATEGORIES.map((c) => (
                     <button
                       key={c.value}
-                      onClick={() => { setCategory(c.value); setQuery(''); }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                      onClick={() => { hapticSelection(); setCategory(c.value); setQuery(''); }}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap active:scale-[0.97] ${
                         category === c.value
                           ? 'bg-accent text-black'
                           : 'bg-white/[0.04] text-zinc-500'
@@ -286,7 +301,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 pt-2 pb-20">
+            <div className="flex-1 overflow-y-auto px-5 pt-2 pb-20" style={{ overscrollBehaviorY: 'contain' }}>
               <button
                 onClick={() => setShowCustom(true)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl border border-dashed border-white/[0.06] active:bg-white/[0.03]"

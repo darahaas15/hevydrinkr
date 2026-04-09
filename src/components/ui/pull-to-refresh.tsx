@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useCallback } from 'react';
+import { hapticMedium } from '@/lib/haptics';
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
@@ -47,7 +48,12 @@ export function PullToRefresh({
 
       const delta = e.touches[0].clientY - startYRef.current;
       if (delta > 0) {
-        setPullDistance(delta * PULL_RESISTANCE);
+        const newDist = delta * PULL_RESISTANCE;
+        const wasBelowThreshold = pullDistance < threshold;
+        setPullDistance(newDist);
+        if (wasBelowThreshold && newDist >= threshold) {
+          hapticMedium();
+        }
       }
     },
     [refreshing]

@@ -1,5 +1,5 @@
 -- ============================================================
--- hevydrinkr — Full Supabase Schema
+-- drinkr — Full Supabase Schema
 -- Run this in your Supabase SQL Editor (Dashboard > SQL Editor)
 -- ============================================================
 
@@ -124,7 +124,6 @@ CREATE TABLE feed_likes (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   feed_item_id UUID NOT NULL REFERENCES feed_items(id) ON DELETE CASCADE,
   user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  emoji        TEXT NOT NULL,
   created_at   TIMESTAMPTZ DEFAULT now(),
   UNIQUE(feed_item_id, user_id)
 );
@@ -139,6 +138,8 @@ CREATE TABLE feed_comments (
   created_at   TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX idx_comments_feed ON feed_comments(feed_item_id);
+CREATE INDEX idx_comments_parent ON feed_comments(parent_comment_id);
+CREATE INDEX idx_comments_feed_created ON feed_comments(feed_item_id, created_at);
 
 -- 11. Groups
 CREATE TABLE groups (
@@ -241,6 +242,29 @@ CREATE TABLE party_drink_events (
   timestamp   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_pde_party ON party_drink_events(party_id);
+
+-- 20. Reports (content moderation)
+CREATE TABLE reports (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  target_type TEXT NOT NULL CHECK (target_type IN ('post', 'comment', 'user')),
+  target_id   UUID NOT NULL,
+  reason      TEXT NOT NULL CHECK (reason IN ('spam', 'harassment', 'inappropriate', 'underage', 'dangerous', 'other')),
+  details     TEXT DEFAULT '',
+  status      TEXT CHECK (status IN ('pending', 'reviewed', 'actioned', 'dismissed')) DEFAULT 'pending',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX idx_reports_status ON reports(status);
+
+-- 21. Blocked Users
+CREATE TABLE blocked_users (
+  blocker_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  blocked_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (blocker_id, blocked_id),
+  CHECK (blocker_id != blocked_id)
+);
+CREATE INDEX idx_blocked_blocker ON blocked_users(blocker_id);
 
 -- ============================================================
 -- Auto-create profile on signup
@@ -358,13 +382,20 @@ CREATE POLICY "gm_delete" ON group_members FOR DELETE TO authenticated
 
 -- Challenges
 CREATE POLICY "challenges_select" ON challenges FOR SELECT TO authenticated USING (true);
-CREATE POLICY "challenges_insert" ON challenges FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "challenges_delete" ON challenges FOR DELETE TO authenticated USING (true);
+CREATE POLICY "challenges_insert" ON challenges FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM group_members WHERE group_id = challenges.group_id AND user_id = auth.uid()
+  ));
+CREATE POLICY "challenges_delete" ON challenges FOR DELETE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM groups WHERE id = challenges.group_id AND created_by = auth.uid()
+  ));
 
 -- Challenge participants
 CREATE POLICY "cp_select" ON challenge_participants FOR SELECT TO authenticated USING (true);
 CREATE POLICY "cp_insert" ON challenge_participants FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "cp_update" ON challenge_participants FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "cp_update" ON challenge_participants FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- Wagers
 CREATE POLICY "wagers_select" ON wagers FOR SELECT TO authenticated USING (true);
@@ -388,6 +419,17 @@ CREATE POLICY "pp_update" ON party_participants FOR UPDATE TO authenticated USIN
 -- Party drink events
 CREATE POLICY "pde_select" ON party_drink_events FOR SELECT TO authenticated USING (true);
 CREATE POLICY "pde_insert" ON party_drink_events FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+-- Reports: user can insert their own, only admins can read all
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "reports_insert" ON reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reporter_id);
+CREATE POLICY "reports_select_own" ON reports FOR SELECT TO authenticated USING (auth.uid() = reporter_id);
+
+-- Blocked users: user can manage their own blocks
+ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "blocked_select" ON blocked_users FOR SELECT TO authenticated USING (auth.uid() = blocker_id);
+CREATE POLICY "blocked_insert" ON blocked_users FOR INSERT TO authenticated WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "blocked_delete" ON blocked_users FOR DELETE TO authenticated USING (auth.uid() = blocker_id);
 
 -- ============================================================
 -- Storage Buckets (run these separately or via dashboard)

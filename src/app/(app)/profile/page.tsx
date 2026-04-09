@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useProfileStore } from '@/stores/use-profile-store';
@@ -17,9 +17,32 @@ import { formatDuration } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { PR_LABELS, PR_ICONS } from '@/types/pr';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
+import { DrinkIcon } from '@/components/ui/drink-icon';
+import { Heart, Trophy as TrophyIcon, Timer } from 'lucide-react';
 import { getBaseUrl, shareLink } from '@/lib/share';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import UserProfilePage from './[userId]/user-profile';
 
 export default function ProfilePage() {
+  return (
+    <Suspense>
+      <ProfilePageInner />
+    </Suspense>
+  );
+}
+
+function ProfilePageInner() {
+  const searchParams = useSearchParams();
+  const userId = searchParams.get('user');
+
+  if (userId) {
+    return <UserProfilePage userId={userId} />;
+  }
+
+  return <ProfilePageOwn />;
+}
+
+function ProfilePageOwn() {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const updateProfile = useAuthStore((s) => s.updateProfile);
@@ -28,6 +51,7 @@ export default function ProfilePage() {
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const addToast = useUIStore((s) => s.addToast);
   const feedItems = useFeedStore((s) => s.items);
+  const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
@@ -75,6 +99,56 @@ export default function ProfilePage() {
   }, [myPosts]);
 
   const myPRs = personalRecords.filter((pr) => pr.userId === currentUser?.id);
+
+  // Signature drink
+  const signatureDrink = useMemo(() => {
+    const counts: Record<string, { count: number; category: string }> = {};
+    myPosts.forEach((p) =>
+      (p.sessionSummary.drinks ?? []).forEach((d) => {
+        if (!counts[d.name]) counts[d.name] = { count: 0, category: d.category };
+        counts[d.name].count++;
+      })
+    );
+    const entries = Object.entries(counts).sort(([, a], [, b]) => b.count - a.count);
+    if (entries.length === 0) return null;
+    const [name, { count, category }] = entries[0];
+    const total = Object.values(counts).reduce((s, v) => s + v.count, 0);
+    return { name, count, category, pct: Math.round((count / total) * 100) };
+  }, [myPosts]);
+
+  // Session highlights
+  const highlights = useMemo(() => {
+    if (myPosts.length === 0) return [];
+    const items: { label: string; value: string; icon: typeof Heart; postId: string }[] = [];
+    // Best night (most likes)
+    const byLikes = [...myPosts].sort((a, b) => b.likes.length - a.likes.length);
+    if (byLikes[0]?.likes.length > 0) {
+      items.push({ label: 'Best Night', value: `${byLikes[0].likes.length} likes`, icon: Heart, postId: byLikes[0].id });
+    }
+    // Marathon (longest)
+    const byDuration = [...myPosts].sort((a, b) => b.sessionSummary.durationMinutes - a.sessionSummary.durationMinutes);
+    if (byDuration[0]?.sessionSummary.durationMinutes > 0) {
+      items.push({ label: 'Marathon', value: formatDuration(byDuration[0].sessionSummary.durationMinutes), icon: Timer, postId: byDuration[0].id });
+    }
+    // Record (most drinks)
+    const byDrinks = [...myPosts].sort((a, b) => b.sessionSummary.totalDrinks - a.sessionSummary.totalDrinks);
+    if (byDrinks[0]?.sessionSummary.totalDrinks > 0) {
+      items.push({ label: 'Record', value: `${byDrinks[0].sessionSummary.totalDrinks} drinks`, icon: TrophyIcon, postId: byDrinks[0].id });
+    }
+    return items;
+  }, [myPosts]);
+
+  // Achievements (milestones)
+  const milestones = [
+    { threshold: 10, label: '10th Sesh' },
+    { threshold: 25, label: '25th Sesh' },
+    { threshold: 50, label: '50th Sesh' },
+    { threshold: 100, label: '100th Sesh' },
+  ];
+  const sessionCount = myPosts.length;
+  const earnedMilestones = milestones.filter((m) => sessionCount >= m.threshold);
+  const nextMilestone = milestones.find((m) => sessionCount < m.threshold);
+
   if (!currentUser) return null;
 
   const categoryEntries = Object.entries(stats.categoryCounts).sort(([, a], [, b]) => b - a);
@@ -83,13 +157,13 @@ export default function ProfilePage() {
   return (
     <div className="min-h-full pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className="text-xl font-extrabold">Profile</h1>
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                const result = await shareLink(`${getBaseUrl()}/profile/${currentUser.id}`, `${currentUser.displayName} on hevydrinkr`);
+                const result = await shareLink(`${getBaseUrl()}/profile/${currentUser.id}`, `${currentUser.displayName} on Drinkr`);
                 if (result === 'copied') addToast('Link copied!', 'success');
               }}
               className="p-2 rounded-xl hover:bg-white/5"
@@ -102,6 +176,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {feedError && <ErrorBanner message={feedError} onRetry={() => fetchFeed(true)} />}
 
       <div className="px-5 py-5 space-y-6">
         {/* User */}
@@ -169,6 +245,74 @@ export default function ProfilePage() {
             </motion.div>
           ))}
         </div>
+
+        {/* Achievements */}
+        {(earnedMilestones.length > 0 || nextMilestone) && (
+          <div>
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Achievements</h3>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
+              {earnedMilestones.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {earnedMilestones.map((m) => (
+                    <span key={m.threshold} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-[11px] font-semibold text-accent">
+                      {m.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {nextMilestone && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[11px] text-zinc-500">Next: {nextMilestone.label}</p>
+                    <p className="text-[11px] text-zinc-600">{sessionCount}/{nextMilestone.threshold}</p>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(sessionCount / nextMilestone.threshold) * 100}%` }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                      className="h-full rounded-full bg-accent"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Session Highlights */}
+        {highlights.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Highlights</h3>
+            <div className="flex gap-2.5 overflow-x-auto scrollbar-hide">
+              {highlights.map((h) => (
+                <div
+                  key={h.label}
+                  onClick={() => router.push(`/feed?post=${h.postId}`)}
+                  className="shrink-0 w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 cursor-pointer active:bg-white/[0.05] transition-colors"
+                >
+                  <h.icon className="w-4 h-4 text-accent mb-2" />
+                  <p className="text-lg font-bold">{h.value}</p>
+                  <p className="text-[10px] text-zinc-600">{h.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Signature Drink */}
+        {signatureDrink && (
+          <div>
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Signature Drink</h3>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 flex items-center gap-4">
+              <DrinkIcon category={signatureDrink.category} className="w-8 h-8" />
+              <div className="flex-1">
+                <p className="text-sm font-bold">{signatureDrink.name}</p>
+                <p className="text-[11px] text-zinc-500">{signatureDrink.count} times &middot; {signatureDrink.pct}% of your drinks</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Drink breakdown — donut style */}
         {categoryEntries.length > 0 && (
@@ -242,6 +386,30 @@ export default function ProfilePage() {
         {/* My Posts */}
         {(() => {
           const sortedPosts = [...myPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          if (feedItems.length === 0 && !feedError) {
+            return (
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
+                <div className="space-y-3">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden animate-pulse">
+                      <div className="px-4 pt-4 pb-2 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white/5" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3.5 w-28 rounded bg-white/5" />
+                          <div className="h-2.5 w-16 rounded bg-white/5" />
+                        </div>
+                      </div>
+                      <div className="px-4 pb-3 space-y-2">
+                        <div className="h-3 w-full rounded bg-white/5" />
+                        <div className="h-3 w-3/4 rounded bg-white/5" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
           return sortedPosts.length > 0 ? (
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
@@ -271,11 +439,11 @@ export default function ProfilePage() {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
-              style={{ background: '#141418' }}
+              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
               <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
                 <h3 className="text-base font-bold capitalize">{showFollowList}</h3>
-                <button onClick={() => setShowFollowList(null)} className="p-1 rounded-lg hover:bg-white/5">
+                <button onClick={() => setShowFollowList(null)} className="p-2 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
                   <X className="w-5 h-5 text-zinc-500" />
                 </button>
               </div>
@@ -299,12 +467,12 @@ export default function ProfilePage() {
                     const isFollowing = currentUser.following.includes(user.id);
                     return (
                       <div key={user.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
-                        <div onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }} className="cursor-pointer">
+                        <div onClick={() => { setShowFollowList(null); router.push(`/profile?user=${user.id}`); }} className="cursor-pointer">
                           <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
                         </div>
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
-                          onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }}
+                          onClick={() => { setShowFollowList(null); router.push(`/profile?user=${user.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{user.displayName}</p>
                           <p className="text-[11px] text-zinc-600">@{user.username}</p>

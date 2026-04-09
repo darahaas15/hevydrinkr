@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import React, { useEffect } from 'react';
+import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { hapticLight } from '@/lib/haptics';
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -19,11 +20,21 @@ export default function BottomSheet({
   children,
   className,
 }: BottomSheetProps) {
+  const dragControls = useDragControls();
+
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.y > 100) {
+    if (info.offset.y > 100 || info.velocity.y > 300) {
+      hapticLight();
       onClose();
     }
   };
+
+  // Body scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -34,7 +45,7 @@ export default function BottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm modal-overlay"
             onClick={onClose}
           />
           <motion.div
@@ -43,6 +54,8 @@ export default function BottomSheet({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0 }}
             dragElastic={0.2}
             onDragEnd={handleDragEnd}
@@ -52,8 +65,11 @@ export default function BottomSheet({
               className
             )}
           >
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
+            <div
+              className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
+              <div className="w-10 h-1.5 rounded-full bg-white/20" />
             </div>
             {title && (
               <h2 className="text-accent font-extrabold text-lg px-6 pb-4">

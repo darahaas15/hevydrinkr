@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useProfileStore } from '@/stores/use-profile-store';
@@ -18,8 +18,29 @@ import { SessionSummary } from '@/components/session/session-summary';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, compressImage } from '@/lib/image-utils';
 import { DrinkIcon } from '@/components/ui/drink-icon';
+import { hapticHeavy, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import SessionDetailPage from './[id]/session-detail';
 
 export default function SessionPage() {
+  return (
+    <Suspense>
+      <SessionPageRouter />
+    </Suspense>
+  );
+}
+
+function SessionPageRouter() {
+  const searchParams = useSearchParams();
+  const sessionIdParam = searchParams.get('id');
+
+  if (sessionIdParam) {
+    return <SessionDetailPage sessionId={sessionIdParam} />;
+  }
+
+  return <SessionPageInner />;
+}
+
+function SessionPageInner() {
   const activeSession = useSessionStore((s) => s.activeSession);
   const startSession = useSessionStore((s) => s.startSession);
   const endSession = useSessionStore((s) => s.endSession);
@@ -44,7 +65,7 @@ export default function SessionPage() {
 
   useEffect(() => {
     if (currentUser) {
-      fetchSessions(currentUser.id);
+      fetchSessions(currentUser.id).finally(() => setLoadingHistory(false));
       fetchPRs(currentUser.id);
       fetchFeed();
     }
@@ -60,11 +81,27 @@ export default function SessionPage() {
   const [caption, setCaption] = useState('');
   const [selectedMood, setSelectedMood] = useState<'legendary' | 'great' | 'good' | 'meh' | 'rough'>('good');
   const [posting, setPosting] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['sessionHistory'][0] | null>(null);
 
   const timer = useTimer(activeSession?.startedAt || null);
 
   const totalStdDrinks = activeSession?.drinks.reduce((sum, d) => sum + d.standardDrinks, 0) || 0;
+
+  // Pace & context calculations
+  const myPosts = feedItems.filter((f) => f.userId === currentUser?.id);
+  const avgDrinksPerSession = myPosts.length > 0
+    ? myPosts.reduce((sum, p) => sum + p.sessionSummary.totalDrinks, 0) / myPosts.length
+    : 0;
+
+  const hoursElapsed = activeSession
+    ? (Date.now() - new Date(activeSession.startedAt).getTime()) / 3_600_000
+    : 0;
+  const drinksPerHour = hoursElapsed > 0.05 && activeSession
+    ? activeSession.drinks.length / hoursElapsed
+    : 0;
+
+  const drinkDiff = activeSession ? activeSession.drinks.length - avgDrinksPerSession : 0;
 
   const handleAddPhoto = async () => {
     const file = await pickImage();
@@ -76,6 +113,7 @@ export default function SessionPage() {
   const handleStart = () => {
     if (!venue.trim()) return;
     if (!currentUser) return;
+    hapticHeavy();
     startSession(venue.trim(), currentUser.id);
     setVenue('');
   };
@@ -84,6 +122,7 @@ export default function SessionPage() {
     if (!activeSession || !currentUser || posting) return;
     setPosting(true);
     setShowPostPreview(false);
+    hapticSuccess();
     endSession(selectedMood);
 
     const completed = useSessionStore.getState().sessionHistory[0];
@@ -139,7 +178,23 @@ export default function SessionPage() {
             </motion.button>
           </div>
 
-          {mySessions.length > 0 && (
+          {loadingHistory ? (
+            <div className="w-full mt-10">
+              <div className="w-16 h-3 rounded bg-white/5 mb-3 animate-pulse" />
+              <div className="space-y-1.5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] animate-pulse">
+                    <div className="w-5 h-5 rounded bg-white/5" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="w-28 h-3.5 rounded bg-white/5" />
+                      <div className="w-20 h-2.5 rounded bg-white/[0.03]" />
+                    </div>
+                    <div className="w-12 h-2.5 rounded bg-white/[0.03]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : mySessions.length > 0 && (
             <div className="w-full mt-10">
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Recent</h3>
               <div className="space-y-1.5">
@@ -148,7 +203,7 @@ export default function SessionPage() {
                   return (
                     <button
                       key={session.id}
-                      onClick={() => router.push(feedPost ? `/feed/${feedPost.id}` : `/session/${session.id}`)}
+                      onClick={() => router.push(feedPost ? `/feed?post=${feedPost.id}` : `/session?id=${session.id}`)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-left active:bg-white/[0.05] transition-colors"
                     >
                       {session.drinks[0] ? <DrinkIcon category={session.drinks[0].category} className="w-5 h-5" /> : <DrinkIcon category="beer" className="w-5 h-5" />}
@@ -189,7 +244,7 @@ export default function SessionPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <div>
             {editingVenue ? (
@@ -207,6 +262,8 @@ export default function SessionPage() {
                       setEditingVenue(false);
                     }
                   }}
+                  enterKeyHint="done"
+                  autoCapitalize="words"
                   className="px-2 py-0.5 rounded-lg bg-white/[0.06] border border-accent/30 text-[11px] text-white focus:outline-none w-32"
                 />
                 <button
@@ -216,12 +273,12 @@ export default function SessionPage() {
                       setEditingVenue(false);
                     }
                   }}
-                  className="p-0.5 rounded hover:bg-white/5"
+                  className="p-2 rounded hover:bg-white/5 active:bg-white/[0.08]"
                 >
-                  <Check className="w-3.5 h-3.5 text-accent" />
+                  <Check className="w-4 h-4 text-accent" />
                 </button>
-                <button onClick={() => setEditingVenue(false)} className="p-0.5 rounded hover:bg-white/5">
-                  <X className="w-3.5 h-3.5 text-zinc-500" />
+                <button onClick={() => setEditingVenue(false)} className="p-2 rounded hover:bg-white/5 active:bg-white/[0.08]">
+                  <X className="w-4 h-4 text-zinc-500" />
                 </button>
               </div>
             ) : (
@@ -268,18 +325,38 @@ export default function SessionPage() {
       <div className="px-5 py-4 space-y-4">
         <BacGauge standardDrinks={totalStdDrinks} drinks={activeSession.drinks} />
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2.5">
-          {[
-            { label: 'Drinks', value: activeSession.drinks.length },
-            { label: 'Std Drinks', value: totalStdDrinks.toFixed(1) },
-            { label: 'Types', value: new Set(activeSession.drinks.map(d => d.drinkDefinitionId)).size },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
-              <p className="text-xl font-bold">{s.value}</p>
-              <p className="text-[10px] text-zinc-600">{s.label}</p>
+        {/* Pace & Context */}
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-3xl font-extrabold">{activeSession.drinks.length}</p>
+              <p className="text-[11px] text-zinc-500">drinks</p>
             </div>
-          ))}
+            <div className="text-right">
+              <p className="text-lg font-bold text-zinc-300">{totalStdDrinks.toFixed(1)}</p>
+              <p className="text-[10px] text-zinc-600">std drinks</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            {drinksPerHour > 0 && (
+              <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+                <p className="text-sm font-bold">{drinksPerHour.toFixed(1)}<span className="text-[10px] text-zinc-500 font-normal">/hr</span></p>
+                <p className="text-[10px] text-zinc-600">Pace</p>
+              </div>
+            )}
+            {avgDrinksPerSession > 0 && (
+              <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+                <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent' : drinkDiff < 0 ? 'text-zinc-400' : 'text-zinc-300'}`}>
+                  {drinkDiff > 0 ? '+' : ''}{drinkDiff.toFixed(0)}
+                </p>
+                <p className="text-[10px] text-zinc-600">vs your avg</p>
+              </div>
+            )}
+            <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+              <p className="text-sm font-bold">{new Set(activeSession.drinks.map(d => d.drinkDefinitionId)).size}</p>
+              <p className="text-[10px] text-zinc-600">Types</p>
+            </div>
+          </div>
         </div>
 
         <DrinkList drinks={activeSession.drinks} onRemove={removeDrink} />
@@ -308,7 +385,14 @@ export default function SessionPage() {
       <AnimatePresence>
         {showPicker && (
           <DrinkPicker
-            onSelect={(drink) => { addDrink(drink); setShowPicker(false); }}
+            onSelect={(drink) => {
+              addDrink(drink);
+              setShowPicker(false);
+              // Mid-session milestone toast
+              const count = (activeSession?.drinks.length ?? 0) + 1;
+              const milestones: Record<number, string> = { 5: '5 drinks deep!', 10: 'Double digits!', 15: 'On a roll!', 20: 'Unstoppable!', 25: 'Quarter century!', 30: 'Legend status!' };
+              if (milestones[count]) { hapticSuccess(); addToast(milestones[count], 'success'); }
+            }}
             onClose={() => setShowPicker(false)}
           />
         )}
@@ -322,6 +406,13 @@ export default function SessionPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[55] flex items-center justify-center"
+            style={{
+              // Shrink the centering box by the keyboard height so the
+              // modal (and its caption textarea) stays visible above the
+              // keyboard. `--keyboard-height` is set by useKeyboardHeight.
+              paddingBottom: 'var(--keyboard-height, 0px)',
+              transition: 'padding-bottom 280ms cubic-bezier(0.17, 0.59, 0.4, 0.77)',
+            }}
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPostPreview(false)} />
             <motion.div
@@ -330,7 +421,7 @@ export default function SessionPage() {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-4"
-              style={{ background: '#141418' }}
+              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
               {/* Session info */}
               <div className="flex items-center justify-between">
@@ -423,7 +514,7 @@ export default function SessionPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
-              style={{ background: '#141418' }}
+              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
               <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
               <h3 className="text-lg font-bold mb-1">Cancel session?</h3>
@@ -437,7 +528,7 @@ export default function SessionPage() {
                 </button>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => { abandonSession(); setShowAbandonConfirm(false); }}
+                  onClick={() => { hapticWarning(); abandonSession(); setShowAbandonConfirm(false); }}
                   className="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 font-bold text-sm"
                 >
                   Cancel It

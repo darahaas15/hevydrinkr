@@ -2,10 +2,13 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
+import { useNotificationStore, type NotificationPreferences } from '@/stores/use-notification-store';
+import { unregisterPushNotifications } from '@/lib/push-notifications';
+import { hapticSelection } from '@/lib/haptics';
 import { supabase } from '@/lib/supabase/client';
 import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
 
@@ -19,6 +22,8 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
   const [bio, setBio] = useState(currentUser?.bio || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const preferences = useNotificationStore((s) => s.preferences);
+  const updatePreferences = useNotificationStore((s) => s.updatePreferences);
 
   const handleChangePhoto = async () => {
     const file = await pickImage();
@@ -39,7 +44,14 @@ export default function SettingsPage() {
     addToast('Bio updated', 'success');
   };
 
+  const handleTogglePref = (key: keyof NotificationPreferences) => {
+    if (!currentUser) return;
+    hapticSelection();
+    updatePreferences(currentUser.id, { [key]: !preferences[key] });
+  };
+
   const handleLogout = async () => {
+    if (currentUser) await unregisterPushNotifications(currentUser.id);
     await logout();
     router.replace('/');
   };
@@ -56,6 +68,9 @@ export default function SettingsPage() {
       await supabase.from('feed_items').delete().eq('user_id', currentUser.id);
       await supabase.from('drink_sessions').delete().eq('user_id', currentUser.id);
       await supabase.from('personal_records').delete().eq('user_id', currentUser.id);
+      await supabase.from('device_tokens').delete().eq('user_id', currentUser.id);
+      await supabase.from('notifications').delete().eq('user_id', currentUser.id);
+      await supabase.from('notification_preferences').delete().eq('user_id', currentUser.id);
       await supabase.from('profiles').delete().eq('id', currentUser.id);
       await logout();
       if (typeof window !== 'undefined') {
@@ -70,9 +85,9 @@ export default function SettingsPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-1 -ml-1">
+          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-white">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
           <h1 className="text-lg font-bold">Settings</h1>
@@ -132,6 +147,65 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Notifications */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Notifications</h3>
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+            {([
+              ['likesEnabled', 'Likes', 'When someone likes your post'] as const,
+              ['commentsEnabled', 'Comments & Replies', 'When someone comments or replies'] as const,
+              ['followsEnabled', 'New Followers', 'When someone follows you'] as const,
+              ['groupJoinsEnabled', 'Group Activity', 'When someone joins your group'] as const,
+              ['challengesEnabled', 'Challenges', 'New challenges and ending reminders'] as const,
+              ['sessionRemindersEnabled', 'Session Reminders', '2-hour session check-in'] as const,
+            ]).map(([key, label, desc]) => (
+              <button
+                key={key}
+                onClick={() => handleTogglePref(key)}
+                className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Bell className="w-4 h-4 text-zinc-500" />
+                  <div className="text-left">
+                    <span className="text-sm block">{label}</span>
+                    <span className="text-[11px] text-zinc-600">{desc}</span>
+                  </div>
+                </div>
+                <div className={`w-10 h-6 rounded-full relative transition-colors ${preferences[key] ? 'bg-teal-500' : 'bg-zinc-700'}`}>
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${preferences[key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Legal */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Legal</h3>
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+            <button
+              onClick={() => router.push('/legal/terms')}
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Scale className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Terms of Service</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </button>
+            <button
+              onClick={() => router.push('/legal/privacy')}
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Privacy Policy</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </button>
+          </div>
+        </div>
+
         {/* About */}
         <div>
           <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">About</h3>
@@ -141,9 +215,22 @@ export default function SettingsPage() {
               <span className="text-sm text-zinc-600">1.0.0</span>
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Storage</span>
-              <span className="text-sm text-zinc-600">Supabase</span>
+              <span className="text-sm text-zinc-400">Contact</span>
+              <span className="text-sm text-zinc-600">support@drinkr.app</span>
             </div>
+          </div>
+        </div>
+
+        {/* Responsible Drinking */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Responsible Drinking</h3>
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Drinkr is for informational and social purposes only. It does not encourage excessive alcohol consumption. All drink counts and statistics are estimates and should not be used for medical or legal purposes.
+            </p>
+            <p className="text-xs text-zinc-500 leading-relaxed mt-2">
+              If you or someone you know needs help with alcohol use, contact the SAMHSA helpline at <span className="text-accent">1-800-662-4357</span> (free, confidential, 24/7).
+            </p>
           </div>
         </div>
 

@@ -13,12 +13,26 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
 
+const FEED_STALE_MS = 30_000;
+const FEED_PAGE_SIZE = 15;
+let _feedLastFetched = 0;
+
+const FEED_SELECT = `
+  *,
+  profile:profiles!feed_items_user_id_fkey(display_name, avatar_url),
+  feed_likes(id, user_id, created_at, liker:profiles!feed_likes_user_id_fkey(display_name)),
+  feed_comments(id, user_id, text, parent_comment_id, created_at, commenter:profiles!feed_comments_user_id_fkey(display_name, avatar_url), comment_likes(id, user_id, created_at))
+`;
+
 interface FeedState {
   items: FeedItem[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
 
-  fetchFeed: () => Promise<void>;
+  fetchFeed: (force?: boolean) => Promise<void>;
+  fetchMoreFeed: () => Promise<void>;
   addLike: (feedItemId: string, like: FeedLike) => Promise<void>;
   removeLike: (feedItemId: string, likeId: string) => Promise<void>;
   addComment: (feedItemId: string, comment: FeedComment, parentCommentId?: string | null) => Promise<void>;
@@ -151,24 +165,22 @@ function mapRow(row: FeedItemRow): FeedItem {
 export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   items: [],
   loading: true,
+  loadingMore: false,
+  hasMore: true,
   error: null,
 
-  fetchFeed: async () => {
+  fetchFeed: async (force) => {
+    if (!force && Date.now() - _feedLastFetched < FEED_STALE_MS) return;
+    _feedLastFetched = Date.now();
     // Only show loading skeleton on initial load, not refetches
     if (get().items.length === 0) set({ loading: true });
     set({ error: null });
 
     const { data, error } = await supabase
       .from('feed_items')
-      .select(
-        `
-        *,
-        profile:profiles!feed_items_user_id_fkey(display_name, avatar_url),
-        feed_likes(id, user_id, created_at, liker:profiles!feed_likes_user_id_fkey(display_name)),
-        feed_comments(id, user_id, text, parent_comment_id, created_at, commenter:profiles!feed_comments_user_id_fkey(display_name, avatar_url), comment_likes(id, user_id, created_at))
-      `
-      )
-      .order('created_at', { ascending: false });
+      .select(FEED_SELECT)
+      .order('created_at', { ascending: false })
+      .limit(FEED_PAGE_SIZE);
 
     if (error) {
       set({ loading: false, error: error.message });
@@ -176,7 +188,34 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }
 
     const items = (data as unknown as FeedItemRow[]).map(mapRow);
-    set({ items, loading: false });
+    set({ items, loading: false, hasMore: items.length === FEED_PAGE_SIZE });
+  },
+
+  fetchMoreFeed: async () => {
+    const { items, loadingMore, hasMore } = get();
+    if (loadingMore || !hasMore || items.length === 0) return;
+
+    set({ loadingMore: true });
+    const lastItem = items[items.length - 1];
+
+    const { data, error } = await supabase
+      .from('feed_items')
+      .select(FEED_SELECT)
+      .order('created_at', { ascending: false })
+      .lt('created_at', lastItem.createdAt)
+      .limit(FEED_PAGE_SIZE);
+
+    if (error) {
+      set({ loadingMore: false });
+      return;
+    }
+
+    const newItems = (data as unknown as FeedItemRow[]).map(mapRow);
+    set((state) => ({
+      items: [...state.items, ...newItems],
+      loadingMore: false,
+      hasMore: newItems.length === FEED_PAGE_SIZE,
+    }));
   },
 
   createFeedItemFromSession: async (session, user, caption) => {

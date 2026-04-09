@@ -1,35 +1,71 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { FeedCard } from '@/components/feed/feed-card';
+import { DrinkIcon } from '@/components/ui/drink-icon';
+import { SuggestedPeopleCarousel } from '@/components/feed/suggested-people-carousel';
 import { Avatar } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase/client';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { useModerationStore } from '@/stores/use-moderation-store';
 import { getMilestoneBadge } from '@/lib/milestones';
+import { hapticSelection } from '@/lib/haptics';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import PostDetailPage from './[id]/post-detail';
 import type { UserProfile } from '@/types';
+import type { FeedItem } from '@/types/feed';
 
 export default function FeedPage() {
+  return (
+    <Suspense>
+      <FeedPageInner />
+    </Suspense>
+  );
+}
+
+function FeedPageInner() {
+  const searchParams = useSearchParams();
+  const postId = searchParams.get('post');
+
+  if (postId) {
+    return <PostDetailPage postId={postId} />;
+  }
+
+  return <FeedPageList />;
+}
+
+function FeedPageList() {
   const router = useRouter();
-  const [tab, setTab] = useState<'home' | 'discover'>('home');
+  // Returning users (who follow anyone) land on Home; new users land on Discover.
+  // The following list is hydrated instantly from localStorage (Zustand persist),
+  // so this works before the feed items load.
+  const following = useAuthStore((s) => s.currentUser?.following || []);
+  const [tab, setTab] = useState<'home' | 'discover'>(following.length > 0 ? 'home' : 'discover');
   const items = useFeedStore((s) => s.items);
   const loading = useFeedStore((s) => s.loading);
+  const loadingMore = useFeedStore((s) => s.loadingMore);
+  const hasMore = useFeedStore((s) => s.hasMore);
+  const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
+  const fetchMoreFeed = useFeedStore((s) => s.fetchMoreFeed);
   const currentUser = useAuthStore((s) => s.currentUser);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
+  const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [searchFeedResults, setSearchFeedResults] = useState<FeedItem[]>([]);
   const [searching, setSearching] = useState(false);
   useEffect(() => {
-    fetchFeed();
-    fetchAllUsers();
+    fetchFeed(true);
+    fetchAllUsers(true);
     const refetch = () => { fetchFeed(); fetchAllUsers(); };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
@@ -39,6 +75,7 @@ export default function FeedPage() {
   useEffect(() => {
     if (!searchQuery.trim() || tab !== 'discover') {
       setSearchResults([]);
+      setSearchFeedResults([]);
       return;
     }
 
@@ -69,41 +106,89 @@ export default function FeedPage() {
           }))
         );
       }
+      // Also search posts client-side
+      const matchedPosts = items.filter((item) => {
+        const lq = q;
+        return (
+          item.userId !== currentUser?.id &&
+          (item.userName.toLowerCase().includes(lq) ||
+           item.caption.toLowerCase().includes(lq) ||
+           item.sessionSummary.venue.toLowerCase().includes(lq))
+        );
+      });
+      setSearchFeedResults(matchedPosts);
+
       setSearching(false);
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [searchQuery, tab, currentUser?.id]);
+  }, [searchQuery, tab, currentUser?.id, items]);
 
-  const followingIds = currentUser?.following || [];
+  const followingIds = following;
 
   const sorted = useMemo(() => {
     const followSet = new Set(followingIds);
+    const blockedSet = new Set(blockedUserIds);
     const uid = currentUser?.id;
     const filtered = tab === 'home'
-      ? items.filter((item) => followSet.has(item.userId) || item.userId === uid)
-      : items.filter((item) => !followSet.has(item.userId) && item.userId !== uid);
+      ? items.filter((item) => (followSet.has(item.userId) || item.userId === uid) && !blockedSet.has(item.userId))
+      : items.filter((item) => !followSet.has(item.userId) && item.userId !== uid && !blockedSet.has(item.userId));
     return [...filtered].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [items, followingIds, currentUser?.id, tab]);
+  }, [items, followingIds, currentUser?.id, tab, blockedUserIds]);
 
   const showSearchResults = tab === 'discover' && searchQuery.trim().length > 0;
 
-  // All other users (for discover with no search)
+  // Non-followed users for discover carousel
   const discoverUsers = useMemo(() => {
     if (!currentUser || tab !== 'discover') return [];
-    return allUsers.filter((u) => u.id !== currentUser.id);
-  }, [allUsers, currentUser, tab]);
+    const followSet = new Set(followingIds);
+    const blockedSet = new Set(blockedUserIds);
+    return allUsers.filter((u) => u.id !== currentUser.id && !followSet.has(u.id) && !blockedSet.has(u.id));
+  }, [allUsers, currentUser, tab, followingIds, blockedUserIds]);
+
+  // Infinite scroll observer
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const observerCallback = useCallback((entries: IntersectionObserverEntry[]) => {
+    if (entries[0]?.isIntersecting && hasMore && !loadingMore) {
+      fetchMoreFeed();
+    }
+  }, [hasMore, loadingMore, fetchMoreFeed]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(observerCallback, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [observerCallback]);
+
+  // Swipe between tabs
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    // Only trigger if horizontal swipe is dominant and > 60px
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0 && tab === 'home') { setTab('discover'); }
+      else if (dx > 0 && tab === 'discover') { setTab('home'); setSearchQuery(''); }
+    }
+    touchStart.current = null;
+  }, [tab]);
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-full" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <div className="px-5 pt-3 pb-0">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-extrabold tracking-tight">
-              hevy<span className="gradient-text">drinkr</span>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="px-5 pt-1 pb-0">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2">
+              <span className="gradient-text">Drinkr</span>
             </h1>
             <div className="flex items-center gap-1">
               {tab !== 'discover' && (
@@ -121,7 +206,7 @@ export default function FeedPage() {
             {(['home', 'discover'] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => { setTab(t); if (t === 'home') setSearchQuery(''); }}
+                onClick={() => { hapticSelection(); setTab(t); if (t === 'home') setSearchQuery(''); }}
                 className="relative flex-1 py-2.5 text-center text-sm font-medium capitalize"
               >
                 <span className={tab === t ? 'text-white' : 'text-zinc-600'}>{t}</span>
@@ -150,7 +235,7 @@ export default function FeedPage() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search people..."
+                placeholder="Search people & posts..."
                 autoFocus
                 className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
               />
@@ -167,93 +252,89 @@ export default function FeedPage() {
         )}
       </div>
 
-      <PullToRefresh onRefresh={fetchFeed}>
+      {feedError && <ErrorBanner message={feedError} onRetry={() => fetchFeed(true)} />}
+
+      <PullToRefresh onRefresh={async () => { await Promise.all([fetchFeed(true), fetchAllUsers(true)]); }}>
       {/* Discover: Search Results */}
       {showSearchResults && (
         <div className="px-4 py-3">
           {searching && (
             <p className="text-sm text-zinc-600 text-center py-4">Searching...</p>
           )}
-          {!searching && searchResults.length === 0 && searchQuery.trim().length > 0 && (
+          {!searching && searchResults.length === 0 && searchFeedResults.length === 0 && searchQuery.trim().length > 0 && (
             <div className="text-center py-8">
-              <p className="text-sm text-zinc-600">No users found</p>
+              <p className="text-sm text-zinc-600">No results found</p>
             </div>
           )}
           {!searching && searchResults.length > 0 && (
-            <div className="space-y-1.5">
-              {searchResults.map((user) => {
-                const isFollowing = followingIds.includes(user.id);
-                return (
-                  <div
-                    key={user.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] transition-colors"
-                  >
-                    <div onClick={() => router.push(`/profile/${user.id}`)} className="cursor-pointer">
-                      <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
-                    </div>
+            <>
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">People</p>
+              <div className="space-y-1.5">
+                {searchResults.map((user) => {
+                  const isFollowing = followingIds.includes(user.id);
+                  return (
                     <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => router.push(`/profile/${user.id}`)}
+                      key={user.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] transition-colors"
                     >
-                      <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                      <p className="text-[11px] text-zinc-600">@{user.username}</p>
+                      <div onClick={() => router.push(`/profile?user=${user.id}`)} className="cursor-pointer">
+                        <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
+                      </div>
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => router.push(`/profile?user=${user.id}`)}
+                      >
+                        <p className="text-sm font-semibold truncate">{user.displayName}</p>
+                        <p className="text-[11px] text-zinc-600">@{user.username}</p>
+                      </div>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => toggleFollow(user.id)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          isFollowing
+                            ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+                            : 'bg-accent text-black'
+                        }`}
+                      >
+                        {isFollowing ? 'Following' : 'Follow'}
+                      </motion.button>
                     </div>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => toggleFollow(user.id)}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        isFollowing
-                          ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                          : 'bg-accent text-black'
-                      }`}
-                    >
-                      {isFollowing ? 'Following' : 'Follow'}
-                    </motion.button>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {!searching && searchFeedResults.length > 0 && (
+            <>
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-4">Posts</p>
+              <div className="space-y-3">
+                {searchFeedResults.slice(0, 10).map((item) => (
+                  <FeedCard key={item.id} item={item} showFollowButton />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* Discover: All users (no search query) */}
+      {/* Discover: Suggested people carousel */}
       {tab === 'discover' && !showSearchResults && discoverUsers.length > 0 && (
-        <div className="px-4 pt-3 pb-1">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">People</p>
-          <div className="space-y-1.5">
-            {discoverUsers.map((user) => {
-              const isFollowing = followingIds.includes(user.id);
-              return (
-                <div
-                  key={user.id}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] transition-colors"
-                >
-                  <div onClick={() => router.push(`/profile/${user.id}`)} className="cursor-pointer">
-                    <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
-                  </div>
-                  <div
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => router.push(`/profile/${user.id}`)}
-                  >
-                    <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                    <p className="text-[11px] text-zinc-600">@{user.username}</p>
-                  </div>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => toggleFollow(user.id)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      isFollowing
-                        ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                        : 'bg-accent text-black'
-                    }`}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </motion.button>
-                </div>
-              );
-            })}
-          </div>
+        <div className="pt-3 pb-1">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-4">Suggested People</p>
+          <SuggestedPeopleCarousel
+            users={discoverUsers}
+            feedItems={items}
+            followingIds={followingIds}
+            onFollow={toggleFollow}
+            onViewProfile={(id) => router.push(`/profile?user=${id}`)}
+          />
+        </div>
+      )}
+
+      {/* Discover Posts header */}
+      {tab === 'discover' && !showSearchResults && sorted.length > 0 && (
+        <div className="px-4 pt-3">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Discover Posts</p>
         </div>
       )}
 
@@ -300,7 +381,7 @@ export default function FeedPage() {
               ))
             ) : sorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <span className="text-4xl mb-4">🍻</span>
+                <DrinkIcon category="beer" className="w-10 h-10 mb-4" />
                 <h3 className="text-base font-semibold text-zinc-400 mb-1">
                   {tab === 'home' ? 'No posts yet' : 'Nothing to discover'}
                 </h3>
@@ -319,16 +400,27 @@ export default function FeedPage() {
                 )}
               </div>
             ) : (
-              sorted.map((item, i) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03, duration: 0.2 }}
-                >
-                  <FeedCard item={item} milestone={getMilestoneBadge(item, items)} showFollowButton={tab === 'discover'} />
-                </motion.div>
-              ))
+              <>
+                {sorted.map((item, i) => (
+                  <div
+                    key={item.id}
+                    className={i < 5 ? 'animate-slide-up' : ''}
+                    style={i < 5 ? { animationDelay: `${i * 30}ms`, animationFillMode: 'both' } : undefined}
+                  >
+                    <FeedCard item={item} milestone={getMilestoneBadge(item, items)} showFollowButton={tab === 'discover'} />
+                  </div>
+                ))}
+                {/* Infinite scroll sentinel */}
+                <div ref={sentinelRef} className="h-1" />
+                {loadingMore && (
+                  <div className="flex justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-zinc-700 border-t-accent rounded-full animate-spin" />
+                  </div>
+                )}
+                {!hasMore && sorted.length > 0 && (
+                  <p className="text-center text-xs text-zinc-700 py-4">You&apos;re all caught up</p>
+                )}
+              </>
             )}
           </motion.div>
         </AnimatePresence>

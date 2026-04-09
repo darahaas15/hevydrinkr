@@ -13,12 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "hevydrinkr",
+  title: "Drinkr",
   description: "Track your party sessions like a pro",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "hevydrinkr",
+    title: "Drinkr",
   },
 };
 
@@ -29,6 +29,10 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: "#0a0a0f",
+  // Make the layout viewport shrink when the soft keyboard opens, so
+  // `position: fixed; bottom: 0` and `100dvh` follow the keyboard natively
+  // and in sync with the system animation. iOS Safari 16.4+ / Chrome 108+.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
@@ -60,8 +64,33 @@ function ServiceWorkerRegistrar() {
       dangerouslySetInnerHTML={{
         __html: `
           if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-              navigator.serviceWorker.register('/sw.js');
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                // Check for updates every 30 minutes
+                setInterval(function() { reg.update(); }, 30 * 60 * 1000);
+
+                // When a new SW is installed, prompt user to reload
+                reg.addEventListener('updatefound', function() {
+                  var newSW = reg.installing;
+                  if (!newSW) return;
+                  newSW.addEventListener('statechange', function() {
+                    if (newSW.state === 'activated' && navigator.serviceWorker.controller) {
+                      // New version available — show a non-intrusive banner
+                      var banner = document.createElement('div');
+                      banner.setAttribute('style',
+                        'position:fixed;top:0;left:0;right:0;z-index:9999;' +
+                        'background:linear-gradient(135deg,#14b8a6,#06b6d4);' +
+                        'color:#fff;text-align:center;padding:12px 16px;font-size:14px;' +
+                        'font-family:system-ui,sans-serif;cursor:pointer;' +
+                        'padding-top:calc(12px + env(safe-area-inset-top,0px))'
+                      );
+                      banner.textContent = 'A new version is available. Tap to update.';
+                      banner.onclick = function() { window.location.reload(); };
+                      document.body.appendChild(banner);
+                    }
+                  });
+                });
+              });
             });
           }
         `,
