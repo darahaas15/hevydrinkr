@@ -288,7 +288,7 @@ function LandingContent() {
 
             {error && <ErrorMsg message={error} />}
 
-            <div className="mt-auto pt-2 space-y-3">
+            <div className="pt-6 space-y-3">
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleLogin}
