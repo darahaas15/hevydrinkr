@@ -407,13 +407,8 @@ function SessionPageInner() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[55] flex items-center justify-center"
-            style={{
-              // Shrink the centering box by the keyboard height so the
-              // modal (and its caption textarea) stays visible above the
-              // keyboard. `--keyboard-height` is set by useKeyboardHeight.
-              paddingBottom: 'var(--keyboard-height, 0px)',
-              transition: 'padding-bottom 280ms cubic-bezier(0.17, 0.59, 0.4, 0.77)',
-            }}
+            // With `resizes-content`, the fixed inset-0 container already
+            // shrinks to the visible area above the keyboard.
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPostPreview(false)} />
             <motion.div

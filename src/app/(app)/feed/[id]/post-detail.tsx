@@ -207,7 +207,7 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
   })();
 
   return (
-    <div className="min-h-full" style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + var(--keyboard-height, 0px))' }}>
+    <div className="min-h-full" style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Header */}
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
@@ -460,13 +460,12 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
           className="comment-input-bar"
           style={{
             position: 'fixed',
-            bottom: 'var(--keyboard-height, 0px)',
+            bottom: 0,
             left: 0,
             right: 0,
             zIndex: 55,
             background: '#09090b',
             borderTop: '1px solid rgba(255,255,255,0.06)',
-            transition: 'bottom 280ms cubic-bezier(0.17, 0.59, 0.4, 0.77)',
           }}
         >
           {replyingTo && (

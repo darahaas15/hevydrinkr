@@ -3,13 +3,13 @@
 import { useEffect } from 'react';
 
 /**
- * Tracks the on-screen keyboard height and exposes it as the
- * `--keyboard-height` CSS custom property on `:root`.
+ * Detects the on-screen keyboard and toggles a `keyboard-open` class
+ * on the document root element.
  *
- * Uses the `visualViewport` API. With the viewport meta
- * `interactive-widget=resizes-content`, the layout viewport shrinks
- * when the keyboard opens, so `position: fixed; bottom: 0` and
- * `100dvh` follow the keyboard natively.
+ * With `interactive-widget=resizes-content` in the viewport meta, the
+ * layout viewport shrinks when the keyboard opens, so
+ * `position: fixed; bottom: 0` already sits above the keyboard.
+ * This hook only drives safe-area padding adjustments.
  *
  * Call this hook exactly once near the root of the app.
  */
@@ -18,26 +18,27 @@ export function useKeyboardHeight() {
     if (typeof window === 'undefined') return;
 
     const root = document.documentElement;
-    const setHeight = (h: number) => {
-      root.style.setProperty('--keyboard-height', `${Math.max(0, Math.round(h))}px`);
-    };
-    setHeight(0);
-
     const vv = window.visualViewport;
     if (!vv) return;
 
+    // Capture the full viewport height before the keyboard opens.
+    let fullHeight = vv.height;
+
     const update = () => {
-      const h = window.innerHeight - vv.height - vv.offsetTop;
-      setHeight(h);
+      // Update reference when viewport grows (orientation change, URL bar hide).
+      if (vv.height > fullHeight) fullHeight = vv.height;
+      // Keyboards are typically >150 px; browser-chrome changes are smaller.
+      root.classList.toggle('keyboard-open', fullHeight - vv.height > 150);
     };
+
+    // Only listen to resize — NOT scroll.  The scroll event fires during
+    // momentum scrolling and made the old --keyboard-height var jittery.
     vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
     update();
 
     return () => {
       vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-      setHeight(0);
+      root.classList.remove('keyboard-open');
     };
   }, []);
 }

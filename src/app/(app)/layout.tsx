@@ -29,8 +29,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchBlockedUsers = useModerationStore((s) => s.fetchBlockedUsers);
   const hideBottomNav = useUIStore((s) => s.hideBottomNav);
 
-  // Track on-screen keyboard height into the `--keyboard-height` CSS var
-  // so fixed input bars can slide up in lockstep with the keyboard.
+  // Toggle a `keyboard-open` class on <html> when the soft keyboard is
+  // visible, so fixed input bars can adjust safe-area padding.
   useKeyboardHeight();
 
   useEffect(() => {

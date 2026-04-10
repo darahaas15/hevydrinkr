@@ -77,21 +77,18 @@ body {
 }
 
 /* ── Comment input bar ─────────────────────── */
-/* The bar slides above the on-screen keyboard via the `--keyboard-height`
-   CSS variable that `useKeyboardHeight` updates from
-   the `visualViewport` API.
-   The `bottom` transition is set inline alongside the var read.
-   When the keyboard is up, its height already covers the home-indicator
-   safe area, so we cancel the bar's own safe-area padding to avoid an
-   extra gap between the bar and the keyboard. */
+/* With `interactive-widget: resizes-content`, `position: fixed; bottom: 0`
+   already sits above the on-screen keyboard natively.
+   The `keyboard-open` class on <html> (toggled by useKeyboardHeight)
+   zeroes out the safe-area padding so the bar hugs the keyboard. */
 
 .comment-input-bar {
-  padding-bottom: max(
-    0px,
-    calc(env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px))
-  );
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   overflow: visible;
-  transition: padding-bottom 280ms cubic-bezier(0.17, 0.59, 0.4, 0.77);
+}
+
+:root.keyboard-open .comment-input-bar {
+  padding-bottom: 0;
 }
 
 /* ── Cards ──────────────────────────────────── */
