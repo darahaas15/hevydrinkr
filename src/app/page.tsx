@@ -271,18 +271,7 @@ function LandingContent() {
               <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={email} onChange={setEmail} placeholder="Email" />
               <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (6+ chars)" onSubmit={handleSignup} />
 
-              <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <input
-                  type="date"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white focus:outline-none focus:border-accent/30 transition-colors [color-scheme:dark]"
-                />
-              </div>
+              <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
               <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Date of birth (must be 18+)</p>
 
               {/* Gender */}
@@ -414,16 +403,16 @@ function LandingContent() {
   );
 }
 
-function AuthInput({ icon, type = 'text', value, onChange, placeholder, onSubmit }: {
-  icon: React.ReactNode; type?: string; value: string; onChange: (v: string) => void; placeholder: string; onSubmit?: () => void;
+function AuthInput({ icon, type = 'text', value, onChange, placeholder, onSubmit, max }: {
+  icon: React.ReactNode; type?: string; value: string; onChange: (v: string) => void; placeholder: string; onSubmit?: () => void; max?: string;
 }) {
   return (
     <div className="relative group">
       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">{icon}</div>
       <input
-        type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} max={max}
         onKeyDown={onSubmit ? (e) => e.key === 'Enter' && onSubmit() : undefined}
-        className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/30 transition-colors"
+        className={`w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/30 transition-colors${type === 'date' ? ' [color-scheme:dark] appearance-none' : ''}`}
       />
     </div>
   );
