@@ -18,7 +18,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[51] safe-bottom pointer-events-none" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) - 14px)' }}>
+    <div className="fixed bottom-0 left-0 right-0 z-[51] safe-bottom pointer-events-none" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
       <div className="max-w-lg mx-auto px-3 flex flex-col gap-1.5">
         <AnimatePresence mode="popLayout">
           {toasts.map((toast) => {

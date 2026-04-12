@@ -17,14 +17,21 @@ export async function initPushNotifications(userId: string) {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
 
-    if (!sub && Notification.permission === 'granted') {
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) return;
+    if (!sub) {
+      // Prompt for permission if not yet decided
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
 
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
+      if (Notification.permission === 'granted') {
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) return;
+
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+      }
     }
 
     if (sub) {
