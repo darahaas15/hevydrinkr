@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Loader2, User, Mail, Lock, Calendar, AtSign } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Loader2, User, Mail, Lock, Calendar, AtSign, Share, Plus, MoreVertical, Download } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { SplashScreen } from '@/components/ui/splash-screen';
@@ -41,6 +41,38 @@ function LandingContent() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // PWA install gate
+  const [isStandalone, setIsStandalone] = useState(true); // default true to avoid flash
+  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
+  const [canInstallNative, setCanInstallNative] = useState(false);
+
+  useEffect(() => {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+    setIsStandalone(standalone);
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      deferredPromptRef.current = e as BeforeInstallPromptEvent;
+      setCanInstallNative(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPromptRef.current) {
+      deferredPromptRef.current.prompt();
+      const result = await deferredPromptRef.current.userChoice;
+      if (result.outcome === 'accepted') {
+        setIsStandalone(true);
+      }
+      deferredPromptRef.current = null;
+      setCanInstallNative(false);
+    }
+  };
+
   useEffect(() => {
     migrateStorageKeys();
     initialize();
@@ -54,6 +86,11 @@ function LandingContent() {
 
   if (isLoading || isAuthenticated) {
     return <SplashScreen />;
+  }
+
+  // Show install gate when not running as installed PWA
+  if (!isStandalone) {
+    return <InstallGate canInstallNative={canInstallNative} onInstall={handleInstallClick} />;
   }
 
   const handleSignup = async () => {
@@ -333,5 +370,116 @@ function ErrorMsg({ message }: { message: string }) {
     <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-400 mb-4 px-1">
       {message}
     </motion.p>
+  );
+}
+
+// ─── PWA Install Gate ───────────────────────────────────────────────────────
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolean; onInstall: () => void }) {
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  return (
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: '#06060a' }}>
+      {/* Ambient blurs */}
+      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />
+
+      <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-8 flex-1 safe-top safe-bottom">
+        <div className="flex-1 min-h-[14vh]" />
+
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-6"
+        >
+          <Logo size={56} />
+        </motion.div>
+
+        {/* Title */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="text-[36px] font-extrabold tracking-tight leading-none mb-3"
+        >
+          <span className="gradient-text">Get Drinkr</span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-[15px] text-zinc-500 text-center leading-relaxed mb-10"
+        >
+          Install the app for the full experience
+        </motion.p>
+
+        {/* Install instructions */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="w-full"
+        >
+          {canInstallNative ? (
+            /* Android / Chrome — native install prompt */
+            <button
+              onClick={onInstall}
+              className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 text-black active:scale-[0.98] transition-transform"
+              style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
+            >
+              <Download className="w-[18px] h-[18px]" />
+              Install App
+            </button>
+          ) : isIOS ? (
+            /* iOS Safari — manual instructions */
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 space-y-4">
+              <p className="text-sm font-medium text-zinc-300 text-center mb-4">Add to your Home Screen</p>
+              <Step number={1} icon={<Share className="w-4 h-4" />} text="Tap the Share button in Safari" />
+              <Step number={2} icon={<Plus className="w-4 h-4" />} text='Scroll down and tap "Add to Home Screen"' />
+              <Step number={3} text="Tap Add to confirm" />
+            </div>
+          ) : (
+            /* Other browsers — generic instructions */
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 space-y-4">
+              <p className="text-sm font-medium text-zinc-300 text-center mb-4">Install from your browser</p>
+              <Step number={1} icon={<MoreVertical className="w-4 h-4" />} text="Tap the menu button in your browser" />
+              <Step number={2} icon={<Download className="w-4 h-4" />} text='Tap "Install app" or "Add to Home Screen"' />
+            </div>
+          )}
+        </motion.div>
+
+        <div className="flex-1 min-h-[10vh]" />
+
+        {/* Disclaimer */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-[10px] text-zinc-700 text-center max-w-[280px] leading-relaxed pb-6"
+        >
+          For adults 18+ only. Drink responsibly.
+        </motion.p>
+      </div>
+    </div>
+  );
+}
+
+function Step({ number, icon, text }: { number: number; icon?: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-7 h-7 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
+        <span className="text-xs font-bold text-accent">{number}</span>
+      </div>
+      {icon && <div className="text-zinc-400">{icon}</div>}
+      <p className="text-sm text-zinc-400">{text}</p>
+    </div>
   );
 }
