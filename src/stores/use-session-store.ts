@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
 import { supabase } from '@/lib/supabase/client';
-import { scheduleSessionReminder, cancelSessionReminder } from '@/lib/local-notifications';
 
 interface SessionState {
   activeSession: DrinkSession | null;
@@ -234,9 +233,6 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     // Optimistic update
     set({ activeSession: session });
 
-    // Schedule local notification reminder at 2 hours
-    scheduleSessionReminder(session.startedAt);
-
     // Persist to Supabase, then reconcile the id.
     // Store the promise per session so addDrink can await it before inserting
     // drink_entries (otherwise the FK on session_id fails).
@@ -299,9 +295,6 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       sessionHistory: [completedSession, ...sessionHistory],
     });
 
-    // Cancel the 2-hour session reminder
-    cancelSessionReminder();
-
     // Sync to Supabase
     supabase
       .from('drink_sessions')
@@ -332,9 +325,6 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     // Clear local state — don't add to history
     set({ activeSession: null });
-
-    // Cancel the 2-hour session reminder
-    cancelSessionReminder();
 
     // Delete from Supabase entirely (cascades to drink_entries, photos, etc.)
     supabase

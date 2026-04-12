@@ -61,6 +61,7 @@ img {
 
 html {
   height: 100%;
+  height: -webkit-fill-available;
   overflow: hidden;
   touch-action: manipulation; /* eliminate 300ms tap delay */
   background: var(--background);
@@ -71,6 +72,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   height: 100%;
+  height: -webkit-fill-available;
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
