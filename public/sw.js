@@ -149,6 +149,8 @@ self.addEventListener('notificationclick', (event) => {
     path = `/profile?user=${data.actorId}`;
   } else if ((data.type === 'group_join' || data.type === 'challenge_created') && data.groupId) {
     path = `/groups?id=${data.groupId}`;
+  } else if (data.type === 'still_drinking') {
+    path = '/session';
   }
 
   event.waitUntil(
