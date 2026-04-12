@@ -99,6 +99,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => { supabase.removeChannel(channel); };
   }, [currentUser?.id]);
 
+  // Supabase Realtime — update unread badge when new notifications arrive
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => {
+          useNotificationStore.getState().fetchNotifications(currentUser.id);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUser?.id]);
+
   // Show spinner only on very first load (no cached auth data).
   // With persist, isAuthenticated is hydrated from localStorage instantly.
   if (!isAuthenticated && isLoading) {

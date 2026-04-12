@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+import { Search, X, Bell } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -13,6 +13,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabase/client';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useModerationStore } from '@/stores/use-moderation-store';
+import { useNotificationStore } from '@/stores/use-notification-store';
 import { getMilestoneBadge } from '@/lib/milestones';
 import { hapticSelection } from '@/lib/haptics';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -58,6 +59,7 @@ function FeedPageList() {
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
@@ -190,7 +192,16 @@ function FeedPageList() {
             <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2">
               <span className="gradient-text">Drinkr</span>
             </h1>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => router.push('/notifications')}
+                className="relative p-2 rounded-xl hover:bg-white/5"
+              >
+                <Bell className="w-5 h-5 text-zinc-500" />
+                {unreadCount > 0 && (
+                  <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
+                )}
+              </button>
               {tab !== 'discover' && (
                 <button
                   onClick={() => setTab('discover')}

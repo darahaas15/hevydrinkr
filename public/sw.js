@@ -143,7 +143,7 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data || {};
   let path = '/feed';
 
-  if (data.type === 'like' || data.type === 'comment' || data.type === 'reply') {
+  if (data.type === 'like' || data.type === 'comment' || data.type === 'reply' || data.type === 'comment_like' || data.type === 'mention') {
     if (data.feedItemId) path = `/feed?post=${data.feedItemId}`;
   } else if (data.type === 'follow' && data.actorId) {
     path = `/profile?user=${data.actorId}`;

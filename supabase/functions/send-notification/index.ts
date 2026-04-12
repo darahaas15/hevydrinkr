@@ -29,8 +29,10 @@ const supabase = createClient(
 // Map notification type → preference column
 const PREF_MAP: Record<string, string> = {
   like: 'likes_enabled',
+  comment_like: 'likes_enabled',
   comment: 'comments_enabled',
   reply: 'comments_enabled',
+  mention: 'comments_enabled',
   follow: 'follows_enabled',
   group_join: 'group_joins_enabled',
   challenge_created: 'challenges_enabled',

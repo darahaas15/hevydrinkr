@@ -10,6 +10,9 @@ export interface Notification {
   data: Record<string, unknown>;
   read: boolean;
   createdAt: string;
+  actorId: string | null;
+  actorDisplayName: string | null;
+  actorAvatarUrl: string | null;
 }
 
 export interface NotificationPreferences {
@@ -65,15 +68,34 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
       return;
     }
 
-    const notifications: Notification[] = (data ?? []).map((row) => ({
-      id: row.id,
-      type: row.type,
-      title: row.title,
-      body: row.body,
-      data: row.data ?? {},
-      read: row.read,
-      createdAt: row.created_at,
-    }));
+    // Batch-fetch actor profiles
+    const actorIds = [...new Set((data ?? []).map((r) => r.actor_id).filter(Boolean))] as string[];
+    const actorMap = new Map<string, { display_name: string; avatar_url: string | null }>();
+    if (actorIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .in('id', actorIds);
+      for (const p of profiles ?? []) {
+        actorMap.set(p.id, p);
+      }
+    }
+
+    const notifications: Notification[] = (data ?? []).map((row) => {
+      const actor = row.actor_id ? actorMap.get(row.actor_id) : null;
+      return {
+        id: row.id,
+        type: row.type,
+        title: row.title,
+        body: row.body,
+        data: row.data ?? {},
+        read: row.read,
+        createdAt: row.created_at,
+        actorId: row.actor_id ?? null,
+        actorDisplayName: actor?.display_name ?? null,
+        actorAvatarUrl: actor?.avatar_url ?? null,
+      };
+    });
 
     set({
       notifications,

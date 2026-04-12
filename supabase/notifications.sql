@@ -135,6 +135,8 @@ DECLARE
   v_post_owner uuid;
   v_parent_author uuid;
   v_name text;
+  v_mention text;
+  v_mentioned_id uuid;
 BEGIN
   SELECT user_id INTO v_post_owner FROM feed_items WHERE id = NEW.feed_item_id;
   v_name := get_display_name(NEW.user_id);
@@ -155,6 +157,25 @@ BEGIN
               jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.parent_comment_id));
     END IF;
   END IF;
+
+  -- Notify @mentioned users (skip self, post owner, and parent author already notified above)
+  FOR v_mention IN
+    SELECT (regexp_matches(NEW.text, '@([A-Za-z0-9_.]+)', 'g'))[1]
+  LOOP
+    SELECT id INTO v_mentioned_id FROM profiles
+      WHERE lower(display_name) = lower(v_mention) LIMIT 1;
+
+    IF v_mentioned_id IS NOT NULL
+       AND v_mentioned_id IS DISTINCT FROM NEW.user_id
+       AND v_mentioned_id IS DISTINCT FROM v_post_owner
+       AND (v_parent_author IS NULL OR v_mentioned_id IS DISTINCT FROM v_parent_author)
+    THEN
+      INSERT INTO notifications (user_id, actor_id, type, title, body, data)
+      VALUES (v_mentioned_id, NEW.user_id, 'mention', 'You were mentioned',
+              v_name || ' mentioned you in a comment',
+              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id));
+    END IF;
+  END LOOP;
 
   RETURN NEW;
 END;
@@ -230,3 +251,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER trg_challenge_notify
   AFTER INSERT ON challenges
   FOR EACH ROW EXECUTE FUNCTION on_challenge_created();
+
+-- ── Trigger: comment liked ──
+CREATE OR REPLACE FUNCTION on_comment_like_inserted()
+RETURNS trigger AS $$
+DECLARE
+  v_comment_author uuid;
+  v_feed_item_id uuid;
+  v_name text;
+BEGIN
+  SELECT user_id, feed_item_id INTO v_comment_author, v_feed_item_id
+    FROM feed_comments WHERE id = NEW.comment_id;
+  IF v_comment_author = NEW.user_id THEN RETURN NEW; END IF;
+
+  v_name := get_display_name(NEW.user_id);
+  INSERT INTO notifications (user_id, actor_id, type, title, body, data)
+  VALUES (v_comment_author, NEW.user_id, 'comment_like', 'Comment Liked',
+          v_name || ' liked your comment',
+          jsonb_build_object('feedItemId', v_feed_item_id, 'commentId', NEW.comment_id));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_comment_like_notify
+  AFTER INSERT ON comment_likes
+  FOR EACH ROW EXECUTE FUNCTION on_comment_like_inserted();
