@@ -50,7 +50,7 @@ export default function RootLayout({
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
       </head>
-      <body className="bg-background text-foreground h-dvh overflow-hidden antialiased">
+      <body className="bg-background text-foreground antialiased">
         {children}
         <ServiceWorkerRegistrar />
       </body>

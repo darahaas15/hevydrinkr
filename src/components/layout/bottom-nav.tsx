@@ -76,13 +76,6 @@ export function BottomNav() {
         </button>
       )}
 
-      {/* iOS PWA: solid fill below nav to cover home indicator gap */}
-      <div
-        aria-hidden="true"
-        className="absolute left-0 right-0 bottom-0 pointer-events-none"
-        style={{ height: '100px', transform: 'translateY(100%)', background: '#09090b' }}
-      />
-
       {/* Tab bar */}
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map((tab) => {

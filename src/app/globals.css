@@ -60,7 +60,9 @@ img {
 }
 
 html {
-  min-height: 100%;
+  /* calc compensates for black-translucent shifting the document up behind
+     the status bar, which otherwise leaves an equal gap at the bottom. */
+  min-height: calc(100% + env(safe-area-inset-top));
   touch-action: manipulation; /* eliminate 300ms tap delay */
   background: #09090b;
   overscroll-behavior: none;
@@ -70,8 +72,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
