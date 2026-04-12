@@ -51,12 +51,6 @@ export function BottomNav() {
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      {/* Solid fill for iOS safe area — avoids backdrop-filter rendering glitches */}
-      <div
-        aria-hidden="true"
-        className="absolute bottom-0 left-0 right-0"
-        style={{ height: 'env(safe-area-inset-bottom, 0px)', background: '#09090b' }}
-      />
       {/* Live session banner — integrated into nav */}
       {showBanner && (
         <button

@@ -131,7 +131,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="h-full flex flex-col" style={{ background: '#09090b' }}>
+    <div className="h-dvh flex flex-col" style={{ background: '#09090b' }}>
       <main className={`relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${hideBottomNav ? '' : 'pb-20'}`}>
         <div className="max-w-lg mx-auto w-full">
           {children}

@@ -37,8 +37,6 @@ const PREF_MAP: Record<string, string> = {
   group_join: 'group_joins_enabled',
   challenge_created: 'challenges_enabled',
   challenge_ending: 'challenges_enabled',
-  still_drinking: 'session_reminders_enabled',
-  weekly_summary: 'session_reminders_enabled',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
