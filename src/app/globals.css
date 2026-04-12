@@ -64,6 +64,9 @@ html {
   overflow: hidden;
   touch-action: manipulation; /* eliminate 300ms tap delay */
   background: var(--background);
+  /* Ensure background fills the entire screen on iOS PWA, including
+     any area beyond the CSS viewport (home indicator region). */
+  background-color: #09090b;
 }
 
 body {
