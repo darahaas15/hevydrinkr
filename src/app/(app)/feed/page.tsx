@@ -170,6 +170,11 @@ function FeedPageList() {
   // Swipe between tabs
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Don't capture touches originating inside a horizontal carousel
+    if ((e.target as HTMLElement).closest('.snap-x')) {
+      touchStart.current = null;
+      return;
+    }
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, []);
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {

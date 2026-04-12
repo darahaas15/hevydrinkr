@@ -267,7 +267,7 @@ nav.fixed {
 /* ── Touch: carousel scroll locking ────────── */
 
 .snap-x {
-  touch-action: pan-x pinch-zoom;
+  touch-action: manipulation;
   overscroll-behavior-x: contain;
 }
 

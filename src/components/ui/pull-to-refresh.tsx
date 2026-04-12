@@ -18,6 +18,8 @@ export function PullToRefresh({
 }: PullToRefreshProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef<number | null>(null);
+  const startXRef = useRef<number | null>(null);
+  const directionLocked = useRef<'vertical' | 'horizontal' | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -29,6 +31,8 @@ export function PullToRefresh({
       const container = containerRef.current;
       if (!container || container.scrollTop > 0) return;
       startYRef.current = e.touches[0].clientY;
+      startXRef.current = e.touches[0].clientX;
+      directionLocked.current = null;
     },
     [refreshing]
   );
@@ -42,9 +46,23 @@ export function PullToRefresh({
       // If the container has scrolled down, cancel the pull gesture
       if (container.scrollTop > 0) {
         startYRef.current = null;
+        startXRef.current = null;
+        directionLocked.current = null;
         setPullDistance(0);
         return;
       }
+
+      // Lock scroll direction after enough movement to distinguish intent
+      if (!directionLocked.current && startXRef.current !== null) {
+        const dx = Math.abs(e.touches[0].clientX - startXRef.current);
+        const dy = Math.abs(e.touches[0].clientY - startYRef.current);
+        if (dx > 8 || dy > 8) {
+          directionLocked.current = dx > dy ? 'horizontal' : 'vertical';
+        }
+      }
+
+      // Don't engage pull-to-refresh on horizontal gestures (e.g. carousels)
+      if (directionLocked.current === 'horizontal') return;
 
       const delta = e.touches[0].clientY - startYRef.current;
       if (delta > 0) {
@@ -62,6 +80,8 @@ export function PullToRefresh({
   const handleTouchEnd = useCallback(async () => {
     if (refreshing) return;
     startYRef.current = null;
+    startXRef.current = null;
+    directionLocked.current = null;
 
     if (isPastThreshold) {
       setRefreshing(true);
