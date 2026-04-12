@@ -279,11 +279,11 @@ function LandingContent() {
                   type="date"
                   value={dob}
                   onChange={(e) => setDob(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white focus:outline-none focus:border-accent/30 transition-colors [color-scheme:dark]"
                 />
               </div>
-              <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Must be 18 or older</p>
+              <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Date of birth (must be 18+)</p>
 
               {/* Gender */}
               <div>
