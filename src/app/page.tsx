@@ -271,7 +271,7 @@ function LandingContent() {
               <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={email} onChange={setEmail} placeholder="Email" />
               <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (6+ chars)" onSubmit={handleSignup} />
 
-              <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
+              <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} placeholder="Date of birth" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
               <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Date of birth (must be 18+)</p>
 
               {/* Gender */}
