@@ -28,7 +28,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0a0a0f",
+  themeColor: "#09090b",
   // Make the layout viewport shrink when the soft keyboard opens, so
   // `position: fixed; bottom: 0` and `100dvh` follow the keyboard natively
   // and in sync with the system animation. iOS Safari 16.4+ / Chrome 108+.

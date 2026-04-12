@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, AtSign, UserPlus, Users, Swords, Bell, CheckCheck } from 'lucide-react';
-import Header from '@/components/layout/header';
+import { Heart, MessageCircle, AtSign, UserPlus, Users, Swords, Bell, CheckCheck, ChevronLeft } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { useNotificationStore, Notification } from '@/stores/use-notification-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -55,22 +54,31 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-full">
-      <Header
-        title="Notifications"
-        showBack
-        rightAction={
-          unreadCount > 0 ? (
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center justify-between h-14 px-4">
+          <div className="w-10 flex items-center">
             <button
-              onClick={() => currentUser?.id && markAllAsRead(currentUser.id)}
-              className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
+              onClick={() => router.back()}
+              className="p-2 -ml-2 text-zinc-400 hover:text-white active:text-white transition-colors"
             >
-              <CheckCheck size={20} className="text-zinc-400" />
+              <ChevronLeft size={24} />
             </button>
-          ) : undefined
-        }
-      />
+          </div>
+          <h1 className="text-base font-semibold text-white">Notifications</h1>
+          <div className="w-10 flex items-center justify-end">
+            {unreadCount > 0 && (
+              <button
+                onClick={() => currentUser?.id && markAllAsRead(currentUser.id)}
+                className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
+              >
+                <CheckCheck size={20} className="text-zinc-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
-      <div className="pt-14 safe-top">
+      <div>
         {loading && notifications.length === 0 ? (
           <div className="px-4 py-4 space-y-1.5">
             {Array.from({ length: 8 }).map((_, i) => (

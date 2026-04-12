@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { useModerationStore } from '@/stores/use-moderation-store';
-import { initPushNotifications } from '@/lib/push-notifications';
+import { initPushNotifications, requestWebPushPermission } from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase/client';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { useUIStore } from '@/stores/use-ui-store';
@@ -28,6 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchPreferences = useNotificationStore((s) => s.fetchPreferences);
   const fetchBlockedUsers = useModerationStore((s) => s.fetchBlockedUsers);
   const hideBottomNav = useUIStore((s) => s.hideBottomNav);
+  const [showNotifBanner, setShowNotifBanner] = useState(false);
 
   // Toggle a `keyboard-open` class on <html> when the soft keyboard is
   // visible, so fixed input bars can adjust safe-area padding.
@@ -44,6 +45,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       fetchNotifications(currentUser.id);
       fetchPreferences(currentUser.id);
       fetchBlockedUsers(currentUser.id);
+
+      // Show notification permission banner if not yet decided
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        setShowNotifBanner(true);
+      }
     }
   }, [currentUser?.id, fetchNotifications, fetchPreferences, fetchBlockedUsers]);
 
@@ -131,6 +137,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+      {showNotifBanner && currentUser?.id && (
+        <div className="fixed top-0 left-0 right-0 z-[60] safe-top" style={{ background: 'linear-gradient(135deg, #14b8a6, #06b6d4)' }}>
+          <div className="px-4 py-3 flex items-center gap-3">
+            <p className="text-sm font-medium text-black flex-1">Enable notifications to know when friends interact with your posts</p>
+            <button
+              onClick={async () => {
+                await requestWebPushPermission(currentUser.id);
+                setShowNotifBanner(false);
+              }}
+              className="px-4 py-1.5 rounded-full bg-black/20 text-xs font-semibold text-white shrink-0 active:bg-black/30"
+            >
+              Enable
+            </button>
+            <button
+              onClick={() => setShowNotifBanner(false)}
+              className="text-black/60 text-lg font-bold leading-none px-1"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
       <BottomNav />
       <CelebrationModal />
       <ToastContainer />
