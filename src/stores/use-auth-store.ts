@@ -79,15 +79,11 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   },
 
   signup: async (email, password, username, displayName, gender, weightKg, heightCm) => {
-    // Check username availability
+    // Check username availability (uses RPC to bypass RLS for anon users)
     const sanitized = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', sanitized)
-      .maybeSingle();
+    const { data: taken } = await supabase.rpc('is_username_taken', { p_username: sanitized });
 
-    if (existing) return 'Username already taken';
+    if (taken) return 'Username already taken';
 
     const { data, error } = await supabase.auth.signUp({
       email,
