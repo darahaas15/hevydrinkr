@@ -338,26 +338,28 @@ function SessionPageInner() {
               <p className="text-[10px] text-zinc-600">volume</p>
             </div>
           </div>
-          <div className="flex gap-3">
-            {drinksPerHour > 0 && (
+          {activeSession.drinks.length > 0 && (
+            <div className="flex gap-3">
+              {drinksPerHour > 0 && (
+                <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+                  <p className="text-sm font-bold">{drinksPerHour.toFixed(1)}<span className="text-[10px] text-zinc-500 font-normal">/hr</span></p>
+                  <p className="text-[10px] text-zinc-600">Pace</p>
+                </div>
+              )}
+              {avgDrinksPerSession > 0 && (
+                <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+                  <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent' : drinkDiff < 0 ? 'text-zinc-400' : 'text-zinc-300'}`}>
+                    {drinkDiff > 0 ? '+' : ''}{drinkDiff.toFixed(0)}
+                  </p>
+                  <p className="text-[10px] text-zinc-600">vs your avg</p>
+                </div>
+              )}
               <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-                <p className="text-sm font-bold">{drinksPerHour.toFixed(1)}<span className="text-[10px] text-zinc-500 font-normal">/hr</span></p>
-                <p className="text-[10px] text-zinc-600">Pace</p>
+                <p className="text-sm font-bold">{new Set(activeSession.drinks.map(d => d.drinkDefinitionId)).size}</p>
+                <p className="text-[10px] text-zinc-600">Types</p>
               </div>
-            )}
-            {avgDrinksPerSession > 0 && (
-              <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-                <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent' : drinkDiff < 0 ? 'text-zinc-400' : 'text-zinc-300'}`}>
-                  {drinkDiff > 0 ? '+' : ''}{drinkDiff.toFixed(0)}
-                </p>
-                <p className="text-[10px] text-zinc-600">vs your avg</p>
-              </div>
-            )}
-            <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-              <p className="text-sm font-bold">{new Set(activeSession.drinks.map(d => d.drinkDefinitionId)).size}</p>
-              <p className="text-[10px] text-zinc-600">Types</p>
             </div>
-          </div>
+          )}
         </div>
 
         <DrinkList drinks={activeSession.drinks} onRemove={removeDrink} />
@@ -374,10 +376,16 @@ function SessionPageInner() {
 
       {/* FAB */}
       <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.15 }}
         whileTap={{ scale: 0.92 }}
         onClick={() => setShowPicker(true)}
-        className="fixed bottom-24 w-14 h-14 rounded-2xl bg-accent flex items-center justify-center z-30 shadow-[0_4px_24px_rgba(20,184,166,0.25)]"
-        style={{ right: 'max(1.25rem, calc(50% - 240px + 1.25rem))' }}
+        className="fixed w-14 h-14 rounded-2xl bg-accent flex items-center justify-center z-30 shadow-[0_4px_24px_rgba(20,184,166,0.35)]"
+        style={{
+          bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+          right: 'max(1.25rem, calc(50% - 240px + 1.25rem))',
+        }}
       >
         <Plus className="w-6 h-6 text-black" />
       </motion.button>
