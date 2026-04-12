@@ -54,10 +54,11 @@ export function DrinkList({ drinks, onRemove }: DrinkListProps) {
                   {drink.abvPercent}% · {drink.volumeMl}ml · {drink.standardDrinks} std
                 </p>
               </div>
-              <span className="text-xs text-zinc-600 shrink-0">{time}</span>
+              <span className="text-xs text-zinc-500 shrink-0">{time}</span>
               <motion.button
                 whileTap={{ scale: 0.8 }}
                 onClick={() => onRemove(drink.id)}
+                aria-label={`Remove ${drink.drinkName}`}
                 className="p-2.5 -mr-1 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
               >
                 <X className="w-4 h-4 text-zinc-600" />

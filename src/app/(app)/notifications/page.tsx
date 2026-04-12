@@ -63,6 +63,7 @@ export default function NotificationsPage() {
           <div className="w-10 flex items-center">
             <button
               onClick={() => router.back()}
+              aria-label="Back"
               className="p-2 -ml-2 text-zinc-400 hover:text-white active:text-white transition-colors"
             >
               <ChevronLeft size={24} />
@@ -75,7 +76,7 @@ export default function NotificationsPage() {
                 onClick={() => currentUser?.id && markAllAsRead(currentUser.id)}
                 className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/10 transition-colors"
               >
-                <CheckCheck size={20} className="text-zinc-400" />
+                <CheckCheck size={20} className="text-zinc-400" aria-label="Mark all as read" />
               </button>
             )}
           </div>
@@ -134,7 +135,7 @@ export default function NotificationsPage() {
                     <p className={`text-sm leading-snug ${n.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
                       {n.body}
                     </p>
-                    <p className="text-[11px] text-zinc-600 mt-0.5">
+                    <p className="text-[11px] text-zinc-500 mt-0.5">
                       {formatTimeAgo(n.createdAt)}
                     </p>
                   </div>

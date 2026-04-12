@@ -128,6 +128,7 @@ function GroupsPageList() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowJoin(true)}
+              aria-label="Join group"
               className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]"
             >
               <Link2 className="w-5 h-5 text-zinc-400" />
@@ -135,6 +136,7 @@ function GroupsPageList() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowCreate(true)}
+              aria-label="Create group"
               className="p-2.5 rounded-xl bg-accent"
             >
               <Plus className="w-5 h-5 text-black" />
@@ -260,7 +262,7 @@ function GroupsPageList() {
               exit={{ y: 100, opacity: 0 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
             >
-              <h2 className="text-xl font-bold text-accent font-extrabold">Join Group</h2>
+              <h2 className="text-lg font-bold">Join Group</h2>
 
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />

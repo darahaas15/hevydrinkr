@@ -15,6 +15,7 @@ import { useUIStore } from '@/stores/use-ui-store';
 import { useModerationStore } from '@/stores/use-moderation-store';
 import { ReportModal } from '@/components/moderation/report-modal';
 import { getBaseUrl, shareLink } from '@/lib/share';
+import { hapticLight } from '@/lib/haptics';
 
 export default function UserProfilePage({ params, userId: userIdProp }: { params?: Promise<{ userId: string }>; userId?: string }) {
   const resolvedUserId = userIdProp || (params ? use(params).userId : '');
@@ -119,7 +120,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
       {/* Header */}
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.push('/feed')} className="p-2 -ml-2 active:text-white">
+          <button onClick={() => router.push('/feed')} aria-label="Back" className="p-2 -ml-2 active:text-white">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
           <h1 className="text-lg font-bold truncate flex-1">{user.displayName}</h1>
@@ -128,6 +129,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
               const result = await shareLink(`${getBaseUrl()}/profile/${resolvedUserId}`, `${user.displayName} on Drinkr`);
               if (result === 'copied') addToast('Link copied!', 'success');
             }}
+            aria-label="Share profile"
             className="p-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
           >
             <Share2 className="w-5 h-5 text-zinc-500" />
@@ -135,6 +137,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
           <div className="relative">
             <button
               onClick={() => setShowMoreMenu((v) => !v)}
+              aria-label="More options"
               className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
             >
               <MoreHorizontal className="w-5 h-5 text-zinc-500" />
@@ -183,10 +186,10 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
         {/* User info */}
         <div className="flex items-center gap-4">
           <Avatar name={user.displayName} size="xl" src={user.avatarUrl} />
-          <div className="flex-1">
-            <h2 className="text-xl font-extrabold">{user.displayName}</h2>
-            <p className="text-sm text-zinc-500">@{user.username}</p>
-            {user.bio && <p className="text-xs text-zinc-600 mt-1">{user.bio}</p>}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-extrabold truncate">{user.displayName}</h2>
+            <p className="text-sm text-zinc-500 truncate">@{user.username}</p>
+            {user.bio && <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{user.bio}</p>}
           </div>
         </div>
 
@@ -194,16 +197,16 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
         <div className="flex items-center gap-5">
           <button onClick={() => setShowFollowList('following')} className="active:opacity-70">
             <span className="text-lg font-bold">{user.following.length}</span>
-            <span className="text-xs text-zinc-600 ml-1">Following</span>
+            <span className="text-xs text-zinc-500 ml-1">Following</span>
           </button>
           <button onClick={() => setShowFollowList('followers')} className="active:opacity-70">
             <span className="text-lg font-bold">{user.followers.length}</span>
-            <span className="text-xs text-zinc-600 ml-1">Followers</span>
+            <span className="text-xs text-zinc-500 ml-1">Followers</span>
           </button>
           <div className="flex-1" />
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={() => toggleFollow(resolvedUserId)}
+            onClick={() => { hapticLight(); toggleFollow(resolvedUserId); }}
             className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
               isFollowing
                 ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
@@ -231,7 +234,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
             >
               <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
               <p className="text-xl font-bold">{stat.value}</p>
-              <p className="text-[10px] text-zinc-600">{stat.label}</p>
+              <p className="text-[10px] text-zinc-500">{stat.label}</p>
             </motion.div>
           ))}
         </div>
@@ -263,7 +266,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
                 >
                   <h.icon className="w-4 h-4 text-accent mb-2" />
                   <p className="text-lg font-bold">{h.value}</p>
-                  <p className="text-[10px] text-zinc-600">{h.label}</p>
+                  <p className="text-[10px] text-zinc-500">{h.label}</p>
                 </div>
               ))}
             </div>
@@ -364,12 +367,12 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
                           onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile?user=${u.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{isMe ? 'You' : u.displayName}</p>
-                          <p className="text-[11px] text-zinc-600">@{u.username}</p>
+                          <p className="text-[11px] text-zinc-500">@{u.username}</p>
                         </div>
                         {!isMe && (
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => toggleFollow(u.id)}
+                            onClick={() => { hapticLight(); toggleFollow(u.id); }}
                             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                               iAmFollowing
                                 ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'

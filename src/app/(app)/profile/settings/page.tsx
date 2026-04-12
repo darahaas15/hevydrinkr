@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
@@ -21,6 +21,9 @@ export default function SettingsPage() {
 
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
   const [bio, setBio] = useState(currentUser?.bio || '');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>(currentUser?.gender || 'other');
+  const [weightInput, setWeightInput] = useState(currentUser?.weightKg?.toString() || '70');
+  const [heightInput, setHeightInput] = useState(currentUser?.heightCm?.toString() || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const preferences = useNotificationStore((s) => s.preferences);
   const updatePreferences = useNotificationStore((s) => s.updatePreferences);
@@ -42,6 +45,27 @@ export default function SettingsPage() {
   const handleSaveBio = () => {
     updateProfile({ bio: bio.trim() });
     addToast('Bio updated', 'success');
+  };
+
+  const handleSaveGender = (g: 'male' | 'female' | 'other') => {
+    setGender(g);
+    hapticSelection();
+    updateProfile({ gender: g });
+    addToast('Gender updated', 'success');
+  };
+
+  const handleSaveWeight = () => {
+    const wt = parseFloat(weightInput);
+    if (isNaN(wt) || wt < 30 || wt > 300) return;
+    updateProfile({ weightKg: wt });
+    addToast('Weight updated', 'success');
+  };
+
+  const handleSaveHeight = () => {
+    const ht = parseFloat(heightInput);
+    if (isNaN(ht) || ht < 100 || ht > 250) return;
+    updateProfile({ heightCm: ht });
+    addToast('Height updated', 'success');
   };
 
   const handleTogglePref = (key: keyof NotificationPreferences) => {
@@ -145,6 +169,77 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Body Metrics */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Body Metrics</h3>
+          <p className="text-[11px] text-zinc-600 mb-2.5">Used for BAC estimation</p>
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+            {/* Gender */}
+            <div className="px-4 py-3.5">
+              <div className="flex items-center gap-3 mb-2.5">
+                <User className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Gender</span>
+              </div>
+              <div className="flex gap-2">
+                {(['male', 'female', 'other'] as const).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => handleSaveGender(g)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
+                      gender === g
+                        ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
+                        : 'bg-white/[0.03] border border-white/[0.06] text-zinc-500'
+                    }`}
+                  >
+                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Height */}
+            <div className="px-4 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Ruler className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Height</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={heightInput}
+                  onChange={(e) => setHeightInput(e.target.value)}
+                  onBlur={handleSaveHeight}
+                  placeholder="170"
+                  className="w-16 text-right text-sm bg-transparent text-white focus:outline-none"
+                />
+                <span className="text-xs text-zinc-600">cm</span>
+              </div>
+            </div>
+
+            {/* Weight */}
+            <div className="px-4 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Weight className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">Weight</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={weightInput}
+                  onChange={(e) => setWeightInput(e.target.value)}
+                  onBlur={handleSaveWeight}
+                  placeholder="70"
+                  className="w-16 text-right text-sm bg-transparent text-white focus:outline-none"
+                />
+                <span className="text-xs text-zinc-600">kg</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] text-zinc-600 px-1 mt-2">BAC estimates are approximate and should not be used for legal or medical decisions.</p>
         </div>
 
         {/* Notifications */}

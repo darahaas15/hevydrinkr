@@ -15,7 +15,7 @@ import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useModerationStore } from '@/stores/use-moderation-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { getMilestoneBadge } from '@/lib/milestones';
-import { hapticSelection } from '@/lib/haptics';
+import { hapticSelection, hapticLight } from '@/lib/haptics';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import PostDetailPage from './[id]/post-detail';
 import type { UserProfile } from '@/types';
@@ -101,6 +101,7 @@ function FeedPageList() {
             bio: p.bio || '',
             gender: p.gender || 'other',
             weightKg: p.weight_kg || 70,
+            heightCm: p.height_cm || null,
             joinedAt: p.created_at,
             isDemo: false,
             followers: [],
@@ -195,7 +196,8 @@ function FeedPageList() {
             <div className="flex items-center gap-0.5">
               <button
                 onClick={() => router.push('/notifications')}
-                className="relative p-2 rounded-xl hover:bg-white/5"
+                aria-label="Notifications"
+                className="relative p-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
               >
                 <Bell className="w-5 h-5 text-zinc-500" />
                 {unreadCount > 0 && (
@@ -205,7 +207,8 @@ function FeedPageList() {
               {tab !== 'discover' && (
                 <button
                   onClick={() => setTab('discover')}
-                  className="p-2 -mr-2 rounded-xl hover:bg-white/5"
+                  aria-label="Search"
+                  className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
                 >
                   <Search className="w-5 h-5 text-zinc-500" />
                 </button>
@@ -296,11 +299,11 @@ function FeedPageList() {
                         onClick={() => router.push(`/profile?user=${user.id}`)}
                       >
                         <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                        <p className="text-[11px] text-zinc-600">@{user.username}</p>
+                        <p className="text-[11px] text-zinc-500">@{user.username}</p>
                       </div>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => toggleFollow(user.id)}
+                        onClick={() => { hapticLight(); toggleFollow(user.id); }}
                         className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                           isFollowing
                             ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'

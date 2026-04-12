@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserProfile } from '@/types';
+import type { UserProfile, Gender } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { hapticMedium } from '@/lib/haptics';
 
@@ -11,10 +11,10 @@ interface AuthState {
   isLoading: boolean;
 
   initialize: () => Promise<void>;
-  signup: (email: string, password: string, username: string, displayName: string) => Promise<string | null>;
+  signup: (email: string, password: string, username: string, displayName: string, gender?: Gender, weightKg?: number, heightCm?: number) => Promise<string | null>;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
-  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'avatarUrl'>>) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'heightCm' | 'avatarUrl'>>) => Promise<void>;
   getUserById: (id: string) => UserProfile | undefined;
   fetchAllUsers: (force?: boolean) => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
@@ -34,6 +34,7 @@ function profileFromRow(row: Record<string, unknown>): UserProfile {
     bio: (row.bio as string) || '',
     gender: (row.gender as 'male' | 'female' | 'other') || 'other',
     weightKg: (row.weight_kg as number) || 70,
+    heightCm: (row.height_cm as number) ?? null,
     joinedAt: row.created_at as string,
     isDemo: false,
     followers: (row.followers as string[]) || [],
@@ -77,7 +78,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     set({ currentUser: null, isAuthenticated: false, isLoading: false });
   },
 
-  signup: async (email, password, username, displayName) => {
+  signup: async (email, password, username, displayName, gender, weightKg, heightCm) => {
     // Check username availability
     const sanitized = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
     const { data: existing } = await supabase
@@ -92,7 +93,13 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       email,
       password,
       options: {
-        data: { username: sanitized, display_name: displayName },
+        data: {
+            username: sanitized,
+            display_name: displayName,
+            ...(gender && { gender }),
+            ...(weightKg && { weight_kg: weightKg }),
+            ...(heightCm && { height_cm: heightCm }),
+          },
       },
     });
 
@@ -136,6 +143,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
     if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
     if (updates.weightKg !== undefined) dbUpdates.weight_kg = updates.weightKg;
+    if (updates.heightCm !== undefined) dbUpdates.height_cm = updates.heightCm;
     if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
     dbUpdates.updated_at = new Date().toISOString();
 

@@ -10,6 +10,7 @@ export const MOCK_USERS: UserProfile[] = [
     bio: 'Just here to party',
     gender: 'male',
     weightKg: 80,
+    heightCm: 175,
     joinedAt: getRelativeDate(180),
     isDemo: true,
     followers: [],

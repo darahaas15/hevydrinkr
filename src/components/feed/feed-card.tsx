@@ -76,7 +76,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate cursor-pointer" onClick={goToProfile}>{item.userName}</p>
           <div className="flex items-center gap-1.5">
-            <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+            <p className="text-[11px] text-zinc-500">{formatTimeAgo(item.createdAt)}</p>
             {milestone && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
                 {milestone.label}
@@ -87,7 +87,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
         {showFollowButton && !isFollowing && item.userId !== currentUser?.id && (
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={(e) => { e.stopPropagation(); toggleFollow(item.userId); }}
+            onClick={(e) => { e.stopPropagation(); hapticLight(); toggleFollow(item.userId); }}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold"
           >
             <UserPlus className="w-3.5 h-3.5" />
@@ -180,12 +180,12 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
             })()}
           </span>
 
-          <button onClick={handleShare}>
+          <button onClick={handleShare} aria-label="Share">
             <Share2 size={18} className="text-zinc-600" />
           </button>
 
           {item.userId !== currentUser?.id && (
-            <button onClick={(e) => { e.stopPropagation(); setShowReport(true); }}>
+            <button onClick={(e) => { e.stopPropagation(); setShowReport(true); }} aria-label="Report">
               <Flag size={16} className="text-zinc-700" />
             </button>
           )}

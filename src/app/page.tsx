@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ChevronLeft, Loader2, User, Mail, Lock, Calendar, AtSign, Share, Plus, MoreVertical, Download } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Loader2, User, Mail, Lock, Calendar, AtSign, Share, Plus, MoreVertical, Download, Ruler, Weight } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { SplashScreen } from '@/components/ui/splash-screen';
@@ -35,6 +35,9 @@ function LandingContent() {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [dob, setDob] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
+  const [weightKg, setWeightKg] = useState('70');
+  const [heightCm, setHeightCm] = useState('170');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -121,9 +124,19 @@ function LandingContent() {
       setError('Password must be at least 6 characters');
       return;
     }
+    const wt = parseFloat(weightKg);
+    const ht = parseFloat(heightCm);
+    if (isNaN(wt) || wt < 30 || wt > 300) {
+      setError('Please enter a valid weight (30-300 kg)');
+      return;
+    }
+    if (isNaN(ht) || ht < 100 || ht > 250) {
+      setError('Please enter a valid height (100-250 cm)');
+      return;
+    }
     setSubmitting(true);
     setError('');
-    const err = await authSignup(email.trim(), password, username.trim(), displayName.trim());
+    const err = await authSignup(email.trim(), password, username.trim(), displayName.trim(), gender, wt, ht);
     setSubmitting(false);
     if (err) {
       setError(err);
@@ -271,6 +284,57 @@ function LandingContent() {
                 />
               </div>
               <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Must be 18 or older</p>
+
+              {/* Gender */}
+              <div>
+                <p className="text-[10px] text-zinc-500 pl-1 mb-1.5">Gender (for BAC estimation)</p>
+                <div className="flex gap-2">
+                  {(['male', 'female', 'other'] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender(g)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        gender === g
+                          ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
+                          : 'bg-white/[0.03] border border-white/[0.06] text-zinc-500'
+                      }`}
+                    >
+                      {g.charAt(0).toUpperCase() + g.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Height & Weight */}
+              <div className="flex gap-3">
+                <div className="flex-1 relative group">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">
+                    <Ruler className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(e.target.value)}
+                    placeholder="Height (cm)"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 transition-colors"
+                  />
+                </div>
+                <div className="flex-1 relative group">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">
+                    <Weight className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(e.target.value)}
+                    placeholder="Weight (kg)"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 transition-colors"
+                  />
+                </div>
+              </div>
             </div>
 
             <label className="flex items-start gap-2.5 cursor-pointer mb-5 px-0.5">

@@ -8,6 +8,7 @@ export interface UserProfile {
   bio: string;
   gender: Gender;
   weightKg: number;
+  heightCm: number | null;
   joinedAt: string;
   isDemo: boolean;
   followers: string[];

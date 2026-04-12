@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
+import { IconSteeringWheel } from '@tabler/icons-react';
+import { calculateBac, getSafetyColor } from '@/lib/algorithms/bac';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -18,7 +20,7 @@ import { SessionSummary } from '@/components/session/session-summary';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, compressImage } from '@/lib/image-utils';
 import { DrinkIcon } from '@/components/ui/drink-icon';
-import { hapticHeavy, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import { hapticHeavy, hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 import SessionDetailPage from './[id]/session-detail';
 
 export default function SessionPage() {
@@ -83,11 +85,12 @@ function SessionPageInner() {
   const [posting, setPosting] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['sessionHistory'][0] | null>(null);
+  const [dismissedMetricsBanner, setDismissedMetricsBanner] = useState(false);
 
   const timer = useTimer(activeSession?.startedAt || null);
+  const updatePeakBac = useSessionStore((s) => s.updatePeakBac);
 
   const totalStdDrinks = activeSession?.drinks.reduce((sum, d) => sum + d.standardDrinks, 0) || 0;
-  const totalVolumeMl = activeSession?.drinks.reduce((sum, d) => sum + d.volumeMl, 0) || 0;
 
   // Pace & context calculations
   const myPosts = feedItems.filter((f) => f.userId === currentUser?.id);
@@ -103,6 +106,23 @@ function SessionPageInner() {
     : 0;
 
   const drinkDiff = activeSession ? activeSession.drinks.length - avgDrinksPerSession : 0;
+
+  // Live BAC estimate — recomputes every second via timer.elapsed
+  const bacEstimate = useMemo(() => {
+    if (!activeSession || !currentUser) return null;
+    return calculateBac(
+      activeSession.drinks,
+      { weightKg: currentUser.weightKg, gender: currentUser.gender, heightCm: currentUser.heightCm },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.drinks, currentUser?.weightKg, currentUser?.gender, currentUser?.heightCm, timer.elapsed]);
+
+  // Track peak BAC in the session store (persists to DB)
+  useEffect(() => {
+    if (bacEstimate && bacEstimate.peakBac > 0) {
+      updatePeakBac(bacEstimate.peakBac);
+    }
+  }, [bacEstimate?.peakBac, updatePeakBac]);
 
   const handleAddPhoto = async () => {
     const file = await pickImage();
@@ -285,11 +305,11 @@ function SessionPageInner() {
             ) : (
               <button
                 onClick={() => { setVenueEdit(activeSession.venue); setEditingVenue(true); }}
-                className="text-[11px] text-zinc-500 flex items-center gap-1 hover:text-zinc-400 transition-colors"
+                className="text-[11px] text-zinc-500 flex items-center gap-1 hover:text-zinc-400 transition-colors max-w-[200px]"
               >
-                <MapPin className="w-3 h-3" />
-                {activeSession.venue}
-                <Pencil className="w-2.5 h-2.5 ml-0.5" />
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{activeSession.venue}</span>
+                <Pencil className="w-2.5 h-2.5 ml-0.5 shrink-0" />
               </button>
             )}
             <div className="flex items-center gap-2 mt-0.5">
@@ -301,6 +321,7 @@ function SessionPageInner() {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handleAddPhoto}
+              aria-label="Add photo"
               className="p-2 rounded-xl bg-white/[0.06] border border-white/[0.08]"
             >
               <Camera className="w-4 h-4 text-zinc-400" />
@@ -324,6 +345,24 @@ function SessionPageInner() {
       </div>
 
       <div className="px-5 py-4 space-y-4">
+        {/* Nudge existing users to set up body metrics */}
+        {currentUser?.heightCm === null && !dismissedMetricsBanner && (
+          <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-400">Set up body metrics</p>
+              <p className="text-[11px] text-zinc-500">For accurate BAC estimates</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => router.push('/profile/settings')} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium">
+                Setup
+              </button>
+              <button onClick={() => setDismissedMetricsBanner(true)} className="p-1">
+                <X className="w-4 h-4 text-zinc-600" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <BacGauge standardDrinks={totalStdDrinks} drinks={activeSession.drinks} />
 
         {/* Pace & Context */}
@@ -333,9 +372,18 @@ function SessionPageInner() {
               <p className="text-3xl font-extrabold">{activeSession.drinks.length}</p>
               <p className="text-[11px] text-zinc-500">drinks</p>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-zinc-300">{totalVolumeMl >= 1000 ? `${(totalVolumeMl / 1000).toFixed(1)}L` : `${Math.round(totalVolumeMl)}ml`}</p>
-              <p className="text-[10px] text-zinc-600">volume</p>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <p className="text-lg font-bold font-mono" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
+                  {bacEstimate ? bacEstimate.currentBac.toFixed(3) : '0.000'}
+                </p>
+                <p className="text-[10px] text-zinc-600">est. BAC</p>
+              </div>
+              <IconSteeringWheel
+                className="w-6 h-6"
+                stroke={1.5}
+                style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}
+              />
             </div>
           </div>
           {activeSession.drinks.length > 0 && (
@@ -462,7 +510,8 @@ function SessionPageInner() {
                 ].map((m) => (
                   <button
                     key={m.value}
-                    onClick={() => setSelectedMood(m.value)}
+                    onClick={() => { hapticLight(); setSelectedMood(m.value); }}
+                    aria-label={m.value}
                     className={`p-2 rounded-lg transition-all ${
                       selectedMood === m.value ? 'bg-accent/10 ring-1 ring-accent/30 scale-110' : ''
                     }`}

@@ -87,6 +87,7 @@ export function BottomNav() {
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
+                aria-label={tab.label}
                 className="relative flex flex-col items-center justify-center -mt-5"
               >
                 <div className={cn(
@@ -111,6 +112,7 @@ export function BottomNav() {
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
+              aria-label={tab.label}
               className="flex flex-col items-center justify-center gap-0.5 py-2 px-4 min-w-[48px] min-h-[48px]"
             >
               <Icon

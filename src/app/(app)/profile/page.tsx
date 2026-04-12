@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
+import { hapticLight } from '@/lib/haptics';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { FeedCard } from '@/components/feed/feed-card';
 import { ImagePicker } from '@/components/ui/image-picker';
@@ -166,11 +167,12 @@ function ProfilePageOwn() {
                 const result = await shareLink(`${getBaseUrl()}/profile/${currentUser.id}`, `${currentUser.displayName} on Drinkr`);
                 if (result === 'copied') addToast('Link copied!', 'success');
               }}
-              className="p-2 rounded-xl hover:bg-white/5"
+              aria-label="Share profile"
+              className="p-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
             >
               <Share2 className="w-5 h-5 text-zinc-500" />
             </button>
-            <button onClick={() => router.push('/profile/settings')} className="p-2 -mr-2 rounded-xl hover:bg-white/5">
+            <button onClick={() => router.push('/profile/settings')} aria-label="Settings" className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]">
               <Settings className="w-5 h-5 text-zinc-500" />
             </button>
           </div>
@@ -188,10 +190,10 @@ function ProfilePageOwn() {
             shape="circle"
             size={64}
           />
-          <div className="flex-1">
-            <h2 className="text-xl font-extrabold">{currentUser.displayName}</h2>
-            <p className="text-sm text-zinc-500">@{currentUser.username}</p>
-            <p className="text-xs text-zinc-600 mt-1">{currentUser.bio}</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-extrabold truncate">{currentUser.displayName}</h2>
+            <p className="text-sm text-zinc-500 truncate">@{currentUser.username}</p>
+            <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{currentUser.bio}</p>
           </div>
         </div>
 
@@ -199,11 +201,11 @@ function ProfilePageOwn() {
         <div className="flex gap-5">
           <button onClick={() => setShowFollowList('following')} className="active:opacity-70">
             <span className="text-lg font-bold">{currentUser.following.length}</span>
-            <span className="text-xs text-zinc-600 ml-1">Following</span>
+            <span className="text-xs text-zinc-500 ml-1">Following</span>
           </button>
           <button onClick={() => setShowFollowList('followers')} className="active:opacity-70">
             <span className="text-lg font-bold">{currentUser.followers.length}</span>
-            <span className="text-xs text-zinc-600 ml-1">Followers</span>
+            <span className="text-xs text-zinc-500 ml-1">Followers</span>
           </button>
         </div>
 
@@ -241,7 +243,7 @@ function ProfilePageOwn() {
             >
               <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
               <p className="text-xl font-bold">{stat.value}</p>
-              <p className="text-[10px] text-zinc-600">{stat.label}</p>
+              <p className="text-[10px] text-zinc-500">{stat.label}</p>
             </motion.div>
           ))}
         </div>
@@ -293,7 +295,7 @@ function ProfilePageOwn() {
                 >
                   <h.icon className="w-4 h-4 text-accent mb-2" />
                   <p className="text-lg font-bold">{h.value}</p>
-                  <p className="text-[10px] text-zinc-600">{h.label}</p>
+                  <p className="text-[10px] text-zinc-500">{h.label}</p>
                 </div>
               ))}
             </div>
@@ -475,11 +477,11 @@ function ProfilePageOwn() {
                           onClick={() => { setShowFollowList(null); router.push(`/profile?user=${user.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                          <p className="text-[11px] text-zinc-600">@{user.username}</p>
+                          <p className="text-[11px] text-zinc-500">@{user.username}</p>
                         </div>
                         <motion.button
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => toggleFollow(user.id)}
+                          onClick={() => { hapticLight(); toggleFollow(user.id); }}
                           className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             isFollowing
                               ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'

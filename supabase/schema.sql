@@ -12,6 +12,7 @@ CREATE TABLE profiles (
   bio          TEXT DEFAULT '',
   gender       TEXT CHECK (gender IN ('male', 'female', 'other')) DEFAULT 'other',
   weight_kg    REAL DEFAULT 70,
+  height_cm    REAL DEFAULT NULL,
   is_demo      BOOLEAN DEFAULT FALSE,
   created_at   TIMESTAMPTZ DEFAULT now(),
   updated_at   TIMESTAMPTZ DEFAULT now()
@@ -272,13 +273,14 @@ CREATE INDEX idx_blocked_blocker ON blocked_users(blocker_id);
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, display_name, gender, weight_kg)
+  INSERT INTO public.profiles (id, username, display_name, gender, weight_kg, height_cm)
   VALUES (
     NEW.id,
     NEW.raw_user_meta_data->>'username',
     NEW.raw_user_meta_data->>'display_name',
     COALESCE(NEW.raw_user_meta_data->>'gender', 'other'),
-    COALESCE((NEW.raw_user_meta_data->>'weight_kg')::REAL, 70)
+    COALESCE((NEW.raw_user_meta_data->>'weight_kg')::REAL, 70),
+    (NEW.raw_user_meta_data->>'height_cm')::REAL
   );
   RETURN NEW;
 END;

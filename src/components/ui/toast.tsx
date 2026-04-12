@@ -41,7 +41,8 @@ export function ToastContainer() {
                 <p className="text-[13px] text-white flex-1">{toast.message}</p>
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className="text-zinc-600 hover:text-white active:text-white transition-colors shrink-0 p-2.5 -mr-2"
+                  aria-label="Dismiss"
+                  className="text-zinc-600 hover:text-white active:text-white transition-colors shrink-0 p-3 -mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   <X size={14} />
                 </button>
