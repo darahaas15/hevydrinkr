@@ -277,6 +277,37 @@ CREATE TRIGGER trg_comment_like_notify
   AFTER INSERT ON comment_likes
   FOR EACH ROW EXECUTE FUNCTION on_comment_like_inserted();
 
+-- ── Trigger: new feed post → notify followers ──
+CREATE OR REPLACE FUNCTION on_feed_item_inserted()
+RETURNS trigger AS $$
+DECLARE
+  v_name text;
+  v_follower record;
+BEGIN
+  v_name := get_display_name(NEW.user_id);
+
+  FOR v_follower IN
+    SELECT follower_id FROM follows WHERE following_id = NEW.user_id
+  LOOP
+    INSERT INTO notifications (user_id, actor_id, type, title, body, data)
+    VALUES (
+      v_follower.follower_id,
+      NEW.user_id,
+      'new_post',
+      'New Post',
+      v_name || ' shared a new session',
+      jsonb_build_object('feedItemId', NEW.id)
+    );
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_feed_item_notify
+  AFTER INSERT ON feed_items
+  FOR EACH ROW EXECUTE FUNCTION on_feed_item_inserted();
+
 -- ============================================================================
 -- Cleanup triggers — remove notifications when source actions are reversed
 -- ============================================================================

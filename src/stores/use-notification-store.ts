@@ -21,6 +21,7 @@ export interface NotificationPreferences {
   followsEnabled: boolean;
   groupJoinsEnabled: boolean;
   roastsEnabled: boolean;
+  newPostsEnabled: boolean;
   sessionRemindersEnabled: boolean;
 }
 
@@ -30,6 +31,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   followsEnabled: true,
   groupJoinsEnabled: true,
   roastsEnabled: true,
+  newPostsEnabled: true,
   sessionRemindersEnabled: true,
 };
 
@@ -147,6 +149,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
           followsEnabled: data.follows_enabled,
           groupJoinsEnabled: data.group_joins_enabled,
           roastsEnabled: data.challenges_enabled,
+          newPostsEnabled: data.new_posts_enabled ?? true,
           sessionRemindersEnabled: data.session_reminders_enabled,
         },
       });
@@ -164,6 +167,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
     if (updates.followsEnabled !== undefined) dbUpdates.follows_enabled = updates.followsEnabled;
     if (updates.groupJoinsEnabled !== undefined) dbUpdates.group_joins_enabled = updates.groupJoinsEnabled;
     if (updates.roastsEnabled !== undefined) dbUpdates.challenges_enabled = updates.roastsEnabled;
+    if (updates.newPostsEnabled !== undefined) dbUpdates.new_posts_enabled = updates.newPostsEnabled;
     if (updates.sessionRemindersEnabled !== undefined) dbUpdates.session_reminders_enabled = updates.sessionRemindersEnabled;
 
     const { error } = await supabase

@@ -168,10 +168,16 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('vk-stolichnaya',      'Stolichnaya',             '🍸', 'vodka', 40.0, 30),
   d('vk-vladivar',         'Vladivar',                '🍸', 'vodka', 37.5, 30),
   d('vk-fuel',             'Fuel',                    '🍸', 'vodka', 42.8, 30),
+  d('vk-titos',            'Tito\'s',                 '🍸', 'vodka', 40.0, 30),
+  d('vk-beluga',           'Beluga Noble',            '🍸', 'vodka', 40.0, 30),
+  d('vk-zubrowka',         'Żubrówka',                '🍸', 'vodka', 40.0, 30),
+  d('vk-finlandia',        'Finlandia',               '🍸', 'vodka', 40.0, 30),
+  d('vk-russian-standard', 'Russian Standard',        '🍸', 'vodka', 40.0, 30),
   // Vodka — mixed
   d('vk-soda',             'Vodka Soda',              '🍸', 'vodka', 40.0,  30),
   d('vk-cranberry',        'Vodka Cranberry',         '🍸', 'vodka', 40.0,  30),
   d('vk-redbull',          'Vodka Red Bull',           '🍸', 'vodka', 40.0,  30),
+  d('vk-lime-soda',        'Vodka Lime Soda',         '🍸', 'vodka', 40.0,  30),
 
   // ═══════════════════════════════════════════════════════════
   // RUM
@@ -184,6 +190,13 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('rum-captain-morgan',  'Captain Morgan',          '🥃', 'rum', 35.0, 30),
   d('rum-havana-club',     'Havana Club',             '🥃', 'rum', 40.0, 30),
   d('rum-malibu',          'Malibu',                  '🥃', 'rum', 21.0, 30),
+  d('rum-kraken',          'Kraken Black Spiced',     '🥃', 'rum', 40.0, 30),
+  d('rum-diplomatico',     'Diplomático Reserva',     '🥃', 'rum', 40.0, 30),
+  d('rum-appleton',        'Appleton Estate',         '🥃', 'rum', 40.0, 30),
+  d('rum-mount-gay',       'Mount Gay Eclipse',       '🥃', 'rum', 40.0, 30),
+  d('rum-plantation',      'Plantation 3 Stars',      '🥃', 'rum', 41.2, 30),
+  d('rum-sailor-jerry',    'Sailor Jerry',            '🥃', 'rum', 40.0, 30),
+  d('rum-goslings',        'Gosling\'s Black Seal',   '🥃', 'rum', 40.0, 30),
   // Rum — mixed
   d('rum-coke',            'Rum & Coke',              '🥃', 'rum', 40.0,  30),
   d('rum-old-monk-coke',   'Old Monk & Coke',         '🥃', 'rum', 42.8, 30),
@@ -202,8 +215,16 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('gin-gordons',         'Gordon\'s',               '🫒', 'gin', 37.5, 30),
   d('gin-beefeater',       'Beefeater',               '🫒', 'gin', 40.0, 30),
   d('gin-hendricks',       'Hendrick\'s',             '🫒', 'gin', 41.4, 30),
+  d('gin-monkey47',        'Monkey 47',               '🫒', 'gin', 47.0, 30),
+  d('gin-roku',            'Roku',                    '🫒', 'gin', 43.0, 30),
+  d('gin-aviation',        'Aviation Gin',            '🫒', 'gin', 42.0, 30),
+  d('gin-sipsmith',        'Sipsmith',                '🫒', 'gin', 41.6, 30),
+  d('gin-the-botanist',    'The Botanist',            '🫒', 'gin', 46.0, 30),
+  d('gin-star-of-bombay',  'Star of Bombay',          '🫒', 'gin', 47.5, 30),
+  d('gin-malfy',           'Malfy',                   '🫒', 'gin', 41.0, 30),
   // Gin — mixed
   d('gin-tonic',           'Gin & Tonic',             '🫒', 'gin', 40.0, 30),
+  d('gin-lime-soda',       'Gin Lime Soda',           '🫒', 'gin', 40.0, 30),
 
   // ═══════════════════════════════════════════════════════════
   // WINE
@@ -257,6 +278,21 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('tq-camino',           'Camino Real',             '🌵', 'tequila', 40.0, 30),
   d('tq-sauza',            'Sauza Silver',            '🌵', 'tequila', 40.0, 30),
   d('tq-clase-azul',       'Clase Azul Reposado',     '🌵', 'tequila', 40.0, 30),
+  d('tq-casamigos-b',      'Casamigos Blanco',        '🌵', 'tequila', 40.0, 30),
+  d('tq-casamigos-r',      'Casamigos Reposado',      '🌵', 'tequila', 40.0, 30),
+  d('tq-casamigos-a',      'Casamigos Añejo',         '🌵', 'tequila', 40.0, 30),
+  d('tq-1800-silver',      '1800 Silver',             '🌵', 'tequila', 40.0, 30),
+  d('tq-1800-reposado',    '1800 Reposado',           '🌵', 'tequila', 40.0, 30),
+  d('tq-herradura-silver',  'Herradura Silver',       '🌵', 'tequila', 40.0, 30),
+  d('tq-herradura-repo',    'Herradura Reposado',     '🌵', 'tequila', 40.0, 30),
+  d('tq-espolon-b',        'Espolòn Blanco',          '🌵', 'tequila', 40.0, 30),
+  d('tq-espolon-r',        'Espolòn Reposado',        '🌵', 'tequila', 40.0, 30),
+  d('tq-milagro-silver',   'Milagro Silver',          '🌵', 'tequila', 40.0, 30),
+  d('tq-hornitos-plata',   'Hornitos Plata',          '🌵', 'tequila', 40.0, 30),
+  d('tq-el-jimador',       'El Jimador Blanco',       '🌵', 'tequila', 40.0, 30),
+  d('tq-mezcal-vida',      'Del Maguey Vida Mezcal',  '🌵', 'tequila', 42.0, 30),
+  d('tq-mezcal-400',       '400 Conejos Mezcal',      '🌵', 'tequila', 40.0, 30),
+  d('tq-mezcal-montelobos', 'Montelobos Mezcal',      '🌵', 'tequila', 43.2, 30),
 
   // ═══════════════════════════════════════════════════════════
   // COCKTAILS
@@ -274,6 +310,47 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('ck-cosmopolitan',     'Cosmopolitan',            '🍹', 'cocktail', 40.0,  60),  // 30ml vodka + 30ml triple sec
   d('ck-whiskey-sour',     'Whiskey Sour',            '🍹', 'cocktail', 40.0,  60),  // 60ml whiskey
   d('ck-mai-tai',          'Mai Tai',                 '🍹', 'cocktail', 40.0,  60),  // 60ml rum
+  d('ck-picante',          'Picante',                 '🍹', 'cocktail', 40.0,  60),  // 60ml tequila + chilli
+  d('ck-manhattan',        'Manhattan',               '🍹', 'cocktail', 35.0,  90),  // 60ml whiskey + 30ml vermouth
+  d('ck-martini',          'Martini',                 '🍹', 'cocktail', 38.0,  75),  // 60ml gin + 15ml vermouth
+  d('ck-dirty-martini',    'Dirty Martini',           '🍹', 'cocktail', 35.0,  75),  // 60ml gin/vodka + olive brine
+  d('ck-pornstar-martini', 'Pornstar Martini',        '🍹', 'cocktail', 25.0,  90),  // 30ml vodka + 30ml passoa + juice
+  d('ck-french-75',        'French 75',               '🍹', 'cocktail', 20.0, 120),  // 30ml gin + 90ml champagne
+  d('ck-paloma',           'Paloma',                  '🍹', 'cocktail', 40.0,  60),  // 60ml tequila + grapefruit
+  d('ck-tom-collins',      'Tom Collins',             '🍹', 'cocktail', 40.0,  60),  // 60ml gin + soda
+  d('ck-gin-fizz',         'Gin Fizz',                '🍹', 'cocktail', 40.0,  60),  // 60ml gin + soda
+  d('ck-gimlet',           'Gimlet',                  '🍹', 'cocktail', 40.0,  60),  // 60ml gin + lime
+  d('ck-sidecar',          'Sidecar',                 '🍹', 'cocktail', 35.0,  75),  // 45ml cognac + 30ml triple sec
+  d('ck-boulevardier',     'Boulevardier',            '🍹', 'cocktail', 30.0,  90),  // 30ml each whiskey+vermouth+campari
+  d('ck-paper-plane',      'Paper Plane',             '🍹', 'cocktail', 30.0, 120),  // 30ml each bourbon+aperol+amaro+lemon
+  d('ck-penicillin',       'Penicillin',              '🍹', 'cocktail', 40.0,  60),  // 60ml scotch + honey ginger
+  d('ck-sazerac',          'Sazerac',                 '🍹', 'cocktail', 45.0,  60),  // 60ml rye + absinthe wash
+  d('ck-mint-julep',       'Mint Julep',              '🍹', 'cocktail', 40.0,  60),  // 60ml bourbon
+  d('ck-vesper',           'Vesper',                  '🍹', 'cocktail', 38.0,  90),  // 60ml gin + 15ml vodka + 15ml lillet
+  d('ck-last-word',        'Last Word',               '🍹', 'cocktail', 30.0, 120),  // 30ml each gin+chartreuse+maraschino+lime
+  d('ck-aviation',         'Aviation',                '🍹', 'cocktail', 35.0,  75),  // 60ml gin + maraschino + crème de violette
+  d('ck-bramble',          'Bramble',                 '🍹', 'cocktail', 40.0,  60),  // 60ml gin + blackberry
+  d('ck-dark-n-stormy',    'Dark \'n\' Stormy',       '🍹', 'cocktail', 40.0,  60),  // 60ml dark rum + ginger beer
+  d('ck-caipirinha',       'Caipirinha',              '🍹', 'cocktail', 40.0,  60),  // 60ml cachaça
+  d('ck-amaretto-sour',    'Amaretto Sour',           '🍹', 'cocktail', 28.0,  60),  // 60ml amaretto
+  d('ck-tequila-sunrise',  'Tequila Sunrise',         '🍹', 'cocktail', 40.0,  60),  // 60ml tequila + OJ + grenadine
+  d('ck-sex-on-beach',     'Sex on the Beach',        '🍹', 'cocktail', 25.0,  90),  // 30ml vodka + 30ml peach + juices
+  d('ck-bloody-mary',      'Bloody Mary',             '🍹', 'cocktail', 40.0,  60),  // 60ml vodka + tomato
+  d('ck-screwdriver',      'Screwdriver',             '🍹', 'cocktail', 40.0,  60),  // 60ml vodka + OJ
+  d('ck-white-russian',    'White Russian',           '🍹', 'cocktail', 25.0,  90),  // 30ml vodka + 30ml kahlúa + cream
+  d('ck-black-russian',    'Black Russian',           '🍹', 'cocktail', 30.0,  60),  // 30ml vodka + 30ml kahlúa
+  d('ck-irish-coffee',     'Irish Coffee',            '🍹', 'cocktail', 40.0,  45),  // 45ml whiskey + coffee
+  d('ck-zombie',           'Zombie',                  '🍹', 'cocktail', 40.0, 120),  // multiple rums
+  d('ck-hurricane',        'Hurricane',               '🍹', 'cocktail', 40.0,  90),  // 60ml rum + 30ml passion fruit
+  d('ck-singapore-sling',  'Singapore Sling',         '🍹', 'cocktail', 25.0, 120),  // 30ml gin + cherry brandy + juices
+  d('ck-rum-punch',        'Rum Punch',               '🍹', 'cocktail', 40.0,  60),  // 60ml rum + juices
+  d('ck-corpse-reviver',   'Corpse Reviver No. 2',    '🍹', 'cocktail', 30.0, 120),  // 30ml each gin+lillet+cointreau+lemon
+  d('ck-tommy-margarita',  'Tommy\'s Margarita',      '🍹', 'cocktail', 40.0,  60),  // 60ml tequila + agave + lime
+  d('ck-mezcal-negroni',   'Mezcal Negroni',          '🍹', 'cocktail', 30.0,  90),  // 30ml each mezcal+vermouth+campari
+  d('ck-spritz',           'Hugo Spritz',             '🍹', 'cocktail',  8.0, 150),  // elderflower + prosecco + soda
+  d('ck-bellini',          'Bellini',                 '🍹', 'cocktail', 10.0, 150),  // prosecco + peach
+  d('ck-mimosa',           'Mimosa',                  '🍹', 'cocktail', 10.0, 150),  // champagne + OJ
+  d('ck-kir-royale',       'Kir Royale',              '🍹', 'cocktail', 12.0, 150),  // champagne + crème de cassis
   d('ck-liiit',            'LIIT',                    '🍹', 'cocktail', 40.0, 150),  // 30ml x5 spirits
 
   // ═══════════════════════════════════════════════════════════
@@ -292,6 +369,14 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   d('shot-absinthe',       'Absinthe',                '🥂', 'shot', 60.0,  30),
   d('shot-baileys',        'Baileys',                 '🥂', 'shot', 17.0,  30),
   d('shot-kahlua',         'Kahlúa',                  '🥂', 'shot', 20.0,  30),
+  d('shot-limoncello',     'Limoncello',              '🥂', 'shot', 28.0,  30),
+  d('shot-goldschlager',   'Goldschläger',            '🥂', 'shot', 43.5,  30),
+  d('shot-patron-cafe',    'Patrón XO Cafe',          '🥂', 'shot', 35.0,  30),
+  d('shot-amaretto',       'Amaretto',                '🥂', 'shot', 28.0,  30),
+  d('shot-fernet',         'Fernet-Branca',           '🥂', 'shot', 39.0,  30),
+  d('shot-malort',         'Malört',                  '🥂', 'shot', 35.0,  30),
+  d('shot-ouzo',           'Ouzo',                    '🥂', 'shot', 40.0,  30),
+  d('shot-grappa',         'Grappa',                  '🥂', 'shot', 40.0,  30),
 
   // ═══════════════════════════════════════════════════════════
   // DESI / COUNTRY LIQUOR
@@ -306,8 +391,15 @@ export const DRINK_LIBRARY: DrinkDefinition[] = [
   // ═══════════════════════════════════════════════════════════
   d('cider-apple',         'Apple Cider',             '🍏', 'cider', 5.0, 330),
   d('cider-pear',          'Pear Cider',              '🍏', 'cider', 4.5, 330),
+  d('cider-berry',         'Berry Cider',             '🍏', 'cider', 4.5, 330),
+  d('cider-strongbow',     'Strongbow',               '🍏', 'cider', 5.0, 330),
+  d('cider-magners',       'Magners',                 '🍏', 'cider', 4.5, 330),
+  d('cider-bulmers',       'Bulmers',                 '🍏', 'cider', 4.5, 330),
   d('seltzer-hard',        'Hard Seltzer',            '🫧', 'seltzer', 5.0, 330),
   d('seltzer-lemonade',    'Spiked Lemonade',         '🫧', 'seltzer', 5.0, 330),
+  d('seltzer-white-claw',  'White Claw',              '🫧', 'seltzer', 5.0, 355),
+  d('seltzer-truly',       'Truly',                   '🫧', 'seltzer', 5.0, 355),
+  d('seltzer-breezer',     'Bacardi Breezer',         '🫧', 'seltzer', 4.8, 275),
 ];
 
 // ── Helper functions ────────────────────────────────────────

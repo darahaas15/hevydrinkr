@@ -209,7 +209,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
               </button>
               <h2 className="text-base font-bold">Custom Drink</h2>
             </div>
-            <div className="space-y-3 flex-1">
+            <div className="space-y-3">
               <input
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
@@ -245,8 +245,6 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                 = <span className="font-bold text-white">{calculateStandardDrinks(parseFloat(customVol) || 0, parseFloat(customAbv) || 0)}</span> standard drinks
               </p>
               <p className="text-[10px] text-zinc-700 text-center">This drink will be saved to your list</p>
-            </div>
-            <div className="py-4">
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCustomDrink}

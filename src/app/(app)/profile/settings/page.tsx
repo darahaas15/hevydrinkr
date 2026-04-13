@@ -249,6 +249,7 @@ export default function SettingsPage() {
             {([
               ['likesEnabled', 'Likes', 'When someone likes your post'] as const,
               ['commentsEnabled', 'Comments & Replies', 'When someone comments or replies'] as const,
+              ['newPostsEnabled', 'New Posts', 'When someone you follow posts'] as const,
               ['followsEnabled', 'New Followers', 'When someone follows you'] as const,
               ['groupJoinsEnabled', 'Group Activity', 'When someone joins your group'] as const,
               ['roastsEnabled', 'Weekly Roast', 'Weekly group roast drops'] as const,

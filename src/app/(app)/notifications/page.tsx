@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, AtSign, UserPlus, Users, Flame, Clock, Bell, CheckCheck, ChevronLeft } from 'lucide-react';
+import { Heart, MessageCircle, AtSign, UserPlus, Users, Flame, Clock, Bell, CheckCheck, ChevronLeft, ImageIcon } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { useNotificationStore, Notification } from '@/stores/use-notification-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -16,13 +16,14 @@ const TYPE_ICON: Record<string, { icon: typeof Heart; color: string }> = {
   mention:           { icon: AtSign,        color: 'text-purple-400 bg-purple-500/15' },
   follow:            { icon: UserPlus,      color: 'text-emerald-400 bg-emerald-500/15' },
   group_join:        { icon: Users,         color: 'text-amber-400 bg-amber-500/15' },
+  new_post:          { icon: ImageIcon,      color: 'text-teal-400 bg-teal-500/15' },
   weekly_roast:      { icon: Flame,         color: 'text-orange-400 bg-orange-500/15' },
   still_drinking:    { icon: Clock,         color: 'text-amber-400 bg-amber-500/15' },
 };
 
 function getNotificationPath(n: Notification): string {
   const d = n.data;
-  if (['like', 'comment_like', 'comment', 'reply', 'mention'].includes(n.type) && d.feedItemId) {
+  if (['like', 'comment_like', 'comment', 'reply', 'mention', 'new_post'].includes(n.type) && d.feedItemId) {
     return `/feed?post=${d.feedItemId}`;
   }
   if (n.type === 'follow' && n.actorId) {
