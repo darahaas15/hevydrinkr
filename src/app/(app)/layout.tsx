@@ -59,6 +59,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, isAuthenticated, router]);
 
+  // Listen for service worker navigation messages so deep-links from
+  // push notifications go through Next.js router (preserves history stack).
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'NAVIGATE' && event.data.path) {
+        router.push(event.data.path);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
+  }, [router]);
+
   // Online/offline connectivity detection
   useEffect(() => {
     const setOffline = useUIStore.getState().setOffline;

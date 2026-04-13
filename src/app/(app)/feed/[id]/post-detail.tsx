@@ -21,10 +21,11 @@ import { MentionText } from '@/components/ui/mention-text';
 
 const MAX_VISIBLE_REPLIES = 2;
 
-export default function PostDetailPage({ params, postId }: { params?: Promise<{ id: string }>; postId?: string }) {
+export default function PostDetailPage({ params, postId, highlightCommentId }: { params?: Promise<{ id: string }>; postId?: string; highlightCommentId?: string | null }) {
   const resolvedId = postId || (params ? use(params).id : '');
   const router = useRouter();
   const items = useFeedStore((s) => s.items);
+  const fetchSinglePost = useFeedStore((s) => s.fetchSinglePost);
   const addLike = useFeedStore((s) => s.addLike);
   const removeLike = useFeedStore((s) => s.removeLike);
   const addComment = useFeedStore((s) => s.addComment);
@@ -49,12 +50,23 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
   const [showLikesList, setShowLikesList] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
+  const [postLoading, setPostLoading] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(highlightCommentId ?? null);
   const allUsers = useAuthStore((s) => s.allUsers);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
 
   const item = items.find((i) => i.id === resolvedId);
+
+  // If the post isn't in the store (e.g. deep-link from a notification),
+  // fetch it directly from Supabase.
+  useEffect(() => {
+    if (!item && resolvedId && !postLoading) {
+      setPostLoading(true);
+      fetchSinglePost(resolvedId).finally(() => setPostLoading(false));
+    }
+  }, [item, resolvedId, fetchSinglePost, postLoading]);
 
   // Hide bottom nav for full-screen post experience
   useEffect(() => {
@@ -68,7 +80,15 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
 
   // iOS-style edge swipe to go back
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
-  const goBack = useCallback(() => router.push('/feed'), [router]);
+  const goBack = useCallback(() => {
+    // If there's real history (user navigated within the app), go back.
+    // Otherwise fall back to the feed (e.g. opened from a fresh window).
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/feed');
+    }
+  }, [router]);
 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
@@ -93,11 +113,39 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
     };
   }, [goBack]);
 
+  // When we have a target comment, expand its parent thread and scroll to it.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [item?.comments.length]);
+    if (!highlightCommentId || !item) return;
+
+    // Find which top-level comment thread contains the target
+    for (const comment of item.comments) {
+      if (comment.id === highlightCommentId) break; // top-level, no expansion needed
+      const inReplies = comment.replies.some((r) => r.id === highlightCommentId);
+      if (inReplies) {
+        setExpandedThreads((prev) => new Set(prev).add(comment.id));
+        break;
+      }
+    }
+
+    // Give React a tick to render the expanded replies, then scroll
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`comment-${highlightCommentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Clear the highlight after the flash animation
+        setTimeout(() => setHighlightedId(null), 2000);
+      }
+    });
+  }, [highlightCommentId, item]);
 
   if (!item) {
+    if (postLoading) {
+      return (
+        <div className="min-h-full flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-zinc-700 border-t-accent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-full flex items-center justify-center">
         <p className="text-zinc-500">Post not found</p>
@@ -211,7 +259,7 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
       {/* Header */}
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.push('/feed')} className="p-2 -ml-2 active:text-white">
+          <button onClick={goBack} className="p-2 -ml-2 active:text-white">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
           <h1 className="text-lg font-bold flex-1">Post</h1>
@@ -353,10 +401,11 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
                 <div key={comment.id}>
                   {/* Top-level comment */}
                   <motion.div
+                    id={`comment-${comment.id}`}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
-                    className="flex gap-3 group"
+                    className={`flex gap-3 group rounded-lg transition-colors duration-700 ${highlightedId === comment.id ? 'bg-accent/10 -mx-2 px-2 py-1' : ''}`}
                   >
                     <div onClick={() => goToUser(comment.userId)} className="cursor-pointer">
                       <Avatar name={comment.userName} size="sm" src={comment.userAvatar} />
@@ -396,10 +445,11 @@ export default function PostDetailPage({ params, postId }: { params?: Promise<{ 
                         const replyLiked = !!reply.likes.find((l) => l.userId === currentUser?.id);
                         return (
                           <motion.div
+                            id={`comment-${reply.id}`}
                             key={reply.id}
                             initial={{ opacity: 0, y: 4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex gap-3 group"
+                            className={`flex gap-3 group rounded-lg transition-colors duration-700 ${highlightedId === reply.id ? 'bg-accent/10 -mx-2 px-2 py-1' : ''}`}
                           >
                             <div onClick={() => goToUser(reply.userId)} className="cursor-pointer">
                               <Avatar name={reply.userName} size="sm" src={reply.userAvatar} />

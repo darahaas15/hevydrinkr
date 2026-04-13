@@ -32,9 +32,10 @@ export default function FeedPage() {
 function FeedPageInner() {
   const searchParams = useSearchParams();
   const postId = searchParams.get('post');
+  const commentId = searchParams.get('comment');
 
   if (postId) {
-    return <PostDetailPage postId={postId} />;
+    return <PostDetailPage postId={postId} highlightCommentId={commentId} />;
   }
 
   return <FeedPageList />;

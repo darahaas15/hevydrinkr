@@ -151,7 +151,10 @@ self.addEventListener('notificationclick', (event) => {
   let path = '/feed';
 
   if (data.type === 'like' || data.type === 'comment' || data.type === 'reply' || data.type === 'comment_like' || data.type === 'mention') {
-    if (data.feedItemId) path = `/feed?post=${data.feedItemId}`;
+    if (data.feedItemId) {
+      path = `/feed?post=${data.feedItemId}`;
+      if (data.commentId) path += `&comment=${data.commentId}`;
+    }
   } else if (data.type === 'follow' && data.actorId) {
     path = `/profile?user=${data.actorId}`;
   } else if ((data.type === 'group_join' || data.type === 'challenge_created') && data.groupId) {
@@ -162,10 +165,11 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      // Focus existing window if possible
+      // If an app window exists, message it to navigate via Next.js router
+      // so the history stack is preserved (back button works).
       for (const client of clients) {
         if (client.url.includes(self.location.origin)) {
-          client.navigate(path);
+          client.postMessage({ type: 'NAVIGATE', path });
           return client.focus();
         }
       }

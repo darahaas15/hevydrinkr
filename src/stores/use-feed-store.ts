@@ -33,6 +33,7 @@ interface FeedState {
 
   fetchFeed: (force?: boolean) => Promise<void>;
   fetchMoreFeed: () => Promise<void>;
+  fetchSinglePost: (postId: string) => Promise<FeedItem | null>;
   addLike: (feedItemId: string, like: FeedLike) => Promise<void>;
   removeLike: (feedItemId: string, likeId: string) => Promise<void>;
   addComment: (feedItemId: string, comment: FeedComment, parentCommentId?: string | null) => Promise<void>;
@@ -216,6 +217,29 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       loadingMore: false,
       hasMore: newItems.length === FEED_PAGE_SIZE,
     }));
+  },
+
+  fetchSinglePost: async (postId: string) => {
+    // Return from cache if already present
+    const cached = get().items.find((i) => i.id === postId);
+    if (cached) return cached;
+
+    const { data, error } = await supabase
+      .from('feed_items')
+      .select(FEED_SELECT)
+      .eq('id', postId)
+      .single();
+
+    if (error || !data) return null;
+
+    const item = mapRow(data as unknown as FeedItemRow);
+    // Merge into store so subsequent reads find it
+    set((state) => ({
+      items: state.items.some((i) => i.id === postId)
+        ? state.items
+        : [item, ...state.items],
+    }));
+    return item;
   },
 
   createFeedItemFromSession: async (session, user, caption) => {
