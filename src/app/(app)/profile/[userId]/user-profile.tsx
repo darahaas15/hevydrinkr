@@ -43,9 +43,15 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   useEffect(() => {
     fetchSessions(resolvedUserId);
     fetchFeed();
-    // Force-fetch users so the profile is always available
-    setLoadingUser(true);
-    fetchAllUsers(true).finally(() => setLoadingUser(false));
+    // Only force-fetch if this user isn't already in the store
+    const alreadyLoaded = useAuthStore.getState().allUsers.some((u) => u.id === resolvedUserId);
+    if (alreadyLoaded) {
+      setLoadingUser(false);
+      fetchAllUsers(); // background refresh without forcing
+    } else {
+      setLoadingUser(true);
+      fetchAllUsers(true).finally(() => setLoadingUser(false));
+    }
   }, [resolvedUserId, fetchSessions, fetchFeed, fetchAllUsers]);
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
