@@ -195,7 +195,7 @@ BEGIN
 
   v_name := get_display_name(NEW.follower_id);
   INSERT INTO notifications (user_id, actor_id, type, title, body, data)
-  VALUES (NEW.following_id, NEW.follower_id, 'follow', 'New Follower', v_name || ' started following you',
+  VALUES (NEW.following_id, NEW.follower_id, 'follow', 'New Follower', v_name || ' followed you',
           jsonb_build_object('actorId', NEW.follower_id));
   RETURN NEW;
 END;
