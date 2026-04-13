@@ -113,6 +113,10 @@ function drinkEntryToRow(entry: DrinkEntry, sessionId: string) {
 // Scoped per session so abandoning session A doesn't affect session B.
 const sessionInsertPromises = new Map<string, PromiseLike<void>>();
 
+// Increments every time a new session starts. Captured by addDrink closures
+// so stale callbacks from abandoned sessions can detect they're orphaned.
+let _sessionGeneration = 0;
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -236,6 +240,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     };
 
     // Optimistic update
+    _sessionGeneration++;
     set({ activeSession: session });
 
     // Persist to Supabase, then reconcile the id.
@@ -295,6 +300,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     };
 
     // Optimistic update
+    sessionInsertPromises.clear();
     set({
       activeSession: null,
       sessionHistory: [completedSession, ...sessionHistory],
@@ -326,7 +332,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     if (!activeSession) return;
 
     const sessionId = activeSession.id;
-    sessionInsertPromises.delete(sessionId);
+    sessionInsertPromises.clear();
 
     // Clear local state — don't add to history
     set({ activeSession: null });
@@ -364,11 +370,12 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     // Wait for the session row to exist in Supabase before inserting the
     // drink_entry (its session_id FK would fail otherwise).
     const insertPromise = sessionInsertPromises.get(activeSession.id) ?? Promise.resolve();
-    const expectedSessionId = activeSession.id;
+    const gen = _sessionGeneration;
     insertPromise.then(() => {
-      // Verify this session is still the active one (guards against abandoned sessions)
+      // If the session was abandoned/ended and a new one started, generation
+      // will have changed — bail so we don't insert under the wrong session.
       const current = get().activeSession;
-      if (!current || (current.id !== expectedSessionId && current.id !== get().activeSession?.id)) return;
+      if (!current || _sessionGeneration !== gen) return;
       const sid = current.id;
       supabase
         .from('drink_entries')

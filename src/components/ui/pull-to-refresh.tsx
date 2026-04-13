@@ -20,6 +20,7 @@ export function PullToRefresh({
   const startYRef = useRef<number | null>(null);
   const startXRef = useRef<number | null>(null);
   const directionLocked = useRef<'vertical' | 'horizontal' | null>(null);
+  const prevDistRef = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -67,14 +68,14 @@ export function PullToRefresh({
       const delta = e.touches[0].clientY - startYRef.current;
       if (delta > 0) {
         const newDist = delta * PULL_RESISTANCE;
-        const wasBelowThreshold = pullDistance < threshold;
-        setPullDistance(newDist);
-        if (wasBelowThreshold && newDist >= threshold) {
+        if (prevDistRef.current < threshold && newDist >= threshold) {
           hapticMedium();
         }
+        prevDistRef.current = newDist;
+        setPullDistance(newDist);
       }
     },
-    [refreshing]
+    [refreshing, threshold]
   );
 
   const handleTouchEnd = useCallback(async () => {
@@ -82,6 +83,7 @@ export function PullToRefresh({
     startYRef.current = null;
     startXRef.current = null;
     directionLocked.current = null;
+    prevDistRef.current = 0;
 
     if (isPastThreshold) {
       setRefreshing(true);

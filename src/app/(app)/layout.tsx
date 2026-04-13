@@ -104,8 +104,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           useFeedStore.getState().fetchFeed(true);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_likes' }, () => {
-        useFeedStore.getState().fetchFeed(true);
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_likes' }, (payload) => {
+        // Only refetch for others' likes — our own are applied optimistically
+        if (payload.new.user_id !== currentUser.id) {
+          useFeedStore.getState().fetchFeed(true);
+        }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_comments' }, (payload) => {
         if (payload.new.user_id !== currentUser.id) {

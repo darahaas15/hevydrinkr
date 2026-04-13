@@ -158,8 +158,8 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (!force && Date.now() - _usersLastFetched < USERS_STALE_MS) return;
     _usersLastFetched = Date.now();
     const [{ data: profiles }, { data: allFollows }] = await Promise.all([
-      supabase.from('profiles').select('id, username, display_name, avatar_url, bio, created_at'),
-      supabase.from('follows').select('follower_id, following_id'),
+      supabase.from('profiles').select('id, username, display_name, avatar_url, bio, created_at').limit(500),
+      supabase.from('follows').select('follower_id, following_id').limit(5000),
     ]);
     if (!profiles) return;
 
