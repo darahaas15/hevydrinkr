@@ -683,7 +683,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-5 max-w-lg mx-auto">
+            <div className="px-5 pt-4 pb-24 space-y-5 max-w-lg mx-auto">
               {/* Caption */}
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Caption</p>
@@ -802,7 +802,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
               className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
               style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
-              <div className="text-3xl mb-3">🗑️</div>
+              <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
               <h3 className="text-lg font-bold mb-1">Delete post?</h3>
               <p className="text-sm text-zinc-500 mb-5">This can&apos;t be undone</p>
               <div className="flex gap-3">
