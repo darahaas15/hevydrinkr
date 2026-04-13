@@ -161,17 +161,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   const hasPush = 'PushManager' in window;
                   const hasNotif = 'Notification' in window;
                   if (!hasSW || !hasPush || !hasNotif) {
-                    alert(`Not supported: SW=${hasSW} Push=${hasPush} Notif=${hasNotif}`);
                     return;
                   }
                   const perm = await Notification.requestPermission();
                   if (perm !== 'granted') {
-                    alert(`Permission: ${perm}`);
                     return;
                   }
                   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
                   if (!vapidKey) {
-                    alert('No VAPID key in build');
                     return;
                   }
                   const reg = await navigator.serviceWorker.ready;
@@ -189,13 +186,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       { user_id: currentUser.id, token, platform: 'web', updated_at: new Date().toISOString() },
                       { onConflict: 'user_id,token' }
                     );
-                  if (error) {
-                    alert(`DB error: ${JSON.stringify(error)}`);
-                  } else {
-                    alert('Token saved!');
-                  }
-                } catch (e: unknown) {
-                  alert(`Error: ${e instanceof Error ? e.message : e}`);
+                } catch {
+                  // Push setup failed silently
                 }
                 setShowNotifBanner(false);
               }}

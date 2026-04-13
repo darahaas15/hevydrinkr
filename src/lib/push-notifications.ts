@@ -11,11 +11,9 @@ export async function initPushNotifications(userId: string) {
   initialized = true;
 
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-    alert('DEBUG: Push not supported on this browser');
     return;
   }
   if (Notification.permission === 'denied') {
-    alert('DEBUG: Notification permission denied');
     return;
   }
 
@@ -31,7 +29,6 @@ export async function initPushNotifications(userId: string) {
       if (Notification.permission === 'granted') {
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         if (!vapidKey) {
-          alert('DEBUG: No VAPID key');
           return;
         }
 
@@ -40,19 +37,15 @@ export async function initPushNotifications(userId: string) {
           applicationServerKey: urlBase64ToUint8Array(vapidKey),
         });
       } else {
-        alert('DEBUG: Permission is ' + Notification.permission);
         return;
       }
     }
 
     if (sub) {
       await upsertWebPushSubscription(userId, sub);
-      alert('DEBUG: Token saved OK');
-    } else {
-      alert('DEBUG: No subscription obtained');
     }
-  } catch (e) {
-    alert('DEBUG: Push setup error: ' + (e instanceof Error ? e.message : e));
+  } catch {
+    // Push setup failed silently
   }
 }
 

@@ -92,9 +92,9 @@ function LandingContent() {
   }
 
   // Show install gate when not running as installed PWA
-  // if (!isStandalone) {
-  //   return <InstallGate canInstallNative={canInstallNative} onInstall={handleInstallClick} />;
-  // }
+  if (!isStandalone) {
+    return <InstallGate canInstallNative={canInstallNative} onInstall={handleInstallClick} />;
+  }
 
   const handleSignup = async () => {
     if (!email.trim() || !password.trim() || !username.trim() || !displayName.trim() || !dob) {
