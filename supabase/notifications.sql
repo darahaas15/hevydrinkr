@@ -145,7 +145,7 @@ BEGIN
   IF v_post_owner IS DISTINCT FROM NEW.user_id THEN
     INSERT INTO notifications (user_id, actor_id, type, title, body, data)
     VALUES (v_post_owner, NEW.user_id, 'comment', 'New Comment', v_name || ' commented on your post',
-            jsonb_build_object('feedItemId', NEW.feed_item_id));
+            jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id));
   END IF;
 
   -- If reply, also notify parent comment author (skip if same as post owner or self)
@@ -154,7 +154,7 @@ BEGIN
     IF v_parent_author IS DISTINCT FROM NEW.user_id AND v_parent_author IS DISTINCT FROM v_post_owner THEN
       INSERT INTO notifications (user_id, actor_id, type, title, body, data)
       VALUES (v_parent_author, NEW.user_id, 'reply', 'New Reply', v_name || ' replied to your comment',
-              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.parent_comment_id));
+              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id, 'parentCommentId', NEW.parent_comment_id));
     END IF;
   END IF;
 
@@ -276,3 +276,69 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER trg_comment_like_notify
   AFTER INSERT ON comment_likes
   FOR EACH ROW EXECUTE FUNCTION on_comment_like_inserted();
+
+-- ============================================================================
+-- Cleanup triggers — remove notifications when source actions are reversed
+-- ============================================================================
+
+-- ── Comment deleted → remove comment/reply/mention notifications ──
+CREATE OR REPLACE FUNCTION on_feed_comment_deleted()
+RETURNS trigger AS $$
+BEGIN
+  DELETE FROM notifications
+  WHERE data->>'commentId' = OLD.id::text;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_feed_comment_cleanup
+  AFTER DELETE ON feed_comments
+  FOR EACH ROW EXECUTE FUNCTION on_feed_comment_deleted();
+
+-- ── Like removed → remove like notification ──
+CREATE OR REPLACE FUNCTION on_feed_like_deleted()
+RETURNS trigger AS $$
+BEGIN
+  DELETE FROM notifications
+  WHERE type = 'like'
+    AND actor_id = OLD.user_id
+    AND data->>'feedItemId' = OLD.feed_item_id::text;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_feed_like_cleanup
+  AFTER DELETE ON feed_likes
+  FOR EACH ROW EXECUTE FUNCTION on_feed_like_deleted();
+
+-- ── Unfollow → remove follow notification ──
+CREATE OR REPLACE FUNCTION on_follow_deleted()
+RETURNS trigger AS $$
+BEGIN
+  DELETE FROM notifications
+  WHERE type = 'follow'
+    AND actor_id = OLD.follower_id
+    AND user_id = OLD.following_id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_follow_cleanup
+  AFTER DELETE ON follows
+  FOR EACH ROW EXECUTE FUNCTION on_follow_deleted();
+
+-- ── Comment like removed → remove comment_like notification ──
+CREATE OR REPLACE FUNCTION on_comment_like_deleted()
+RETURNS trigger AS $$
+BEGIN
+  DELETE FROM notifications
+  WHERE type = 'comment_like'
+    AND actor_id = OLD.user_id
+    AND data->>'commentId' = OLD.comment_id::text;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_comment_like_cleanup
+  AFTER DELETE ON comment_likes
+  FOR EACH ROW EXECUTE FUNCTION on_comment_like_deleted();

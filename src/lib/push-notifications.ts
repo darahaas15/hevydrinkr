@@ -10,35 +10,49 @@ export async function initPushNotifications(userId: string) {
   if (initialized) return;
   initialized = true;
 
-  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
-  if (Notification.permission === 'denied') return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    alert('DEBUG: Push not supported on this browser');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    alert('DEBUG: Notification permission denied');
+    return;
+  }
 
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
 
     if (!sub) {
-      // Prompt for permission if not yet decided
       if (Notification.permission === 'default') {
         await Notification.requestPermission();
       }
 
       if (Notification.permission === 'granted') {
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) return;
+        if (!vapidKey) {
+          alert('DEBUG: No VAPID key');
+          return;
+        }
 
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidKey),
         });
+      } else {
+        alert('DEBUG: Permission is ' + Notification.permission);
+        return;
       }
     }
 
     if (sub) {
       await upsertWebPushSubscription(userId, sub);
+      alert('DEBUG: Token saved OK');
+    } else {
+      alert('DEBUG: No subscription obtained');
     }
   } catch (e) {
-    console.warn('Web Push setup failed:', e);
+    alert('DEBUG: Push setup error: ' + (e instanceof Error ? e.message : e));
   }
 }
 
