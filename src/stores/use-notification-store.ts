@@ -171,14 +171,41 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
     if (updates.newPostsEnabled !== undefined) dbUpdates.new_posts_enabled = updates.newPostsEnabled;
     if (updates.sessionRemindersEnabled !== undefined) dbUpdates.session_reminders_enabled = updates.sessionRemindersEnabled;
 
-    const { error } = await supabase
+    // Use update (not upsert) to avoid RLS INSERT policy issues
+    const { data, error } = await supabase
       .from('notification_preferences')
-      .upsert({ user_id: userId, ...dbUpdates }, { onConflict: 'user_id' });
+      .update(dbUpdates)
+      .eq('user_id', userId)
+      .select();
 
     if (error) {
       console.error('Failed to update notification preferences:', error);
       set({ preferences: prev });
       useUIStore.getState().addToast(`Pref update failed: ${error.message}`, 'error');
+      return;
+    }
+
+    // Row doesn't exist yet — seed it with all current preferences
+    if (!data || data.length === 0) {
+      const { error: insertErr } = await supabase
+        .from('notification_preferences')
+        .insert({
+          user_id: userId,
+          likes_enabled: merged.likesEnabled,
+          comments_enabled: merged.commentsEnabled,
+          follows_enabled: merged.followsEnabled,
+          group_joins_enabled: merged.groupJoinsEnabled,
+          challenges_enabled: merged.roastsEnabled,
+          new_posts_enabled: merged.newPostsEnabled,
+          session_reminders_enabled: merged.sessionRemindersEnabled,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (insertErr) {
+        console.error('Failed to create notification preferences:', insertErr);
+        set({ preferences: prev });
+        useUIStore.getState().addToast(`Pref update failed: ${insertErr.message}`, 'error');
+      }
     }
   },
 
