@@ -377,12 +377,12 @@ function SessionPageInner() {
             <div className="flex items-center gap-2">
               <div className="text-right">
                 <p className="text-2xl font-bold font-mono" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
-                  {bacEstimate ? bacEstimate.currentBac.toFixed(3) : '0.000'}
+                  {bacEstimate ? bacEstimate.currentBac.toFixed(3) : '0.000'}%
                 </p>
                 <p className="text-[10px] text-zinc-600">est. BAC</p>
               </div>
               <IconSteeringWheel
-                className="w-7 h-7"
+                className="w-7 h-7 -mt-4"
                 stroke={1.5}
                 style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}
               />

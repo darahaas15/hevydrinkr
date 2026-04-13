@@ -18,7 +18,7 @@ export const BAC_COLORS = {
   WASTED: '#dc2626',
 } as const;
 
-export const BAC_LEGAL_LIMIT = 0.08;
+export const BAC_LEGAL_LIMIT = 0.03;
 
 export const BAC_LEVEL_LABELS: Record<string, { label: string; description: string }> = {
   SOBER: { label: 'Sober', description: 'Minimal effects' },

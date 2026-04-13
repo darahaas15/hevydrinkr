@@ -37,10 +37,10 @@ function ProfilePageInner() {
   const userId = searchParams.get('user');
 
   if (userId) {
-    return <UserProfilePage userId={userId} />;
+    return <UserProfilePage key={userId} userId={userId} />;
   }
 
-  return <ProfilePageOwn />;
+  return <ProfilePageOwn key="own" />;
 }
 
 function ProfilePageOwn() {
