@@ -1,4 +1,4 @@
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const STATIC_CACHE = `drinkr-static-v${CACHE_VERSION}`;
 const RUNTIME_CACHE = `drinkr-runtime-v${CACHE_VERSION}`;
 
@@ -14,7 +14,14 @@ const PRECACHE_URLS = [
 // ── Install ──────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches.open(STATIC_CACHE).then((cache) =>
+      // Cache each URL individually so one failure doesn't block SW activation
+      Promise.all(
+        PRECACHE_URLS.map((url) =>
+          cache.add(url).catch(() => { /* skip failed precache entry */ })
+        )
+      )
+    )
   );
   self.skipWaiting();
 });

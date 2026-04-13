@@ -84,8 +84,29 @@ export async function requestWebPushPermission(userId: string): Promise<boolean>
     if (!vapidKey) { toast('Push: VAPID key missing', 'error'); return false; }
     toast(`Push: VAPID key found (${vapidKey.slice(0, 8)}…)`);
 
+    // Diagnose SW state before waiting
+    const existingReg = await navigator.serviceWorker.getRegistration();
+    if (existingReg) {
+      const sw = existingReg.active || existingReg.waiting || existingReg.installing;
+      toast(`Push: SW reg found, state=${sw?.state ?? 'none'}`);
+    } else {
+      toast('Push: no SW registration, registering…');
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+        toast('Push: SW registered');
+      } catch (e) {
+        toast(`Push: SW register failed: ${e instanceof Error ? e.message : e}`, 'error');
+        return false;
+      }
+    }
+
     toast('Push: waiting for SW ready…');
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('SW ready timed out after 10s')), 10_000)
+      ),
+    ]);
     toast('Push: SW ready ✓');
 
     toast('Push: subscribing…');
