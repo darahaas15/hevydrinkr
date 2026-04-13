@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronLeft, Loader2, User, Mail, Lock, Calendar, AtSign, Share, Plus, MoreVertical, Download, Ruler, Weight } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import { AuthInput, ErrorMsg } from '@/components/ui/auth-input';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { SplashScreen } from '@/components/ui/splash-screen';
 import { migrateStorageKeys } from '@/lib/storage-migration';
@@ -373,10 +374,17 @@ function LandingContent() {
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Welcome Back</h2>
             <p className="text-sm text-zinc-500 mb-8">Sign in to your account</p>
 
-            <div className="space-y-3 mb-4">
+            <div className="space-y-3 mb-2">
               <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={loginEmail} onChange={setLoginEmail} placeholder="Email" />
               <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={loginPassword} onChange={setLoginPassword} placeholder="Password" onSubmit={handleLogin} />
             </div>
+
+            <button
+              onClick={() => router.push('/forgot-password')}
+              className="text-xs text-zinc-500 active:text-accent transition-colors self-end mb-2"
+            >
+              Forgot password?
+            </button>
 
             {error && <ErrorMsg message={error} />}
 
@@ -402,29 +410,6 @@ function LandingContent() {
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function AuthInput({ icon, type = 'text', value, onChange, placeholder, onSubmit, max }: {
-  icon: React.ReactNode; type?: string; value: string; onChange: (v: string) => void; placeholder: string; onSubmit?: () => void; max?: string;
-}) {
-  return (
-    <div className="relative group">
-      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">{icon}</div>
-      <input
-        type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} max={max}
-        onKeyDown={onSubmit ? (e) => e.key === 'Enter' && onSubmit() : undefined}
-        className={`w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/30 transition-colors${type === 'date' ? ' [color-scheme:dark] appearance-none' : ''}`}
-      />
-    </div>
-  );
-}
-
-function ErrorMsg({ message }: { message: string }) {
-  return (
-    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-red-400 mb-4 px-1">
-      {message}
-    </motion.p>
   );
 }
 

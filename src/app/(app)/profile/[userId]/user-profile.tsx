@@ -31,6 +31,12 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
 
   const [loadingUser, setLoadingUser] = useState(!allUsers.some((u) => u.id === resolvedUserId));
+  const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const blockUser = useModerationStore((s) => s.blockUser);
+  const unblockUser = useModerationStore((s) => s.unblockUser);
+  const isBlocked = useModerationStore((s) => s.isBlocked(resolvedUserId));
 
   useEffect(() => {
     fetchSessions(resolvedUserId);
@@ -41,6 +47,62 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
   }, [resolvedUserId, fetchSessions, fetchFeed, fetchAllUsers]);
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
+  const isFollowing = currentUser?.following.includes(resolvedUserId) ?? false;
+
+  const userPosts = feedItems.filter((f) => f.userId === resolvedUserId);
+
+  const stats = useMemo(() => {
+    const totalSessions = userPosts.length;
+    const totalDrinks = userPosts.reduce((sum, p) => sum + (p.sessionSummary.totalDrinks ?? 0), 0);
+    const totalMinutes = userPosts.reduce((sum, p) => sum + (p.sessionSummary.durationMinutes ?? 0), 0);
+    const avgDrinks = totalSessions > 0 ? totalDrinks / totalSessions : 0;
+    return { totalSessions, totalDrinks, totalMinutes, avgDrinks };
+  }, [userPosts]);
+
+  // Signature drink
+  const signatureDrink = useMemo(() => {
+    const counts: Record<string, { count: number; category: string }> = {};
+    userPosts.forEach((p) =>
+      (p.sessionSummary.drinks ?? []).forEach((d) => {
+        if (!counts[d.name]) counts[d.name] = { count: 0, category: d.category };
+        counts[d.name].count++;
+      })
+    );
+    const entries = Object.entries(counts).sort(([, a], [, b]) => b.count - a.count);
+    if (entries.length === 0) return null;
+    const [name, { count, category }] = entries[0];
+    const total = Object.values(counts).reduce((s, v) => s + v.count, 0);
+    return { name, count, category, pct: Math.round((count / total) * 100) };
+  }, [userPosts]);
+
+  // Session highlights
+  const highlights = useMemo(() => {
+    if (userPosts.length === 0) return [];
+    const items: { label: string; value: string; icon: typeof Heart; postId: string }[] = [];
+    const byLikes = [...userPosts].sort((a, b) => b.likes.length - a.likes.length);
+    if (byLikes[0]?.likes.length > 0) {
+      items.push({ label: 'Best Night', value: `${byLikes[0].likes.length} likes`, icon: Heart, postId: byLikes[0].id });
+    }
+    const byDuration = [...userPosts].sort((a, b) => b.sessionSummary.durationMinutes - a.sessionSummary.durationMinutes);
+    if (byDuration[0]?.sessionSummary.durationMinutes > 0) {
+      items.push({ label: 'Marathon', value: formatDuration(byDuration[0].sessionSummary.durationMinutes), icon: Timer, postId: byDuration[0].id });
+    }
+    const byDrinks = [...userPosts].sort((a, b) => b.sessionSummary.totalDrinks - a.sessionSummary.totalDrinks);
+    if (byDrinks[0]?.sessionSummary.totalDrinks > 0) {
+      items.push({ label: 'Record', value: `${byDrinks[0].sessionSummary.totalDrinks} drinks`, icon: TrophyIcon, postId: byDrinks[0].id });
+    }
+    return items;
+  }, [userPosts]);
+
+  // Achievements
+  const milestones = [
+    { threshold: 10, label: '10th Sesh' },
+    { threshold: 25, label: '25th Sesh' },
+    { threshold: 50, label: '50th Sesh' },
+    { threshold: 100, label: '100th Sesh' },
+  ];
+  const sessionCount = userPosts.length;
+  const earnedMilestones = milestones.filter((m) => sessionCount >= m.threshold);
 
   // Redirect to own profile
   if (resolvedUserId === currentUser?.id) {
@@ -97,69 +159,6 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
       </div>
     );
   }
-
-  const isFollowing = currentUser.following.includes(resolvedUserId);
-  const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
-  const [showReport, setShowReport] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const blockUser = useModerationStore((s) => s.blockUser);
-  const unblockUser = useModerationStore((s) => s.unblockUser);
-  const isBlocked = useModerationStore((s) => s.isBlocked(resolvedUserId));
-
-  const userPosts = feedItems.filter((f) => f.userId === resolvedUserId);
-
-  const stats = useMemo(() => {
-    const totalSessions = userPosts.length;
-    const totalDrinks = userPosts.reduce((sum, p) => sum + (p.sessionSummary.totalDrinks ?? 0), 0);
-    const totalMinutes = userPosts.reduce((sum, p) => sum + (p.sessionSummary.durationMinutes ?? 0), 0);
-    const avgDrinks = totalSessions > 0 ? totalDrinks / totalSessions : 0;
-    return { totalSessions, totalDrinks, totalMinutes, avgDrinks };
-  }, [userPosts]);
-
-  // Signature drink
-  const signatureDrink = useMemo(() => {
-    const counts: Record<string, { count: number; category: string }> = {};
-    userPosts.forEach((p) =>
-      (p.sessionSummary.drinks ?? []).forEach((d) => {
-        if (!counts[d.name]) counts[d.name] = { count: 0, category: d.category };
-        counts[d.name].count++;
-      })
-    );
-    const entries = Object.entries(counts).sort(([, a], [, b]) => b.count - a.count);
-    if (entries.length === 0) return null;
-    const [name, { count, category }] = entries[0];
-    const total = Object.values(counts).reduce((s, v) => s + v.count, 0);
-    return { name, count, category, pct: Math.round((count / total) * 100) };
-  }, [userPosts]);
-
-  // Session highlights
-  const highlights = useMemo(() => {
-    if (userPosts.length === 0) return [];
-    const items: { label: string; value: string; icon: typeof Heart; postId: string }[] = [];
-    const byLikes = [...userPosts].sort((a, b) => b.likes.length - a.likes.length);
-    if (byLikes[0]?.likes.length > 0) {
-      items.push({ label: 'Best Night', value: `${byLikes[0].likes.length} likes`, icon: Heart, postId: byLikes[0].id });
-    }
-    const byDuration = [...userPosts].sort((a, b) => b.sessionSummary.durationMinutes - a.sessionSummary.durationMinutes);
-    if (byDuration[0]?.sessionSummary.durationMinutes > 0) {
-      items.push({ label: 'Marathon', value: formatDuration(byDuration[0].sessionSummary.durationMinutes), icon: Timer, postId: byDuration[0].id });
-    }
-    const byDrinks = [...userPosts].sort((a, b) => b.sessionSummary.totalDrinks - a.sessionSummary.totalDrinks);
-    if (byDrinks[0]?.sessionSummary.totalDrinks > 0) {
-      items.push({ label: 'Record', value: `${byDrinks[0].sessionSummary.totalDrinks} drinks`, icon: TrophyIcon, postId: byDrinks[0].id });
-    }
-    return items;
-  }, [userPosts]);
-
-  // Achievements
-  const milestones = [
-    { threshold: 10, label: '10th Sesh' },
-    { threshold: 25, label: '25th Sesh' },
-    { threshold: 50, label: '50th Sesh' },
-    { threshold: 100, label: '100th Sesh' },
-  ];
-  const sessionCount = userPosts.length;
-  const earnedMilestones = milestones.filter((m) => sessionCount >= m.threshold);
 
   return (
     <div className="min-h-full pb-8">

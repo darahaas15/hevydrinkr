@@ -308,7 +308,7 @@ export default function SettingsPage() {
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
             <div className="px-4 py-3.5 flex items-center justify-between">
               <span className="text-sm text-zinc-400">Version</span>
-              <span className="text-sm text-zinc-600">1.0.0</span>
+              <span className="text-sm text-zinc-600">1.12.0</span>
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <span className="text-sm text-zinc-400">Contact</span>
