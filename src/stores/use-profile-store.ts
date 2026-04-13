@@ -3,11 +3,14 @@ import { persist } from 'zustand/middleware';
 import type { PersonalRecord } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
+const PRS_STALE_MS = 30_000;
+let _prsLastFetched = 0;
+
 interface ProfileState {
   personalRecords: PersonalRecord[];
   loading: boolean;
 
-  fetchPRs: (userId: string) => Promise<void>;
+  fetchPRs: (userId: string, force?: boolean) => Promise<void>;
   addPR: (pr: PersonalRecord) => Promise<void>;
   updatePRs: (prs: PersonalRecord[]) => void;
   getPRsByUser: (userId: string) => PersonalRecord[];
@@ -35,8 +38,10 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
   personalRecords: [],
   loading: false,
 
-  fetchPRs: async (userId) => {
-    set({ loading: true });
+  fetchPRs: async (userId, force) => {
+    if (!force && Date.now() - _prsLastFetched < PRS_STALE_MS) return;
+    _prsLastFetched = Date.now();
+    if (get().personalRecords.length === 0) set({ loading: true });
 
     const { data, error } = await supabase
       .from('personal_records')

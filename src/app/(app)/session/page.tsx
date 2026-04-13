@@ -73,6 +73,15 @@ function SessionPageInner() {
       fetchPRs(currentUser.id);
       fetchFeed();
     }
+    const refetch = () => {
+      if (currentUser) {
+        fetchSessions(currentUser.id, true);
+        fetchPRs(currentUser.id, true);
+        fetchFeed(true);
+      }
+    };
+    window.addEventListener('focus', refetch);
+    return () => window.removeEventListener('focus', refetch);
   }, [currentUser, fetchSessions, fetchPRs, fetchFeed]);
 
   const [venue, setVenue] = useState('');

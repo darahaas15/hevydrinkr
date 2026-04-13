@@ -48,12 +48,12 @@ function GroupsPageList() {
   const [inviteCode, setInviteCode] = useState('');
 
   const handleRefresh = useCallback(async () => {
-    if (currentUser) await fetchGroups(currentUser.id);
+    if (currentUser) await fetchGroups(currentUser.id, true);
   }, [currentUser, fetchGroups]);
 
   useEffect(() => {
-    const refetch = () => { if (currentUser) fetchGroups(currentUser.id); };
-    refetch();
+    if (currentUser) fetchGroups(currentUser.id);
+    const refetch = () => { if (currentUser) fetchGroups(currentUser.id, true); };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
   // eslint-disable-next-line react-hooks/exhaustive-deps

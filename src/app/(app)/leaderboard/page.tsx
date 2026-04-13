@@ -37,8 +37,9 @@ export default function LeaderboardPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
 
   useEffect(() => {
-    const refetch = () => { fetchAllUsers(); fetchFeed(); };
-    refetch();
+    fetchAllUsers();
+    fetchFeed();
+    const refetch = () => { fetchAllUsers(true); fetchFeed(true); };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
   }, [fetchAllUsers, fetchFeed]);

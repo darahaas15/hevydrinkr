@@ -2,11 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+
+const SESSIONS_STALE_MS = 30_000;
+let _sessionsLastFetched = 0;
+
 interface SessionState {
   activeSession: DrinkSession | null;
   sessionHistory: DrinkSession[];
 
-  fetchSessions: (userId: string) => Promise<void>;
+  fetchSessions: (userId: string, force?: boolean) => Promise<void>;
   startSession: (venue: string, userId: string) => void;
   endSession: (mood: SessionMood) => void;
   abandonSession: () => void;
@@ -120,7 +124,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   // -----------------------------------------------------------------------
   // Fetch sessions from Supabase and hydrate local state
   // -----------------------------------------------------------------------
-  fetchSessions: async (userId: string) => {
+  fetchSessions: async (userId: string, force?: boolean) => {
+    if (!force && Date.now() - _sessionsLastFetched < SESSIONS_STALE_MS) return;
+    _sessionsLastFetched = Date.now();
     // If userId is empty, fetch all sessions (for leaderboard) — only completed, no active
     let query = supabase
       .from('drink_sessions')

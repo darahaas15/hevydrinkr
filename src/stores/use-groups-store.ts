@@ -6,11 +6,14 @@ import type {
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
+const GROUPS_STALE_MS = 30_000;
+let _groupsLastFetched = 0;
+
 interface GroupsState {
   groups: Group[];
   loading: boolean;
 
-  fetchGroups: (userId: string) => Promise<void>;
+  fetchGroups: (userId: string, force?: boolean) => Promise<void>;
   addGroup: (group: Group) => Promise<void>;
   updateGroup: (
     groupId: string,
@@ -60,8 +63,10 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
   groups: [],
   loading: true,
 
-  fetchGroups: async (userId) => {
-    set({ loading: true });
+  fetchGroups: async (userId, force) => {
+    if (!force && Date.now() - _groupsLastFetched < GROUPS_STALE_MS) return;
+    _groupsLastFetched = Date.now();
+    if (get().groups.length === 0) set({ loading: true });
     const { data, error } = await supabase
       .from('groups')
       .select(

@@ -60,17 +60,22 @@ function ProfilePageOwn() {
   const personalRecords = useProfileStore((s) => s.personalRecords);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
 
-  // Fetch on mount and refetch when page regains focus
+  // Fetch on mount (respects stale guard) and force-refetch when page regains focus
   useEffect(() => {
+    if (currentUser) {
+      fetchSessions(currentUser.id);
+      fetchPRs(currentUser.id);
+      fetchAllUsers();
+      fetchFeed();
+    }
     const refetch = () => {
       if (currentUser) {
-        fetchSessions(currentUser.id);
-        fetchPRs(currentUser.id);
-        fetchAllUsers();
-        fetchFeed();
+        fetchSessions(currentUser.id, true);
+        fetchPRs(currentUser.id, true);
+        fetchAllUsers(true);
+        fetchFeed(true);
       }
     };
-    refetch();
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
   // eslint-disable-next-line react-hooks/exhaustive-deps
