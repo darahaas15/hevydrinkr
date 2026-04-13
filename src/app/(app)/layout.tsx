@@ -29,7 +29,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchBlockedUsers = useModerationStore((s) => s.fetchBlockedUsers);
   const hideBottomNav = useUIStore((s) => s.hideBottomNav);
   const [showNotifBanner, setShowNotifBanner] = useState(false);
-  const [pushDebug, setPushDebug] = useState('');
 
   // Toggle a `keyboard-open` class on <html> when the soft keyboard is
   // visible, so fixed input bars can adjust safe-area padding.
@@ -38,18 +37,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initialize();
   }, [initialize]);
-
-  // DEBUG: Check push support on load
-  useEffect(() => {
-    const info: string[] = [];
-    info.push(`SW:${'serviceWorker' in navigator}`);
-    info.push(`Push:${'PushManager' in window}`);
-    info.push(`Notif:${'Notification' in window}`);
-    if ('Notification' in window) info.push(`Perm:${Notification.permission}`);
-    info.push(`VAPID:${!!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}`);
-    info.push(`Standalone:${window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as Record<string, unknown>).standalone === true}`);
-    setPushDebug(info.join(' | '));
-  }, []);
 
   // Init push notifications + fetch user data once we have a user
   useEffect(() => {
@@ -156,39 +143,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <p className="text-sm font-medium text-black flex-1">Enable notifications to know when friends interact with your posts</p>
             <button
               onClick={async () => {
-                try {
-                  const hasSW = 'serviceWorker' in navigator;
-                  const hasPush = 'PushManager' in window;
-                  const hasNotif = 'Notification' in window;
-                  if (!hasSW || !hasPush || !hasNotif) {
-                    return;
-                  }
-                  const perm = await Notification.requestPermission();
-                  if (perm !== 'granted') {
-                    return;
-                  }
-                  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                  if (!vapidKey) {
-                    return;
-                  }
-                  const reg = await navigator.serviceWorker.ready;
-                  const sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: new Uint8Array(
-                      atob(vapidKey.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - vapidKey.length % 4) % 4))
-                        .split('').map(c => c.charCodeAt(0))
-                    ),
-                  });
-                  const token = JSON.stringify(sub.toJSON());
-                  const { error } = await (await import('@/lib/supabase/client')).supabase
-                    .from('device_tokens')
-                    .upsert(
-                      { user_id: currentUser.id, token, platform: 'web', updated_at: new Date().toISOString() },
-                      { onConflict: 'user_id,token' }
-                    );
-                } catch {
-                  // Push setup failed silently
-                }
+                await requestWebPushPermission(currentUser.id);
                 setShowNotifBanner(false);
               }}
               className="px-4 py-1.5 rounded-full bg-black/20 text-xs font-semibold text-white shrink-0 active:bg-black/30"
@@ -202,11 +157,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               &times;
             </button>
           </div>
-        </div>
-      )}
-      {pushDebug && (
-        <div className="fixed bottom-20 left-2 right-2 z-[999] bg-red-600 text-white text-[10px] p-2 rounded font-mono break-all">
-          {pushDebug}
         </div>
       )}
       <BottomNav />
