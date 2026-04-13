@@ -55,7 +55,8 @@ function LandingContent() {
   useEffect(() => {
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
+      (navigator as unknown as { standalone?: boolean }).standalone === true ||
+      window.location.hostname === 'localhost';
     setIsStandalone(standalone);
 
     const handler = (e: Event) => {

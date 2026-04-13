@@ -53,8 +53,10 @@ export default function NotificationsPage() {
   }, [currentUser?.id, fetchNotifications]);
 
   const handleTap = (n: Notification) => {
-    if (!n.read) markAsRead(n.id);
     router.push(getNotificationPath(n));
+    // Defer so the state update + persist write don't get batched with navigation
+    // inside the view transition, which caused jank and swallowed taps.
+    if (!n.read) setTimeout(() => markAsRead(n.id), 0);
   };
 
   return (
