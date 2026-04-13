@@ -143,10 +143,17 @@ let cachedVAPIDKey: CryptoKey | null = null;
 async function getVAPIDPrivateKey(): Promise<CryptoKey> {
   if (cachedVAPIDKey) return cachedVAPIDKey;
 
-  const raw = base64urlDecode(Deno.env.get('VAPID_PRIVATE_KEY')!);
+  const privateBytes = base64urlDecode(Deno.env.get('VAPID_PRIVATE_KEY')!);
+  const publicBytes = base64urlDecode(Deno.env.get('VAPID_PUBLIC_KEY')!);
+
+  // Import as JWK — raw VAPID keys are 32-byte private + 65-byte uncompressed public
+  const x = base64url(publicBytes.slice(1, 33));
+  const y = base64url(publicBytes.slice(33, 65));
+  const d = base64url(privateBytes);
+
   cachedVAPIDKey = await crypto.subtle.importKey(
-    'pkcs8',
-    raw.buffer,
+    'jwk',
+    { kty: 'EC', crv: 'P-256', x, y, d },
     { name: 'ECDSA', namedCurve: 'P-256' },
     false,
     ['sign'],
@@ -426,5 +433,9 @@ Deno.serve(async (req) => {
   }
 
   const sent = results.filter((r) => r.status === 'fulfilled').length;
+  const failed = results.filter((r) => r.status === 'rejected');
+  for (const f of failed) {
+    console.error('Push delivery failed:', (f as PromiseRejectedResult).reason);
+  }
   return Response.json({ sent, total: tokens.length, ios: iosTokens.length, web: webTokens.length });
 });
