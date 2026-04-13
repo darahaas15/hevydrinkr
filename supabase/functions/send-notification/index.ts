@@ -368,13 +368,15 @@ Deno.serve(async (req) => {
 
   const { user_id, actor_id, type, title, body, data } = record;
 
-  // For comment-type notifications, append a preview of the comment to the push body
+  // Build push title/body: put the real message in the title (shown bold, first line)
+  // and only use body for comment preview quotes. This avoids the generic "New Comment"
+  // title wasting a line above the iOS-added "from Drinkr" attribution.
   const COMMENT_TYPES = ['comment', 'reply', 'mention'];
-  let pushBody = body;
+  let commentPreviewBody = '';
   if (COMMENT_TYPES.includes(type) && data?.commentPreview) {
     const preview = String(data.commentPreview);
     const truncated = preview.length > 50 ? preview.slice(0, 50) + '…' : preview;
-    pushBody = `${body}: "${truncated}"`;
+    commentPreviewBody = `"${truncated}"`;
   }
 
   // Check user's preference for this notification type
@@ -411,7 +413,7 @@ Deno.serve(async (req) => {
   if (iosTokens.length > 0) {
     const apnsPayload = {
       aps: {
-        alert: { title, body: pushBody },
+        alert: { title: body, body: commentPreviewBody || undefined },
         sound: 'default',
         badge: 1,
         'mutable-content': 1,
@@ -430,8 +432,8 @@ Deno.serve(async (req) => {
   // Send to web devices via Web Push
   if (webTokens.length > 0) {
     const webPayload = {
-      title,
-      body: pushBody,
+      title: body,
+      body: commentPreviewBody,
       tag: `drinkr-${type}`,
       data: { type, actorId: actor_id, ...(data ?? {}) },
     };
