@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase/client';
+import { useUIStore } from '@/stores/use-ui-store';
 
 export interface Notification {
   id: string;
@@ -177,6 +178,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
     if (error) {
       console.error('Failed to update notification preferences:', error);
       set({ preferences: prev });
+      useUIStore.getState().addToast('Failed to update preference', 'error');
     }
   },
 
