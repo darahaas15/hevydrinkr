@@ -5,6 +5,13 @@ import { useCallback } from 'react';
 
 type Direction = -1 | 0 | 1;
 
+/** Wait for React to flush a navigation into the DOM. */
+function afterNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 function navigateWithTransition(
   fn: () => void,
   direction: Direction,
@@ -12,7 +19,10 @@ function navigateWithTransition(
   document.documentElement.dataset.navDirection = String(direction);
 
   if (document.startViewTransition) {
-    document.startViewTransition(() => fn());
+    document.startViewTransition(async () => {
+      fn();
+      await afterNextPaint();
+    });
   } else {
     fn();
   }
