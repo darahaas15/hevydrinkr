@@ -17,29 +17,14 @@ export async function initPushNotifications(userId: string) {
     return;
   }
 
+  // Only re-register an existing subscription on load.
+  // Never request permission here — iOS requires a user gesture,
+  // and calling requestPermission() without one poisons the state to 'denied'.
+  if (Notification.permission !== 'granted') return;
+
   try {
     const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-
-    if (!sub) {
-      if (Notification.permission === 'default') {
-        await Notification.requestPermission();
-      }
-
-      if (Notification.permission === 'granted') {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) {
-          return;
-        }
-
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
-        });
-      } else {
-        return;
-      }
-    }
+    const sub = await reg.pushManager.getSubscription();
 
     if (sub) {
       await upsertWebPushSubscription(userId, sub);

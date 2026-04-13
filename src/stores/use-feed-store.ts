@@ -311,10 +311,10 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     const { data: inserted, error } = await supabase
       .from('feed_likes')
-      .insert({
+      .upsert({
         feed_item_id: feedItemId,
         user_id: like.userId,
-      })
+      }, { onConflict: 'feed_item_id,user_id' })
       .select()
       .single();
 
