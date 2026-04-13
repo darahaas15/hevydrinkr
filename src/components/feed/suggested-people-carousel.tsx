@@ -37,7 +37,7 @@ export function SuggestedPeopleCarousel({
 
   return (
     <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pb-2">
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence>
         {users.map((user, i) => {
           const stats = userStats.get(user.id);
           const isFollowing = followingIds.includes(user.id);
@@ -50,7 +50,6 @@ export function SuggestedPeopleCarousel({
           return (
             <motion.div
               key={user.id}
-              layout
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
