@@ -492,10 +492,10 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
               Install App
             </button>
           ) : isIOS ? (
-            /* iOS Safari — manual instructions */
+            /* iOS — manual instructions */
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 space-y-4">
               <p className="text-sm font-medium text-zinc-300 text-center mb-4">Add to your Home Screen</p>
-              <Step number={1} icon={<Share className="w-4 h-4" />} text="Tap the Share button in Safari" />
+              <Step number={1} icon={<Share className="w-4 h-4" />} text="Tap the Share button in your browser" />
               <Step number={2} icon={<Plus className="w-4 h-4" />} text='Scroll down and tap "Add to Home Screen"' />
               <Step number={3} text="Tap Add to confirm" />
             </div>
