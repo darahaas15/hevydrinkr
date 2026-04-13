@@ -145,7 +145,7 @@ BEGIN
   IF v_post_owner IS DISTINCT FROM NEW.user_id THEN
     INSERT INTO notifications (user_id, actor_id, type, title, body, data)
     VALUES (v_post_owner, NEW.user_id, 'comment', 'New Comment', v_name || ' commented on your post',
-            jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id));
+            jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id, 'commentPreview', left(NEW.text, 100)));
   END IF;
 
   -- If reply, also notify parent comment author (skip if same as post owner or self)
@@ -154,7 +154,7 @@ BEGIN
     IF v_parent_author IS DISTINCT FROM NEW.user_id AND v_parent_author IS DISTINCT FROM v_post_owner THEN
       INSERT INTO notifications (user_id, actor_id, type, title, body, data)
       VALUES (v_parent_author, NEW.user_id, 'reply', 'New Reply', v_name || ' replied to your comment',
-              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id, 'parentCommentId', NEW.parent_comment_id));
+              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id, 'parentCommentId', NEW.parent_comment_id, 'commentPreview', left(NEW.text, 100)));
     END IF;
   END IF;
 
@@ -173,7 +173,7 @@ BEGIN
       INSERT INTO notifications (user_id, actor_id, type, title, body, data)
       VALUES (v_mentioned_id, NEW.user_id, 'mention', 'You were mentioned',
               v_name || ' mentioned you in a comment',
-              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id));
+              jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id, 'commentPreview', left(NEW.text, 100)));
     END IF;
   END LOOP;
 

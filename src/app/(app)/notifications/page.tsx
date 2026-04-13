@@ -135,6 +135,11 @@ export default function NotificationsPage() {
                     <p className={`text-sm leading-snug ${n.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
                       {n.body}
                     </p>
+                    {['comment', 'reply', 'mention'].includes(n.type) && !!n.data.commentPreview && (
+                      <p className="text-xs text-zinc-500 mt-0.5 truncate">
+                        &ldquo;{String(n.data.commentPreview)}&rdquo;
+                      </p>
+                    )}
                     <p className="text-[11px] text-zinc-500 mt-0.5">
                       {formatTimeAgo(n.createdAt)}
                     </p>

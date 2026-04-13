@@ -81,14 +81,37 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
       }
     }
 
+    // Backfill commentPreview for existing comment-type notifications missing it
+    const COMMENT_TYPES = ['comment', 'reply', 'mention'];
+    const needsPreview = (data ?? []).filter(
+      (r) => COMMENT_TYPES.includes(r.type) && r.data?.commentId && !r.data?.commentPreview
+    );
+    const commentMap = new Map<string, string>();
+    if (needsPreview.length > 0) {
+      const commentIds = needsPreview.map((r) => r.data.commentId as string);
+      const { data: comments } = await supabase
+        .from('feed_comments')
+        .select('id, text')
+        .in('id', commentIds);
+      for (const c of comments ?? []) {
+        commentMap.set(c.id, (c.text ?? '').slice(0, 100));
+      }
+    }
+
     const notifications: Notification[] = (data ?? []).map((row) => {
       const actor = row.actor_id ? actorMap.get(row.actor_id) : null;
+      const rowData = row.data ?? {};
+      // Fill in commentPreview from backfill if missing
+      if (COMMENT_TYPES.includes(row.type) && rowData.commentId && !rowData.commentPreview) {
+        const preview = commentMap.get(rowData.commentId as string);
+        if (preview) rowData.commentPreview = preview;
+      }
       return {
         id: row.id,
         type: row.type,
         title: row.title,
         body: row.body,
-        data: row.data ?? {},
+        data: rowData,
         read: row.read,
         createdAt: row.created_at,
         actorId: row.actor_id ?? null,

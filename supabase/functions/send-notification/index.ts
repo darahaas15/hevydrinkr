@@ -367,6 +367,15 @@ Deno.serve(async (req) => {
 
   const { user_id, actor_id, type, title, body, data } = record;
 
+  // For comment-type notifications, append a preview of the comment to the push body
+  const COMMENT_TYPES = ['comment', 'reply', 'mention'];
+  let pushBody = body;
+  if (COMMENT_TYPES.includes(type) && data?.commentPreview) {
+    const preview = String(data.commentPreview);
+    const truncated = preview.length > 50 ? preview.slice(0, 50) + '…' : preview;
+    pushBody = `${body}: "${truncated}"`;
+  }
+
   // Check user's preference for this notification type
   const prefColumn = PREF_MAP[type];
   if (prefColumn) {
@@ -401,7 +410,7 @@ Deno.serve(async (req) => {
   if (iosTokens.length > 0) {
     const apnsPayload = {
       aps: {
-        alert: { title, body },
+        alert: { title, body: pushBody },
         sound: 'default',
         badge: 1,
         'mutable-content': 1,
@@ -421,7 +430,7 @@ Deno.serve(async (req) => {
   if (webTokens.length > 0) {
     const webPayload = {
       title,
-      body,
+      body: pushBody,
       tag: `drinkr-${type}`,
       data: { type, actorId: actor_id, ...(data ?? {}) },
     };
