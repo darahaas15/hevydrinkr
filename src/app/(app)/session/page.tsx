@@ -379,21 +379,13 @@ function SessionPageInner() {
                 <p className="text-2xl font-bold font-mono" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
                   {bacEstimate ? bacEstimate.currentBac.toFixed(3) : '0.000'}
                 </p>
-                <p className="text-[11px] font-semibold" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
-                  {bacEstimate && bacEstimate.currentBac > 0
-                    ? bacEstimate.currentBac >= BAC_LEGAL_LIMIT
-                      ? `${bacEstimate.impairmentLabel} — do not drive`
-                      : bacEstimate.impairmentLabel
-                    : 'Sober'}
-                </p>
+                <p className="text-[10px] text-zinc-600">est. BAC</p>
               </div>
-              {bacEstimate && bacEstimate.currentBac >= BAC_LEGAL_LIMIT && (
-                <IconSteeringWheel
-                  className="w-7 h-7"
-                  stroke={1.5}
-                  style={{ color: getSafetyColor(bacEstimate.safetyLevel) }}
-                />
-              )}
+              <IconSteeringWheel
+                className="w-7 h-7"
+                stroke={1.5}
+                style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}
+              />
             </div>
           </div>
 
@@ -415,12 +407,6 @@ function SessionPageInner() {
 
           {activeSession.drinks.length > 0 && (
             <div className="flex gap-3">
-              {drinksPerHour > 0 && (
-                <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-                  <p className="text-sm font-bold">{drinksPerHour.toFixed(1)}<span className="text-[10px] text-zinc-500 font-normal">/hr</span></p>
-                  <p className="text-[10px] text-zinc-600">Pace</p>
-                </div>
-              )}
               {avgDrinksPerSession > 0 && (
                 <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
                   <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent' : drinkDiff < 0 ? 'text-zinc-400' : 'text-zinc-300'}`}>
