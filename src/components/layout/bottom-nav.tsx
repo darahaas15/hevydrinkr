@@ -73,7 +73,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
+      className="fixed bottom-0 left-0 right-0 z-50 vt-bottom-nav"
       style={{
         background: 'rgba(9, 9, 11, 0.82)',
         backdropFilter: 'blur(28px) saturate(180%)',

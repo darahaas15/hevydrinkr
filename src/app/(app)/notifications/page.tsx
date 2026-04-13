@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/hooks/use-app-router';
 import { Heart, MessageCircle, AtSign, UserPlus, Users, Flame, Clock, Bell, CheckCheck, ChevronLeft, ImageIcon } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { useNotificationStore, Notification } from '@/stores/use-notification-store';
@@ -39,7 +39,7 @@ function getNotificationPath(n: Notification): string {
 }
 
 export default function NotificationsPage() {
-  const router = useRouter();
+  const router = useAppRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = useNotificationStore((s) => s.unreadCount);

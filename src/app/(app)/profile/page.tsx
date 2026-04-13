@@ -4,7 +4,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useProfileStore } from '@/stores/use-profile-store';
@@ -27,7 +27,7 @@ export default function ProfilePage() {
 }
 
 function ProfilePageOwn() {
-  const router = useRouter();
+  const router = useAppRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const allUsers = useAuthStore((s) => s.allUsers);

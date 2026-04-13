@@ -3,7 +3,8 @@
 import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2, X, Heart, Trophy as TrophyIcon, Timer, Flag, Ban, MoreHorizontal } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useFeedStore } from '@/stores/use-feed-store';
@@ -20,7 +21,7 @@ import { hapticLight } from '@/lib/haptics';
 export default function UserProfilePage({ userId: userIdProp }: { userId?: string }) {
   const pathname = usePathname();
   const resolvedUserId = userIdProp || pathname.split('/').pop() || '';
-  const router = useRouter();
+  const router = useAppRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allUsers = useAuthStore((s) => s.allUsers);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
