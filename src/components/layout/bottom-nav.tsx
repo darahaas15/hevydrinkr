@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 import { Home, Users, Trophy, User, Wine, Clock, MapPin, ChevronRight } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -18,15 +18,46 @@ const tabs = [
   { icon: User, path: '/profile', label: 'Profile' },
 ];
 
+// Isolated component so the 1s timer tick doesn't re-render the tab bar
+const SessionBanner = memo(function SessionBanner({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const activeSession = useSessionStore((s) => s.activeSession);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const pathname = usePathname();
+  const timer = useTimer(activeSession?.startedAt || null);
+
+  const show = !!activeSession && !!currentUser && activeSession.userId === currentUser.id && pathname !== '/session';
+  if (!show) return null;
+
+  return (
+    <button
+      onClick={() => onNavigate('/session')}
+      className="w-full px-4 py-2 flex items-center gap-3"
+      style={{ borderBottom: '1px solid rgba(20,184,166,0.15)', background: 'rgba(20,184,166,0.05)' }}
+    >
+      <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+        <Clock className="w-3.5 h-3.5 text-accent" />
+      </div>
+      <div className="flex-1 min-w-0 text-left">
+        <p className="text-[11px] text-accent font-semibold">Live Session</p>
+        <p className="text-[10px] text-zinc-500 truncate flex items-center gap-1">
+          <MapPin className="w-2.5 h-2.5 shrink-0" />
+          {activeSession!.venue}
+          <span className="text-zinc-700 mx-0.5">·</span>
+          <Wine className="w-2.5 h-2.5 shrink-0" />
+          {activeSession!.drinks.length}
+        </p>
+      </div>
+      <span className="text-xs font-mono font-bold text-accent">{timer.formatted}</span>
+      <ChevronRight className="w-3.5 h-3.5 text-accent/50 shrink-0" />
+    </button>
+  );
+});
+
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const hideBottomNav = useUIStore((s) => s.hideBottomNav);
   const activeSession = useSessionStore((s) => s.activeSession);
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const timer = useTimer(activeSession?.startedAt || null);
-
-  const showBanner = !!activeSession && !!currentUser && activeSession.userId === currentUser.id && pathname !== '/session';
 
   // Prefetch all tab routes for instant switching
   useEffect(() => {
@@ -51,30 +82,7 @@ export function BottomNav() {
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      {/* Live session banner — integrated into nav */}
-      {showBanner && (
-        <button
-          onClick={() => navigate('/session')}
-          className="w-full px-4 py-2 flex items-center gap-3"
-          style={{ borderBottom: '1px solid rgba(20,184,166,0.15)', background: 'rgba(20,184,166,0.05)' }}
-        >
-          <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
-            <Clock className="w-3.5 h-3.5 text-accent" />
-          </div>
-          <div className="flex-1 min-w-0 text-left">
-            <p className="text-[11px] text-accent font-semibold">Live Session</p>
-            <p className="text-[10px] text-zinc-500 truncate flex items-center gap-1">
-              <MapPin className="w-2.5 h-2.5 shrink-0" />
-              {activeSession!.venue}
-              <span className="text-zinc-700 mx-0.5">·</span>
-              <Wine className="w-2.5 h-2.5 shrink-0" />
-              {activeSession!.drinks.length}
-            </p>
-          </div>
-          <span className="text-xs font-mono font-bold text-accent">{timer.formatted}</span>
-          <ChevronRight className="w-3.5 h-3.5 text-accent/50 shrink-0" />
-        </button>
-      )}
+      <SessionBanner onNavigate={navigate} />
 
       {/* Tab bar */}
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">

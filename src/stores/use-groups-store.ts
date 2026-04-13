@@ -67,11 +67,30 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
     if (!force && Date.now() - _groupsLastFetched < GROUPS_STALE_MS) return;
     _groupsLastFetched = Date.now();
     if (get().groups.length === 0) set({ loading: true });
+    // First, get group IDs the user belongs to, then fetch only those groups
+    const { data: memberRows, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', userId);
+
+    if (memberError) {
+      console.error('Failed to fetch group memberships:', memberError);
+      set({ loading: false });
+      return;
+    }
+
+    const groupIds = (memberRows ?? []).map((r) => r.group_id as string);
+    if (groupIds.length === 0) {
+      set({ groups: [], loading: false });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('groups')
       .select(
         `*, group_members(*, profile:profiles!group_members_user_id_fkey(display_name, avatar_url))`
       )
+      .in('id', groupIds)
       .eq('is_active', true);
 
     if (error) {
@@ -80,12 +99,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
       return;
     }
 
-    const allGroups = (data ?? []).map(mapDbGroupToGroup);
-    // Only keep groups the user is a member of
-    const userGroups = allGroups.filter((g) =>
-      g.members.some((m) => m.userId === userId)
-    );
-
+    const userGroups = (data ?? []).map(mapDbGroupToGroup);
     set({ groups: userGroups, loading: false });
   },
 

@@ -22,7 +22,7 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
     >
       <div className="flex items-center gap-3">
         {group.iconUrl ? (
-          <img src={group.iconUrl} alt={group.name} className="w-12 h-12 rounded-2xl object-cover" />
+          <img src={group.iconUrl} alt={group.name} loading="lazy" decoding="async" className="w-12 h-12 rounded-2xl object-cover" />
         ) : (
           <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-lg font-bold text-accent">
             {group.name.charAt(0).toUpperCase()}

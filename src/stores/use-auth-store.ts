@@ -237,5 +237,5 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   },
 }), {
   name: 'hd-auth',
-  partialize: (s) => ({ currentUser: s.currentUser, allUsers: s.allUsers, isAuthenticated: s.isAuthenticated }),
+  partialize: (s) => ({ currentUser: s.currentUser, isAuthenticated: s.isAuthenticated }),
 }));
