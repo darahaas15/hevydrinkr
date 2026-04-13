@@ -78,22 +78,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Keyboard-open body lock ───────────────── */
-/* Prevent the outer page from scrolling when the keyboard is open.
-   Only <main> (overflow-y-auto) should scroll — this stops iOS Safari
-   from displacing `position: fixed` elements during scroll. */
-:root.keyboard-open,
-:root.keyboard-open body {
-  overflow: hidden;
-}
-
 /* ── Comment input bar ─────────────────────── */
-/* With `interactive-widget: resizes-content`, `position: fixed; bottom: 0`
-   already sits above the on-screen keyboard natively.
-   The `keyboard-open` class on <html> (toggled by useKeyboardHeight)
-   zeroes out the safe-area padding so the bar hugs the keyboard.
-   The transform compensates for any residual visual-viewport scroll
-   offset on iOS (safety net). */
+/* Uses `position: sticky; bottom: 0` inside the <main> scroll container
+   so it stays above the keyboard without position:fixed viewport bugs.
+   The `keyboard-open` class zeroes out safe-area when the keyboard is up. */
 
 .comment-input-bar {
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -102,7 +90,6 @@ body {
 
 :root.keyboard-open .comment-input-bar {
   padding-bottom: 0;
-  transform: translateY(calc(-1 * var(--vv-offset-top, 0px)));
 }
 
 /* ── Cards ──────────────────────────────────── */
