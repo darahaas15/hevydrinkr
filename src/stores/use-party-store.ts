@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { PartySession, PartyDrinkEvent, PartyParticipant } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { useUIStore } from '@/stores/use-ui-store';
 
 interface PartyState {
   activeParty: PartySession | null;
@@ -157,6 +158,7 @@ export const usePartyStore = create<PartyState>()((set, get) => ({
     if (error) {
       console.error('Failed to create party:', error);
       set({ activeParty: null });
+      useUIStore.getState().addToast('Something went wrong', 'error');
       return '';
     }
 
@@ -232,6 +234,7 @@ export const usePartyStore = create<PartyState>()((set, get) => ({
           startedAt: null,
         },
       });
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 
@@ -264,6 +267,7 @@ export const usePartyStore = create<PartyState>()((set, get) => ({
         activeParty,
         partyHistory: partyHistory.filter((p) => p.id !== activeParty.id),
       });
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 

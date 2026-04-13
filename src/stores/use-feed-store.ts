@@ -12,6 +12,7 @@ import type {
 import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
+import { useUIStore } from '@/stores/use-ui-store';
 
 const FEED_STALE_MS = 30_000;
 const FEED_PAGE_SIZE = 15;
@@ -301,6 +302,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error) {
       set({ error: error.message });
+      useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
 
@@ -446,6 +448,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
         }),
         error: error.message,
       }));
+      useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
 
@@ -482,6 +485,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       console.error('Failed to delete feed item:', error);
       set({ items: prev });
+      useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
 
@@ -527,6 +531,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error || !updated) {
       console.error('Failed to update feed item:', error ?? 'No rows updated (RLS policy may be missing)');
       set({ items: prev });
+      useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
 
@@ -625,6 +630,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       console.error('Failed to delete comment:', error);
       set({ items: prev });
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 

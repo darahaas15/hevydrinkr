@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { UserProfile, Gender } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { hapticMedium } from '@/lib/haptics';
+import { useUIStore } from '@/stores/use-ui-store';
 
 interface AuthState {
   currentUser: UserProfile | null;
@@ -134,6 +135,16 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     const { currentUser } = get();
     if (!currentUser) return;
 
+    const prevUser = currentUser;
+    const prevAllUsers = get().allUsers;
+
+    // Optimistic update
+    const updated = { ...currentUser, ...updates };
+    set({
+      currentUser: updated,
+      allUsers: get().allUsers.map((u) => (u.id === currentUser.id ? updated : u)),
+    });
+
     const dbUpdates: Record<string, unknown> = {};
     if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
     if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
@@ -143,13 +154,13 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
     dbUpdates.updated_at = new Date().toISOString();
 
-    await supabase.from('profiles').update(dbUpdates).eq('id', currentUser.id);
+    const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', currentUser.id);
 
-    const updated = { ...currentUser, ...updates };
-    set({
-      currentUser: updated,
-      allUsers: get().allUsers.map((u) => (u.id === currentUser.id ? updated : u)),
-    });
+    if (error) {
+      console.error('Failed to update profile:', error);
+      set({ currentUser: prevUser, allUsers: prevAllUsers });
+      useUIStore.getState().addToast('Something went wrong', 'error');
+    }
   },
 
   getUserById: (id) => get().allUsers.find((u) => u.id === id),

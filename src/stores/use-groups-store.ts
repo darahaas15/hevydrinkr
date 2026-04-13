@@ -5,6 +5,7 @@ import type {
   GroupMember,
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { useUIStore } from '@/stores/use-ui-store';
 
 const GROUPS_STALE_MS = 30_000;
 let _groupsLastFetched = 0;
@@ -124,6 +125,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
       set((state) => ({
         groups: state.groups.filter((g) => g.id !== group.id),
       }));
+      useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
 
@@ -174,6 +176,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
           groups: state.groups.map((g) => (g.id === groupId ? prev : g)),
         }));
       }
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 
@@ -198,6 +201,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
           groups: [...state.groups, prev],
         }));
       }
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 
@@ -274,6 +278,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
 
     if (error) {
       console.error('Failed to leave group:', error);
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 
@@ -295,6 +300,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
 
     if (error) {
       console.error('Failed to remove member:', error);
+      useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 

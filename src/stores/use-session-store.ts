@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { useUIStore } from '@/stores/use-ui-store';
 
 const SESSIONS_STALE_MS = 30_000;
 let _sessionsLastFetched = 0;
@@ -255,6 +256,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       .then(({ data, error }) => {
         if (error) {
           console.error('Failed to create session in Supabase:', error);
+          useUIStore.getState().addToast('Something went wrong', 'error');
           return;
         }
         if (data) {
@@ -320,7 +322,10 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       })
       .eq('id', completedSession.id)
       .then(({ error }) => {
-        if (error) console.error('Failed to end session in Supabase:', error);
+        if (error) {
+          console.error('Failed to end session in Supabase:', error);
+          useUIStore.getState().addToast('Something went wrong', 'error');
+        }
       });
   },
 

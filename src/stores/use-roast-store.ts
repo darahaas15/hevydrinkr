@@ -13,6 +13,7 @@ import type { GroupMember } from '@/types/group';
 import { supabase } from '@/lib/supabase/client';
 import { computeWeeklyAwards, type MemberWeekData } from '@/lib/algorithms/roast-engine';
 import { getAwardMeta } from '@/lib/algorithms/roast-copy';
+import { useUIStore } from '@/stores/use-ui-store';
 
 // ── Week helpers ──
 
@@ -231,6 +232,7 @@ export const useRoastStore = create<RoastState>()(
           if (postsError) {
             console.error('Failed to fetch posts for roast:', postsError);
             set({ generating: false });
+            useUIStore.getState().addToast('Something went wrong', 'error');
             return null;
           }
 
@@ -415,6 +417,7 @@ export const useRoastStore = create<RoastState>()(
         } catch (err) {
           console.error('Roast generation failed:', err);
           set({ generating: false });
+          useUIStore.getState().addToast('Something went wrong', 'error');
           return null;
         }
       },
