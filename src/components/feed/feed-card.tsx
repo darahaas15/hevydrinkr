@@ -8,6 +8,8 @@ import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { hapticLight } from '@/lib/haptics';
+import { getBaseUrl, shareLink } from '@/lib/share';
+import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
 import { ReportModal } from '@/components/moderation/report-modal';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
@@ -22,6 +24,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const isFollowing = currentUser?.following.includes(item.userId) ?? false;
 
   const getUserById = useAuthStore((s) => s.getUserById);
+  const addToast = useUIStore((s) => s.addToast);
   const [showLikesList, setShowLikesList] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
@@ -50,12 +53,10 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const url = `${getBaseUrl()}/feed/${item.id}`;
     const text = `${item.userName} had ${item.sessionSummary.totalDrinks} drinks at ${item.sessionSummary.venue}`;
-    if (navigator.share) {
-      try { await navigator.share({ text }); } catch {}
-    } else {
-      await navigator.clipboard.writeText(text);
-    }
+    const result = await shareLink(url, text, text);
+    if (result === 'copied') addToast('Link copied!', 'success');
   };
 
   const goToProfile = (e: React.MouseEvent) => {

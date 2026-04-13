@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
+import { getBaseUrl, shareLink } from '@/lib/share';
 import { useRouter } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -56,6 +57,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
+  const addToast = useUIStore((s) => s.addToast);
 
   const item = items.find((i) => i.id === resolvedId);
 
@@ -181,12 +183,10 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   };
 
   const handleShare = async () => {
+    const url = `${getBaseUrl()}/feed/${resolvedId}`;
     const text = `${item.userName} had ${s.totalDrinks} drinks at ${s.venue} — Drinkr`;
-    if (navigator.share) {
-      try { await navigator.share({ text }); } catch {}
-    } else {
-      await navigator.clipboard.writeText(text);
-    }
+    const result = await shareLink(url, text, text);
+    if (result === 'copied') addToast('Link copied!', 'success');
   };
 
   const totalCommentCount = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);

@@ -23,6 +23,8 @@ function LandingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get('invite');
+  const redirectParam = searchParams.get('redirect');
+  const redirectPath = redirectParam && redirectParam.startsWith('/') ? redirectParam : null;
   const authSignup = useAuthStore((s) => s.signup);
   const authLogin = useAuthStore((s) => s.login);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -83,9 +85,9 @@ function LandingContent() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace(inviteCode ? `/invite/${inviteCode}` : '/feed');
+      router.replace(inviteCode ? `/invite/${inviteCode}` : redirectPath || '/feed');
     }
-  }, [isLoading, isAuthenticated, router, inviteCode]);
+  }, [isLoading, isAuthenticated, router, inviteCode, redirectPath]);
 
   if (isLoading || isAuthenticated) {
     return <SplashScreen />;
@@ -141,7 +143,7 @@ function LandingContent() {
     if (err) {
       setError(err);
     } else {
-      router.push(inviteCode ? `/invite/${inviteCode}` : '/feed');
+      router.push(inviteCode ? `/invite/${inviteCode}` : redirectPath || '/feed');
     }
   };
 
@@ -157,7 +159,7 @@ function LandingContent() {
     if (err) {
       setError(err);
     } else {
-      router.push(inviteCode ? `/invite/${inviteCode}` : '/feed');
+      router.push(inviteCode ? `/invite/${inviteCode}` : redirectPath || '/feed');
     }
   };
 

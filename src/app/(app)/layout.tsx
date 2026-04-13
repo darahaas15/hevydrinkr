@@ -55,9 +55,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/');
+      router.replace(`/?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, pathname]);
 
   // Listen for service worker navigation messages so deep-links from
   // push notifications go through Next.js router (preserves history stack).
