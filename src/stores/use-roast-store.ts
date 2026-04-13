@@ -70,6 +70,7 @@ interface RoastState {
   fetchStreaks: (groupId: string) => Promise<void>;
   fetchRecords: (groupId: string) => Promise<void>;
   generateRoast: (groupId: string, weekKey: string, members: GroupMember[]) => Promise<RoastRecap | null>;
+  refreshRecords: (groupId: string, members: GroupMember[]) => Promise<void>;
   getRecapsByGroup: (groupId: string) => RoastRecap[];
   getLatestRecap: (groupId: string) => RoastRecap | undefined;
   getCurrentWeekKey: () => string;
@@ -420,6 +421,63 @@ export const useRoastStore = create<RoastState>()(
           useUIStore.getState().addToast('Something went wrong', 'error');
           return null;
         }
+      },
+
+      refreshRecords: async (groupId, members) => {
+        const weekKey = getWeekKey(new Date());
+        const { start, end } = getWeekBounds(weekKey);
+        const memberIds = members.map((m) => m.userId);
+
+        const { data: posts } = await supabase
+          .from('feed_items')
+          .select('id, user_id, session_summary, created_at')
+          .in('user_id', memberIds)
+          .gte('created_at', start.toISOString())
+          .lt('created_at', end.toISOString());
+
+        if (!posts || posts.length === 0) return;
+
+        const recordCandidates: { type: GroupRecordType; userId: string; value: number; formatted: string }[] = [];
+        for (const member of members) {
+          const memberPosts = posts.filter((p) => (p.user_id as string) === member.userId);
+          if (memberPosts.length === 0) continue;
+          const summary = memberPosts.map((p) => p.session_summary as FeedItem['sessionSummary']);
+          const totalStd = summary.reduce((sum, s) => sum + (s.totalStandardDrinks ?? 0), 0);
+          const longestSession = summary.reduce((max, s) => Math.max(max, s.durationMinutes ?? 0), 0);
+          const maxSessionStd = summary.reduce((max, s) => Math.max(max, s.totalStandardDrinks ?? 0), 0);
+          const uniqueDrinks = new Set(summary.flatMap((s) => (s.drinks ?? []).map((d) => d.name)));
+
+          recordCandidates.push(
+            { type: 'highest_weekly_std_drinks', userId: member.userId, value: totalStd, formatted: `${Math.round(totalStd * 10) / 10} standards` },
+            { type: 'most_weekly_sessions', userId: member.userId, value: memberPosts.length, formatted: `${memberPosts.length} sessions` },
+            { type: 'longest_single_session', userId: member.userId, value: longestSession, formatted: formatDuration(longestSession) },
+            { type: 'highest_single_session_std_drinks', userId: member.userId, value: maxSessionStd, formatted: `${Math.round(maxSessionStd * 10) / 10} standards` },
+            { type: 'most_weekly_unique_drinks', userId: member.userId, value: uniqueDrinks.size, formatted: `${uniqueDrinks.size} unique drinks` },
+          );
+        }
+
+        const currentRecords = get().records.filter((r) => r.groupId === groupId);
+        for (const candidate of recordCandidates) {
+          const existing = currentRecords.find((r) => r.recordType === candidate.type);
+          if (!existing || candidate.value > existing.value) {
+            await supabase
+              .from('group_records')
+              .upsert(
+                {
+                  group_id: groupId,
+                  record_type: candidate.type,
+                  user_id: candidate.userId,
+                  value: candidate.value,
+                  formatted_value: candidate.formatted,
+                  week_key: weekKey,
+                  achieved_at: new Date().toISOString(),
+                },
+                { onConflict: 'group_id,record_type' }
+              );
+          }
+        }
+
+        await get().fetchRecords(groupId);
       },
 
       getRecapsByGroup: (groupId) =>

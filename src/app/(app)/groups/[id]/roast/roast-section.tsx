@@ -19,6 +19,7 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
   const fetchRecaps = useRoastStore((s) => s.fetchRecaps);
   const fetchStreaks = useRoastStore((s) => s.fetchStreaks);
   const fetchRecords = useRoastStore((s) => s.fetchRecords);
+  const refreshRecords = useRoastStore((s) => s.refreshRecords);
   const generateRoast = useRoastStore((s) => s.generateRoast);
   const loading = useRoastStore((s) => s.loading);
   const generating = useRoastStore((s) => s.generating);
@@ -36,8 +37,11 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
     fetchRecaps(groupId);
     fetchStreaks(groupId);
     fetchRecords(groupId);
+    if (members.length >= 2) {
+      refreshRecords(groupId, members);
+    }
     attemptedRef.current = false;
-  }, [groupId, fetchRecaps, fetchStreaks, fetchRecords]);
+  }, [groupId, members, fetchRecaps, fetchStreaks, fetchRecords, refreshRecords]);
 
   // Auto-generate roundup for last week if it doesn't exist — one attempt only
   useEffect(() => {
