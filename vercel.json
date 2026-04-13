@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/invite/:code", "destination": "/invite/_" },
+    { "source": "/feed/:id", "destination": "/feed/_" },
+    { "source": "/profile/:userId", "destination": "/profile/_" },
+    { "source": "/groups/:id/party", "destination": "/groups/_/party" },
+    { "source": "/groups/:id", "destination": "/groups/_" },
+    { "source": "/session/:id", "destination": "/session/_" }
+  ]
+}

@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
 import { IconSteeringWheel } from '@tabler/icons-react';
 import { calculateBac, getSafetyColor } from '@/lib/algorithms/bac';
+import { BAC_DISCLAIMER, BAC_LEGAL_LIMIT } from '@/lib/constants';
+import { formatDuration } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -112,10 +114,10 @@ function SessionPageInner() {
     if (!activeSession || !currentUser) return null;
     return calculateBac(
       activeSession.drinks,
-      { weightKg: currentUser.weightKg, gender: currentUser.gender, heightCm: currentUser.heightCm },
+      { weightKg: currentUser.weightKg, gender: currentUser.gender },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSession?.drinks, currentUser?.weightKg, currentUser?.gender, currentUser?.heightCm, timer.elapsed]);
+  }, [activeSession?.drinks, currentUser?.weightKg, currentUser?.gender, timer.elapsed]);
 
   // Track peak BAC in the session store (persists to DB)
   useEffect(() => {
@@ -374,18 +376,43 @@ function SessionPageInner() {
             </div>
             <div className="flex items-center gap-2">
               <div className="text-right">
-                <p className="text-lg font-bold font-mono" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
+                <p className="text-2xl font-bold font-mono" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
                   {bacEstimate ? bacEstimate.currentBac.toFixed(3) : '0.000'}
                 </p>
-                <p className="text-[10px] text-zinc-600">est. BAC</p>
+                <p className="text-[11px] font-semibold" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
+                  {bacEstimate && bacEstimate.currentBac > 0
+                    ? bacEstimate.currentBac >= BAC_LEGAL_LIMIT
+                      ? `${bacEstimate.impairmentLabel} — do not drive`
+                      : bacEstimate.impairmentLabel
+                    : 'Sober'}
+                </p>
               </div>
-              <IconSteeringWheel
-                className="w-6 h-6"
-                stroke={1.5}
-                style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}
-              />
+              {bacEstimate && bacEstimate.currentBac >= BAC_LEGAL_LIMIT && (
+                <IconSteeringWheel
+                  className="w-7 h-7"
+                  stroke={1.5}
+                  style={{ color: getSafetyColor(bacEstimate.safetyLevel) }}
+                />
+              )}
             </div>
           </div>
+
+          {/* BAC timeline — drive-safe & sober countdowns */}
+          {bacEstimate && bacEstimate.currentBac > 0 && (
+            <div className="flex gap-3 mb-3">
+              {bacEstimate.hoursUntilDriveSafe > 0 && (
+                <div className="flex-1 rounded-xl bg-red-500/[0.08] border border-red-500/[0.15] px-3 py-2">
+                  <p className="text-sm font-bold text-red-400">~{formatDuration(Math.round(bacEstimate.hoursUntilDriveSafe * 60))}</p>
+                  <p className="text-[10px] text-red-400/60">until drive-safe</p>
+                </div>
+              )}
+              <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+                <p className="text-sm font-bold">~{formatDuration(Math.round(bacEstimate.hoursUntilSober * 60))}</p>
+                <p className="text-[10px] text-zinc-600">until sober</p>
+              </div>
+            </div>
+          )}
+
           {activeSession.drinks.length > 0 && (
             <div className="flex gap-3">
               {drinksPerHour > 0 && (
@@ -408,6 +435,9 @@ function SessionPageInner() {
               </div>
             </div>
           )}
+
+          {/* Disclaimer */}
+          <p className="text-[9px] text-zinc-600 mt-3">{BAC_DISCLAIMER}</p>
         </div>
 
         <DrinkList drinks={activeSession.drinks} onRemove={removeDrink} />

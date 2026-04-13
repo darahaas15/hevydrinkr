@@ -16,6 +16,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#14b8a6',
     categories: ['entertainment', 'social'],
     prefer_related_applications: false,
+    // @ts-expect-error -- handle_links is a valid manifest field (Chrome 98+) but not yet in the TS type
+    handle_links: 'preferred',
     icons: [
       { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },

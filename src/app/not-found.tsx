@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 
 export default function NotFound() {
   return (
     <div className="h-dvh flex items-center justify-center" style={{ background: '#09090b' }}>
       <div className="text-center px-6">
-        <div className="text-5xl mb-4">🍻</div>
+        <DrinkIcon category="beer" className="w-12 h-12 mx-auto mb-4" />
         <h1 className="text-xl font-extrabold mb-2 text-white">Page not found</h1>
         <p className="text-sm text-zinc-500 mb-6">This page doesn&apos;t exist</p>
         <Link

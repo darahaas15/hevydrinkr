@@ -18,6 +18,18 @@ export const BAC_COLORS = {
   WASTED: '#dc2626',
 } as const;
 
+export const BAC_LEGAL_LIMIT = 0.08;
+
+export const BAC_LEVEL_LABELS: Record<string, { label: string; description: string }> = {
+  SOBER: { label: 'Sober', description: 'Minimal effects' },
+  BUZZED: { label: 'Buzzed', description: 'Mild impairment, reduced inhibitions' },
+  TIPSY: { label: 'Tipsy', description: 'Legally impaired — do not drive' },
+  DRUNK: { label: 'Drunk', description: 'Significant impairment, poor coordination' },
+  WASTED: { label: 'Wasted', description: 'Severe impairment, risk of blackout' },
+};
+
+export const BAC_DISCLAIMER = 'BAC is an estimate only — never use it to decide if you\'re OK to drive.';
+
 export const SESSION_MOODS = [
   { value: 'legendary' as const, emoji: '🤩', label: 'Legendary' },
   { value: 'great' as const, emoji: '😄', label: 'Great' },
