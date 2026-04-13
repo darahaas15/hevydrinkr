@@ -20,6 +20,7 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
   const fetchStreaks = useRoastStore((s) => s.fetchStreaks);
   const fetchRecords = useRoastStore((s) => s.fetchRecords);
   const refreshRecords = useRoastStore((s) => s.refreshRecords);
+  const refreshRecap = useRoastStore((s) => s.refreshRecap);
   const generateRoast = useRoastStore((s) => s.generateRoast);
   const loading = useRoastStore((s) => s.loading);
   const generating = useRoastStore((s) => s.generating);
@@ -43,15 +44,20 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
     attemptedRef.current = false;
   }, [groupId, members, fetchRecaps, fetchStreaks, fetchRecords, refreshRecords]);
 
-  // Auto-generate roundup for last week if it doesn't exist — one attempt only
+  // Auto-generate roundup for last week if it doesn't exist — one attempt only.
+  // If it does exist, refresh it in case new posts came in after generation.
   useEffect(() => {
     if (attemptedRef.current || generating || loading) return;
     const lastWeek = getLastWeekKey();
-    if (members.length >= 2 && !hasRecapForWeek(groupId, lastWeek)) {
+    if (members.length >= 2) {
       attemptedRef.current = true;
-      generateRoast(groupId, lastWeek, members);
+      if (!hasRecapForWeek(groupId, lastWeek)) {
+        generateRoast(groupId, lastWeek, members);
+      } else {
+        refreshRecap(groupId, lastWeek, members);
+      }
     }
-  }, [groupId, members, getLastWeekKey, hasRecapForWeek, generating, loading, generateRoast]);
+  }, [groupId, members, getLastWeekKey, hasRecapForWeek, generating, loading, generateRoast, refreshRecap]);
 
   const selectedRecap = recaps[selectedIndex];
 

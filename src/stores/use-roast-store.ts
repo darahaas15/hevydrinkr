@@ -71,6 +71,7 @@ interface RoastState {
   fetchRecords: (groupId: string) => Promise<void>;
   generateRoast: (groupId: string, weekKey: string, members: GroupMember[]) => Promise<RoastRecap | null>;
   refreshRecords: (groupId: string, members: GroupMember[]) => Promise<void>;
+  refreshRecap: (groupId: string, weekKey: string, members: GroupMember[]) => Promise<void>;
   getRecapsByGroup: (groupId: string) => RoastRecap[];
   getLatestRecap: (groupId: string) => RoastRecap | undefined;
   getCurrentWeekKey: () => string;
@@ -478,6 +479,66 @@ export const useRoastStore = create<RoastState>()(
         }
 
         await get().fetchRecords(groupId);
+      },
+
+      refreshRecap: async (groupId, weekKey, members) => {
+        const existing = get().recaps.find((r) => r.groupId === groupId && r.weekKey === weekKey);
+        if (!existing) return;
+
+        const { start, end } = getWeekBounds(weekKey);
+        const memberIds = members.map((m) => m.userId);
+
+        const { data: posts } = await supabase
+          .from('feed_items')
+          .select('id, user_id, session_summary, created_at')
+          .in('user_id', memberIds)
+          .gte('created_at', start.toISOString())
+          .lt('created_at', end.toISOString());
+
+        const totalSessions = (posts ?? []).length;
+
+        // If the post count matches, the recap is still current
+        if (totalSessions === existing.summary.totalGroupSessions) return;
+
+        // Recompute from fresh data
+        const memberData: MemberWeekData[] = members.map((m) => ({
+          userId: m.userId,
+          userName: m.userName,
+          userAvatar: m.userAvatar,
+          posts: (posts ?? [])
+            .filter((p) => (p.user_id as string) === m.userId)
+            .map((p) => ({
+              id: p.id as string,
+              userId: p.user_id as string,
+              userName: m.userName,
+              userAvatar: m.userAvatar,
+              sessionId: '',
+              sessionSummary: p.session_summary as FeedItem['sessionSummary'],
+              photos: [],
+              caption: '',
+              likes: [],
+              comments: [],
+              createdAt: p.created_at as string,
+            })),
+        }));
+
+        const { awards, summary } = computeWeeklyAwards(memberData, weekKey);
+
+        // Preserve week-over-week from original
+        summary.weekOverWeekChange = existing.summary.weekOverWeekChange;
+
+        // Update local state only (DB recap stays as-is)
+        const refreshed: RoastRecap = {
+          ...existing,
+          awards: awards.map((a) => ({ ...a, id: crypto.randomUUID(), recapId: existing.id })),
+          summary,
+        };
+
+        set((state) => ({
+          recaps: state.recaps.map((r) =>
+            r.groupId === groupId && r.weekKey === weekKey ? refreshed : r
+          ),
+        }));
       },
 
       getRecapsByGroup: (groupId) =>
