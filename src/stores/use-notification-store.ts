@@ -178,7 +178,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
     if (error) {
       console.error('Failed to update notification preferences:', error);
       set({ preferences: prev });
-      useUIStore.getState().addToast('Failed to update preference', 'error');
+      useUIStore.getState().addToast(`Pref update failed: ${error.message}`, 'error');
     }
   },
 
