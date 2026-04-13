@@ -1,14 +1,18 @@
 import { supabase } from '@/lib/supabase/client';
 
-let initialized = false;
+let lastCheckedAt = 0;
+const RECHECK_INTERVAL = 5 * 60 * 1000; // re-verify subscription every 5 min
 
 /**
  * Initialize web push notifications via the Push API + service worker.
  */
 export async function initPushNotifications(userId: string) {
   if (typeof window === 'undefined') return;
-  if (initialized) return;
-  initialized = true;
+
+  // Avoid hammering on every render, but do re-check periodically
+  // so we catch expired/rotated subscriptions.
+  if (Date.now() - lastCheckedAt < RECHECK_INTERVAL) return;
+  lastCheckedAt = Date.now();
 
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
     return;
@@ -17,14 +21,25 @@ export async function initPushNotifications(userId: string) {
     return;
   }
 
-  // Only re-register an existing subscription on load.
   // Never request permission here — iOS requires a user gesture,
   // and calling requestPermission() without one poisons the state to 'denied'.
   if (Notification.permission !== 'granted') return;
 
   try {
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) return;
+
     const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
+    let sub = await reg.pushManager.getSubscription();
+
+    // If the subscription expired or was revoked, re-subscribe
+    // (permission is already granted so no user gesture needed).
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+    }
 
     if (sub) {
       await upsertWebPushSubscription(userId, sub);
@@ -48,7 +63,7 @@ export async function unregisterPushNotifications(userId: string) {
     }
   }
 
-  initialized = false;
+  lastCheckedAt = 0;
 
   await supabase
     .from('device_tokens')
