@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, AtSign, UserPlus, Users, Swords, Clock, Bell, CheckCheck, ChevronLeft } from 'lucide-react';
+import { Heart, MessageCircle, AtSign, UserPlus, Users, Flame, Clock, Bell, CheckCheck, ChevronLeft } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { useNotificationStore, Notification } from '@/stores/use-notification-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -16,7 +16,7 @@ const TYPE_ICON: Record<string, { icon: typeof Heart; color: string }> = {
   mention:           { icon: AtSign,        color: 'text-purple-400 bg-purple-500/15' },
   follow:            { icon: UserPlus,      color: 'text-emerald-400 bg-emerald-500/15' },
   group_join:        { icon: Users,         color: 'text-amber-400 bg-amber-500/15' },
-  challenge_created: { icon: Swords,        color: 'text-orange-400 bg-orange-500/15' },
+  weekly_roast:      { icon: Flame,         color: 'text-orange-400 bg-orange-500/15' },
   still_drinking:    { icon: Clock,         color: 'text-amber-400 bg-amber-500/15' },
 };
 
@@ -28,7 +28,7 @@ function getNotificationPath(n: Notification): string {
   if (n.type === 'follow' && n.actorId) {
     return `/profile?user=${n.actorId}`;
   }
-  if (['group_join', 'challenge_created'].includes(n.type) && d.groupId) {
+  if (['group_join', 'weekly_roast'].includes(n.type) && d.groupId) {
     return `/groups?id=${d.groupId}`;
   }
   if (n.type === 'still_drinking') {

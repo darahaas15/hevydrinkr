@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Copy, Plus, Swords, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2, Beer, Calendar, Timer, Palette } from 'lucide-react';
+import { ChevronLeft, Copy, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -10,55 +10,31 @@ import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
 import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
 import { getBaseUrl, shareLink } from '@/lib/share';
-import type { Challenge, ChallengeMetric } from '@/types';
-
-const METRICS: { value: ChallengeMetric; label: string; icon: typeof Beer }[] = [
-  { value: 'total_drinks', label: 'Most Drinks', icon: Beer },
-  { value: 'most_sessions', label: 'Most Sessions', icon: Calendar },
-  { value: 'session_duration', label: 'Longest Session', icon: Timer },
-  { value: 'unique_drinks', label: 'Most Variety', icon: Palette },
-];
+import { RoastSection } from './roast/roast-section';
 
 export default function GroupDetailPage({ params, groupId }: { params?: Promise<{ id: string }>; groupId?: string }) {
   const resolvedId = groupId || (params ? use(params).id : '');
   const router = useRouter();
   const groups = useGroupsStore((s) => s.groups);
-  const allChallenges = useGroupsStore((s) => s.challenges);
-  const addChallenge = useGroupsStore((s) => s.addChallenge);
-  const deleteChallenge = useGroupsStore((s) => s.deleteChallenge);
   const deleteGroup = useGroupsStore((s) => s.deleteGroup);
   const updateGroup = useGroupsStore((s) => s.updateGroup);
   const removeMember = useGroupsStore((s) => s.removeMember);
   const leaveGroup = useGroupsStore((s) => s.leaveGroup);
-  const fetchChallenges = useGroupsStore((s) => s.fetchChallenges);
-  const refreshChallengeProgress = useGroupsStore((s) => s.refreshChallengeProgress);
   const fetchGroups = useGroupsStore((s) => s.fetchGroups);
   const group = groups.find((g) => g.id === resolvedId);
-  const challenges = allChallenges.filter((c) => c.groupId === resolvedId);
   const addToast = useUIStore((s) => s.addToast);
   const currentUser = useAuthStore((s) => s.currentUser);
 
-  const [showCreate, setShowCreate] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
-  const [title, setTitle] = useState('');
-  const [metric, setMetric] = useState<ChallengeMetric>('total_drinks');
-  const [stake, setStake] = useState('');
   const [editName, setEditName] = useState('');
 
   useEffect(() => {
     if (currentUser) {
       fetchGroups(currentUser.id);
-      fetchChallenges(resolvedId).then(() => {
-        // Refresh progress for active challenges
-        const activeCh = useGroupsStore.getState().challenges.filter(
-          (c) => c.groupId === resolvedId && c.status === 'active'
-        );
-        activeCh.forEach((c) => refreshChallengeProgress(c.id));
-      });
     }
-  }, [resolvedId, currentUser, fetchGroups, fetchChallenges, refreshChallengeProgress]);
+  }, [resolvedId, currentUser, fetchGroups]);
 
   if (!group || !currentUser) {
     return (
@@ -69,8 +45,6 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
   }
 
   const isAdmin = group.createdByUserId === currentUser.id;
-  const activeChallenges = challenges.filter(c => c.status === 'active');
-  const completedChallenges = challenges.filter(c => c.status === 'completed');
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(group.inviteCode);
@@ -81,31 +55,6 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
     const url = `${getBaseUrl()}/invite/${group.inviteCode}`;
     const result = await shareLink(url, `Join ${group.name} on Drinkr`, `Use this link to join ${group.name}`);
     if (result === 'copied') addToast('Invite link copied!', 'success');
-  };
-
-  const handleCreate = () => {
-    if (!title.trim()) return;
-    const challengeId = crypto.randomUUID();
-    const challenge: Challenge = {
-      id: challengeId, groupId: resolvedId, title: title.trim(), description: '', type: 'individual', metric,
-      targetValue: null, startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 7 * 86400000).toISOString(), status: 'active',
-      participants: group.members.map((m, i) => ({
-        userId: m.userId, userName: m.userName, userAvatar: m.userAvatar, currentValue: 0, rank: i + 1,
-      })),
-      winnerId: null,
-      wager: stake.trim() ? {
-        id: crypto.randomUUID(), challengeId, createdByUserId: currentUser.id,
-        description: stake.trim(), stake: stake.trim(),
-        participants: group.members.map((m) => ({
-          userId: m.userId, userName: m.userName, accepted: m.userId === currentUser.id, outcome: 'pending' as const,
-        })),
-      } : null,
-    };
-    addChallenge(challenge);
-    setShowCreate(false);
-    setTitle('');
-    setStake('');
   };
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -238,42 +187,8 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
           )}
         </div>
 
-        {/* Challenges */}
-        <div>
-          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-            <Swords className="w-3.5 h-3.5" />
-            Challenges
-          </h3>
-
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowCreate(true)}
-            className="w-full mb-3 p-3.5 rounded-2xl border border-dashed border-accent/20 bg-accent/[0.04] flex items-center gap-3 active:bg-accent/[0.08] transition-colors"
-          >
-            <Plus className="w-5 h-5 text-accent" />
-            <div className="text-left">
-              <p className="text-sm font-semibold text-accent">New Challenge</p>
-              <p className="text-[10px] text-zinc-600">Compete with your crew</p>
-            </div>
-          </motion.button>
-
-          {activeChallenges.map((ch) => (
-            <ChallengeCard key={ch.id} challenge={ch} currentUserId={currentUser.id} isAdmin={isAdmin} onDelete={() => deleteChallenge(ch.id)} />
-          ))}
-
-          {completedChallenges.length > 0 && (
-            <>
-              <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2 mt-4">Completed</p>
-              {completedChallenges.map((ch) => (
-                <ChallengeCard key={ch.id} challenge={ch} currentUserId={currentUser.id} isAdmin={isAdmin} onDelete={() => deleteChallenge(ch.id)} />
-              ))}
-            </>
-          )}
-
-          {challenges.length === 0 && (
-            <p className="text-sm text-zinc-700 text-center py-4">No challenges yet</p>
-          )}
-        </div>
+        {/* Weekly Roast */}
+        <RoastSection groupId={resolvedId} members={group.members} />
       </div>
 
       {/* ── Group menu (⋯) ── */}
@@ -389,125 +304,6 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
         )}
       </AnimatePresence>
 
-      {/* ── Create Challenge modal ── */}
-      <AnimatePresence>
-        {showCreate && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[55] flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/70" onClick={() => setShowCreate(false)} />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto"
-              style={{ background: '#111114' }}
-            >
-              <div>
-                <h2 className="text-lg font-bold mb-0.5">New Challenge</h2>
-                <p className="text-xs text-zinc-600">Everyone in the group competes</p>
-              </div>
-
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Weekend Showdown"
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40"
-              />
-
-              <div>
-                <p className="text-xs text-zinc-500 mb-2">What counts?</p>
-                <div className="space-y-1.5">
-                  {METRICS.map((m) => (
-                    <button
-                      key={m.value}
-                      onClick={() => setMetric(m.value)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                        metric === m.value ? 'bg-accent/10 border border-accent/20' : 'bg-white/[0.03] border border-white/[0.05]'
-                      }`}
-                    >
-                      <m.icon className="w-5 h-5" />
-                      <span className={`text-sm ${metric === m.value ? 'text-accent font-medium' : 'text-zinc-400'}`}>{m.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-zinc-500 mb-2">Wager <span className="text-zinc-700">(optional)</span></p>
-                <input
-                  value={stake}
-                  onChange={(e) => setStake(e.target.value)}
-                  placeholder="e.g., Loser buys pizza"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-1">
-                <button onClick={() => setShowCreate(false)} className="flex-1 py-3 rounded-xl bg-white/[0.04] text-zinc-400 font-medium">Cancel</button>
-                <motion.button whileTap={{ scale: 0.97 }} onClick={handleCreate} disabled={!title.trim()} className="flex-1 py-3 rounded-xl bg-accent text-black font-bold disabled:opacity-20">Create</motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function ChallengeCard({ challenge, currentUserId, isAdmin, onDelete }: {
-  challenge: Challenge; currentUserId: string; isAdmin: boolean; onDelete: () => void;
-}) {
-  const sorted = [...challenge.participants].sort((a, b) => a.rank - b.rank);
-  const isActive = challenge.status === 'active';
-
-  return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 space-y-3 mb-2.5">
-      <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-sm flex-1">{challenge.title}</h4>
-        <div className="flex items-center gap-2">
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-            isActive ? 'bg-accent/15 text-accent' : 'bg-zinc-800 text-zinc-500'
-          }`}>
-            {challenge.status}
-          </span>
-          {isAdmin && (
-            <button onClick={onDelete} className="p-2.5 rounded-lg hover:bg-red-500/10 active:bg-red-500/15">
-              <Trash2 className="w-3.5 h-3.5 text-zinc-600 active:text-red-400" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {challenge.wager && (
-        <div className="flex items-center gap-2 text-xs bg-amber-400/[0.08] border border-amber-400/10 rounded-xl px-3 py-2">
-          <span>💰</span>
-          <span className="text-amber-400 font-medium">{challenge.wager.stake}</span>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {sorted.map((p, i) => (
-          <div key={p.userId} className={`flex items-center gap-2.5 ${p.userId === currentUserId ? 'text-accent' : ''}`}>
-            <span className={`text-xs font-bold w-5 text-center ${i === 0 ? 'text-amber-400' : 'text-zinc-600'}`}>
-              {i === 0 ? '👑' : i + 1}
-            </span>
-            <Avatar name={p.userName} size="sm" src={p.userAvatar} />
-            <span className="text-sm flex-1 truncate">{p.userId === currentUserId ? 'You' : p.userName}</span>
-            <span className="text-sm font-mono font-bold text-zinc-400">{p.currentValue}</span>
-          </div>
-        ))}
-      </div>
-
-      {isActive && (
-        <p className="text-[10px] text-zinc-700">
-          Ends {new Date(challenge.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </p>
-      )}
     </div>
   );
 }

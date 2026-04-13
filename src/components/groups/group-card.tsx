@@ -4,15 +4,14 @@ import { memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users } from 'lucide-react';
-import { useGroupsStore } from '@/stores/use-groups-store';
+import { useRoastStore } from '@/stores/use-roast-store';
 import { Avatar } from '@/components/ui/avatar';
 import { hapticLight } from '@/lib/haptics';
 import type { Group } from '@/types';
 
 export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
   const router = useRouter();
-  const allChallenges = useGroupsStore((s) => s.challenges);
-  const activeChallenges = allChallenges.filter((c) => c.groupId === group.id && c.status === 'active');
+  const latestRecap = useRoastStore((s) => s.getLatestRecap)(group.id);
 
   return (
     <div onClick={() => { hapticLight(); router.push(`/groups?id=${group.id}`); }} className="cursor-pointer">
@@ -37,9 +36,9 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
               <Users className="w-3 h-3" />
               {group.members.length} member{group.members.length !== 1 ? 's' : ''}
             </span>
-            {activeChallenges.length > 0 && (
+            {latestRecap && (
               <span className="text-xs bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-                {activeChallenges.length} active
+                {latestRecap.awards.length} awards
               </span>
             )}
           </div>

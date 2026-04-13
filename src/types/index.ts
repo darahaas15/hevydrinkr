@@ -5,3 +5,4 @@ export * from './feed';
 export * from './group';
 export * from './leaderboard';
 export * from './pr';
+export * from './roast';

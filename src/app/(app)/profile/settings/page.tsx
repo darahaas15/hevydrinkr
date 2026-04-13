@@ -251,7 +251,7 @@ export default function SettingsPage() {
               ['commentsEnabled', 'Comments & Replies', 'When someone comments or replies'] as const,
               ['followsEnabled', 'New Followers', 'When someone follows you'] as const,
               ['groupJoinsEnabled', 'Group Activity', 'When someone joins your group'] as const,
-              ['challengesEnabled', 'Challenges', 'New challenges and ending reminders'] as const,
+              ['roastsEnabled', 'Weekly Roast', 'Weekly group roast drops'] as const,
               ['sessionRemindersEnabled', 'Session Reminders', '2-hour session check-in'] as const,
             ]).map(([key, label, desc]) => (
               <button

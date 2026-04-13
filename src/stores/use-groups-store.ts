@@ -3,17 +3,11 @@ import { persist } from 'zustand/middleware';
 import type {
   Group,
   GroupMember,
-  Challenge,
-  ChallengeParticipant,
-  Wager,
-  WagerParticipant,
-  FeedItem,
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 
 interface GroupsState {
   groups: Group[];
-  challenges: Challenge[];
   loading: boolean;
 
   fetchGroups: (userId: string) => Promise<void>;
@@ -28,17 +22,6 @@ interface GroupsState {
   removeMember: (groupId: string, userId: string) => Promise<void>;
   getGroupById: (id: string) => Group | undefined;
   getUserGroups: (userId: string) => Group[];
-
-  fetchChallenges: (groupId: string) => Promise<void>;
-  addChallenge: (challenge: Challenge) => Promise<void>;
-  deleteChallenge: (challengeId: string) => Promise<void>;
-  refreshChallengeProgress: (challengeId: string) => Promise<void>;
-  updateChallengeProgress: (
-    challengeId: string,
-    userId: string,
-    value: number
-  ) => Promise<void>;
-  getChallengesByGroup: (groupId: string) => Challenge[];
 }
 
 function mapDbGroupToGroup(
@@ -73,72 +56,8 @@ function mapDbGroupToGroup(
   };
 }
 
-function mapDbChallengeToChallenge(
-  dbChallenge: Record<string, unknown>
-): Challenge {
-  const participants: ChallengeParticipant[] = (
-    (dbChallenge.challenge_participants as Record<string, unknown>[]) ?? []
-  ).map((cp) => {
-    const profile = cp.profile as
-      | { display_name: string; avatar_url: string | null }
-      | null;
-    return {
-      userId: cp.user_id as string,
-      userName: profile?.display_name ?? 'Unknown',
-      userAvatar: profile?.avatar_url ?? null,
-      currentValue: cp.current_value as number,
-      rank: cp.rank as number,
-    };
-  });
-
-  let wager: Wager | null = null;
-  const dbWagers = dbChallenge.wagers as Record<string, unknown>[] | null;
-  if (dbWagers && dbWagers.length > 0) {
-    const w = dbWagers[0];
-    const wagerParticipants: WagerParticipant[] = (
-      (w.wager_participants as Record<string, unknown>[]) ?? []
-    ).map((wp) => {
-      const profile = wp.profile as
-        | { display_name: string }
-        | null;
-      return {
-        userId: wp.user_id as string,
-        userName: profile?.display_name ?? 'Unknown',
-        accepted: wp.accepted as boolean,
-        outcome: wp.outcome as WagerParticipant['outcome'],
-      };
-    });
-
-    wager = {
-      id: w.id as string,
-      challengeId: w.challenge_id as string,
-      createdByUserId: w.created_by as string,
-      description: w.description as string,
-      stake: w.stake as string,
-      participants: wagerParticipants,
-    };
-  }
-
-  return {
-    id: dbChallenge.id as string,
-    groupId: dbChallenge.group_id as string,
-    title: dbChallenge.title as string,
-    description: dbChallenge.description as string,
-    type: dbChallenge.type as Challenge['type'],
-    metric: dbChallenge.metric as Challenge['metric'],
-    targetValue: (dbChallenge.target_value as number) ?? null,
-    startDate: dbChallenge.start_date as string,
-    endDate: dbChallenge.end_date as string,
-    status: dbChallenge.status as Challenge['status'],
-    participants,
-    winnerId: (dbChallenge.winner_id as string) ?? null,
-    wager,
-  };
-}
-
 export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
   groups: [],
-  challenges: [],
   loading: true,
 
   fetchGroups: async (userId) => {
@@ -241,14 +160,10 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
 
   deleteGroup: async (groupId) => {
     const prev = get().groups.find((g) => g.id === groupId);
-    const prevChallenges = get().challenges.filter(
-      (c) => c.groupId === groupId
-    );
 
     // Optimistic update
     set((state) => ({
       groups: state.groups.filter((g) => g.id !== groupId),
-      challenges: state.challenges.filter((c) => c.groupId !== groupId),
     }));
 
     const { error } = await supabase
@@ -259,10 +174,11 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
     if (error) {
       console.error('Failed to delete group:', error);
       // Roll back
-      set((state) => ({
-        groups: prev ? [...state.groups, prev] : state.groups,
-        challenges: [...state.challenges, ...prevChallenges],
-      }));
+      if (prev) {
+        set((state) => ({
+          groups: [...state.groups, prev],
+        }));
+      }
     }
   },
 
@@ -368,232 +284,9 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
   getUserGroups: (userId) =>
     get().groups.filter((g) => g.members.some((m) => m.userId === userId)),
 
-  fetchChallenges: async (groupId) => {
-    const { data, error } = await supabase
-      .from('challenges')
-      .select(
-        `*, challenge_participants(*, profile:profiles!challenge_participants_user_id_fkey(display_name, avatar_url)), wagers(*, wager_participants(*, profile:profiles!wager_participants_user_id_fkey(display_name)))`
-      )
-      .eq('group_id', groupId);
-
-    if (error) {
-      console.error('Failed to fetch challenges:', error);
-      return;
-    }
-
-    const fetched = (data ?? []).map(mapDbChallengeToChallenge);
-
-    set((state) => {
-      // Replace challenges for this group, keep others
-      const other = state.challenges.filter((c) => c.groupId !== groupId);
-      return { challenges: [...other, ...fetched] };
-    });
-  },
-
-  addChallenge: async (challenge) => {
-    // Optimistic update
-    set((state) => ({ challenges: [...state.challenges, challenge] }));
-
-    const { error: challengeError } = await supabase
-      .from('challenges')
-      .insert({
-        id: challenge.id,
-        group_id: challenge.groupId,
-        title: challenge.title,
-        description: challenge.description,
-        type: challenge.type,
-        metric: challenge.metric,
-        target_value: challenge.targetValue,
-        start_date: challenge.startDate,
-        end_date: challenge.endDate,
-        status: challenge.status,
-        winner_id: challenge.winnerId,
-      });
-
-    if (challengeError) {
-      console.error('Failed to create challenge:', challengeError);
-      set((state) => ({
-        challenges: state.challenges.filter((c) => c.id !== challenge.id),
-      }));
-      return;
-    }
-
-    // Insert participants
-    if (challenge.participants.length > 0) {
-      const rows = challenge.participants.map((p) => ({
-        challenge_id: challenge.id,
-        user_id: p.userId,
-        current_value: p.currentValue,
-        rank: p.rank,
-      }));
-
-      const { error: partError } = await supabase
-        .from('challenge_participants')
-        .insert(rows);
-
-      if (partError) {
-        console.error('Failed to add challenge participants:', partError);
-      }
-    }
-
-    // Insert wager if present
-    if (challenge.wager) {
-      const w = challenge.wager;
-      const { error: wagerError } = await supabase.from('wagers').insert({
-        id: w.id,
-        challenge_id: w.challengeId,
-        created_by: w.createdByUserId,
-        description: w.description,
-        stake: w.stake,
-      });
-
-      if (wagerError) {
-        console.error('Failed to create wager:', wagerError);
-      } else if (w.participants.length > 0) {
-        const wagerRows = w.participants.map((wp) => ({
-          wager_id: w.id,
-          user_id: wp.userId,
-          accepted: wp.accepted,
-          outcome: wp.outcome,
-        }));
-
-        const { error: wpError } = await supabase
-          .from('wager_participants')
-          .insert(wagerRows);
-
-        if (wpError) {
-          console.error('Failed to add wager participants:', wpError);
-        }
-      }
-    }
-  },
-
-  deleteChallenge: async (challengeId) => {
-    const prev = get().challenges.find((c) => c.id === challengeId);
-
-    // Optimistic update
-    set((state) => ({
-      challenges: state.challenges.filter((c) => c.id !== challengeId),
-    }));
-
-    const { error } = await supabase
-      .from('challenges')
-      .delete()
-      .eq('id', challengeId);
-
-    if (error) {
-      console.error('Failed to delete challenge:', error);
-      if (prev) {
-        set((state) => ({ challenges: [...state.challenges, prev] }));
-      }
-    }
-  },
-
-  refreshChallengeProgress: async (challengeId) => {
-    const challenge = get().challenges.find((c) => c.id === challengeId);
-    if (!challenge || challenge.status !== 'active') return;
-
-    // Fetch feed items (posts) for all participants within the challenge timeframe
-    const participantIds = challenge.participants.map((p) => p.userId);
-    const { data: posts } = await supabase
-      .from('feed_items')
-      .select('user_id, session_summary')
-      .in('user_id', participantIds)
-      .gte('created_at', challenge.startDate)
-      .lte('created_at', challenge.endDate);
-
-    if (!posts) return;
-
-    // Compute values per participant based on metric
-    const values: Record<string, number> = {};
-    for (const p of posts) {
-      const uid = p.user_id as string;
-      if (!values[uid]) values[uid] = 0;
-      const summary = p.session_summary as FeedItem['sessionSummary'] | null;
-      if (!summary) continue;
-
-      switch (challenge.metric) {
-        case 'total_drinks':
-          values[uid] += summary.totalDrinks ?? 0;
-          break;
-        case 'total_standard_drinks':
-          values[uid] += summary.totalStandardDrinks ?? 0;
-          break;
-        case 'most_sessions':
-          values[uid] += 1;
-          break;
-        case 'session_duration':
-          values[uid] = Math.max(values[uid], summary.durationMinutes ?? 0);
-          break;
-        case 'unique_drinks': {
-          const names = new Set((summary.drinks ?? []).map(d => d.name));
-          values[uid] += names.size;
-          break;
-        }
-      }
-    }
-
-    // Update all changed participants in parallel
-    await Promise.all(
-      challenge.participants
-        .filter((p) => (values[p.userId] || 0) !== p.currentValue)
-        .map((p) =>
-          supabase
-            .from('challenge_participants')
-            .update({ current_value: values[p.userId] || 0 })
-            .eq('challenge_id', challengeId)
-            .eq('user_id', p.userId)
-        )
-    );
-
-    // Update local state with re-ranking
-    set((state) => ({
-      challenges: state.challenges.map((c) => {
-        if (c.id !== challengeId) return c;
-        const updated = c.participants.map((p) => ({
-          ...p,
-          currentValue: values[p.userId] || 0,
-        }));
-        const sorted = [...updated].sort((a, b) => b.currentValue - a.currentValue);
-        return { ...c, participants: sorted.map((p, i) => ({ ...p, rank: i + 1 })) };
-      }),
-    }));
-  },
-
-  updateChallengeProgress: async (challengeId, userId, value) => {
-    // Optimistic update with re-ranking
-    set((state) => ({
-      challenges: state.challenges.map((c) => {
-        if (c.id !== challengeId) return c;
-        const updated = c.participants.map((p) =>
-          p.userId === userId ? { ...p, currentValue: value } : p
-        );
-        const sorted = [...updated].sort(
-          (a, b) => b.currentValue - a.currentValue
-        );
-        return {
-          ...c,
-          participants: sorted.map((p, i) => ({ ...p, rank: i + 1 })),
-        };
-      }),
-    }));
-
-    const { error } = await supabase
-      .from('challenge_participants')
-      .update({ current_value: value })
-      .eq('challenge_id', challengeId)
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Failed to update challenge progress:', error);
-    }
-  },
-
-  getChallengesByGroup: (groupId) =>
-    get().challenges.filter((c) => c.groupId === groupId),
 }), {
   name: 'hd-groups',
-  partialize: (s) => ({ groups: s.groups, challenges: s.challenges }),
+  partialize: (s) => ({ groups: s.groups }),
   onRehydrateStorage: () => (state) => {
     if (state && state.groups.length > 0) state.loading = false;
   },
