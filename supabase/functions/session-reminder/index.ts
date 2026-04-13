@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       user_id: session.user_id,
       type: 'still_drinking',
       title: 'Still drinking?',
-      body: `You've been at ${venue} for about ${hours} hour${hours !== 1 ? 's' : ''}. Tap to check in.`,
+      body: `${hours}h at ${venue}. Tap to check in.`,
       data: { sessionId: session.id },
     });
   }

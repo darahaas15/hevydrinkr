@@ -97,8 +97,8 @@ Deno.serve(async (req) => {
     let comparison = '';
     if (prev.sessions > 0) {
       const pct = Math.round(((stats.drinks - prev.drinks) / prev.drinks) * 100);
-      if (pct > 0) comparison = ` Up ${pct}% from last week!`;
-      else if (pct < 0) comparison = ` Down ${Math.abs(pct)}% from last week.`;
+      if (pct > 0) comparison = `. Up ${pct}%!`;
+      else if (pct < 0) comparison = `. Down ${Math.abs(pct)}%`;
     }
 
     const prText = stats.prs > 0 ? `, ${stats.prs} new PR${stats.prs > 1 ? 's' : ''}` : '';
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       user_id: userId,
       type: 'weekly_summary',
       title: 'Your Week in Review',
-      body: `${stats.sessions} session${stats.sessions > 1 ? 's' : ''}, ${stats.drinks} drink${stats.drinks > 1 ? 's' : ''}${prText}.${comparison}`,
+      body: `${stats.sessions} sesh, ${stats.drinks} drink${stats.drinks > 1 ? 's' : ''}${prText}${comparison}`,
       data: { weekOf: oneWeekAgo.toISOString().slice(0, 10) },
     });
   }

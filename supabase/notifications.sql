@@ -172,7 +172,7 @@ BEGIN
     THEN
       INSERT INTO notifications (user_id, actor_id, type, title, body, data)
       VALUES (v_mentioned_id, NEW.user_id, 'mention', 'You were mentioned',
-              v_name || ' mentioned you in a comment',
+              v_name || ' mentioned you',
               jsonb_build_object('feedItemId', NEW.feed_item_id, 'commentId', NEW.id, 'commentPreview', left(NEW.text, 100)));
     END IF;
   END LOOP;
@@ -241,7 +241,7 @@ BEGIN
 
     INSERT INTO notifications (user_id, actor_id, type, title, body, data)
     VALUES (v_member.user_id, NULL, 'challenge_created', 'New Challenge',
-            'A new challenge was created in your group',
+            'New challenge in your group',
             jsonb_build_object('groupId', NEW.group_id, 'challengeId', NEW.id));
   END LOOP;
   RETURN NEW;

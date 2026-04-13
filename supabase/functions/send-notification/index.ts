@@ -368,15 +368,25 @@ Deno.serve(async (req) => {
 
   const { user_id, actor_id, type, title, body, data } = record;
 
-  // Build push title/body: put the real message in the title (shown bold, first line)
-  // and only use body for comment preview quotes. This avoids the generic "New Comment"
-  // title wasting a line above the iOS-added "from Drinkr" attribution.
+  // Build push title/body strategy:
+  // - User-action notifs (has actor): body is the message (e.g. "X liked your post"),
+  //   use it as push title so it shows first/bold. Comment preview goes in push body.
+  // - System notifs (no actor): title is descriptive (e.g. "Still drinking?"),
+  //   body has the details — keep both as-is.
   const COMMENT_TYPES = ['comment', 'reply', 'mention'];
-  let commentPreviewBody = '';
-  if (COMMENT_TYPES.includes(type) && data?.commentPreview) {
-    const preview = String(data.commentPreview);
-    const truncated = preview.length > 50 ? preview.slice(0, 50) + '…' : preview;
-    commentPreviewBody = `"${truncated}"`;
+  let pushTitle: string;
+  let pushBodyText: string;
+
+  if (actor_id) {
+    pushTitle = body;
+    pushBodyText = '';
+    if (COMMENT_TYPES.includes(type) && data?.commentPreview) {
+      const preview = String(data.commentPreview);
+      pushBodyText = `"${preview.length > 50 ? preview.slice(0, 50) + '…' : preview}"`;
+    }
+  } else {
+    pushTitle = title;
+    pushBodyText = body;
   }
 
   // Check user's preference for this notification type
@@ -413,7 +423,7 @@ Deno.serve(async (req) => {
   if (iosTokens.length > 0) {
     const apnsPayload = {
       aps: {
-        alert: { title: body, body: commentPreviewBody || undefined },
+        alert: { title: pushTitle, body: pushBodyText || undefined },
         sound: 'default',
         badge: 1,
         'mutable-content': 1,
@@ -432,8 +442,8 @@ Deno.serve(async (req) => {
   // Send to web devices via Web Push
   if (webTokens.length > 0) {
     const webPayload = {
-      title: body,
-      body: commentPreviewBody,
+      title: pushTitle,
+      body: pushBodyText,
       tag: `drinkr-${type}`,
       data: { type, actorId: actor_id, ...(data ?? {}) },
     };
