@@ -178,7 +178,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
     if (userId === currentUser?.id) {
       router.push('/profile');
     } else {
-      router.push(`/profile?user=${userId}`);
+      router.push(`/profile/${userId}`);
     }
   };
 

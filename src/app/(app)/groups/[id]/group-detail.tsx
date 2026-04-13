@@ -141,12 +141,12 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
             <div className="space-y-1.5 mb-4">
               {group.members.map((m) => (
                 <div key={m.userId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <div onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile?user=${m.userId}`)} className="cursor-pointer">
+                  <div onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)} className="cursor-pointer">
                     <Avatar name={m.userName} size="sm" src={m.userAvatar} />
                   </div>
                   <div
                     className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile?user=${m.userId}`)}
+                    onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)}
                   >
                     <p className="text-sm font-medium truncate hover:underline">
                       {m.userName}
@@ -173,7 +173,7 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
                 <div
                   key={m.userId}
                   className="ring-2 ring-[#09090b] rounded-full cursor-pointer"
-                  onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile?user=${m.userId}`)}
+                  onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)}
                 >
                   <Avatar name={m.userName} size="sm" src={m.userAvatar} />
                 </div>

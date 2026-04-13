@@ -27,7 +27,7 @@ function getNotificationPath(n: Notification): string {
     return `/feed?post=${d.feedItemId}`;
   }
   if (n.type === 'follow' && n.actorId) {
-    return `/profile?user=${n.actorId}`;
+    return `/profile/${n.actorId}`;
   }
   if (['group_join', 'weekly_roast'].includes(n.type) && d.groupId) {
     return `/groups?id=${d.groupId}`;

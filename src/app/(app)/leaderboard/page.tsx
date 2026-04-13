@@ -127,7 +127,7 @@ export default function LeaderboardPage() {
               const rankDisplay = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${entry.rank}`;
 
               return (
-                <div key={entry.userId} onClick={() => { hapticLight(); router.push(isMe ? '/profile' : `/profile?user=${entry.userId}`); }}>
+                <div key={entry.userId} onClick={() => { hapticLight(); router.push(isMe ? '/profile' : `/profile/${entry.userId}`); }}>
                 <motion.div
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}

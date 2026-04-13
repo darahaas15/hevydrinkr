@@ -156,7 +156,7 @@ self.addEventListener('notificationclick', (event) => {
       if (data.commentId) path += `&comment=${data.commentId}`;
     }
   } else if (data.type === 'follow' && data.actorId) {
-    path = `/profile?user=${data.actorId}`;
+    path = `/profile/${data.actorId}`;
   } else if ((data.type === 'group_join' || data.type === 'challenge_created') && data.groupId) {
     path = `/groups?id=${data.groupId}`;
   } else if (data.type === 'still_drinking') {

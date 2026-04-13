@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useEffect, useState, Suspense } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useProfileStore } from '@/stores/use-profile-store';
@@ -22,25 +22,8 @@ import { DrinkIcon } from '@/components/ui/drink-icon';
 import { Heart, Trophy as TrophyIcon, Timer } from 'lucide-react';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import UserProfilePage from './[userId]/user-profile';
-
 export default function ProfilePage() {
-  return (
-    <Suspense>
-      <ProfilePageInner />
-    </Suspense>
-  );
-}
-
-function ProfilePageInner() {
-  const searchParams = useSearchParams();
-  const userId = searchParams.get('user');
-
-  if (userId) {
-    return <UserProfilePage key={userId} userId={userId} />;
-  }
-
-  return <ProfilePageOwn key="own" />;
+  return <ProfilePageOwn />;
 }
 
 function ProfilePageOwn() {
@@ -474,12 +457,12 @@ function ProfilePageOwn() {
                     const isFollowing = currentUser.following.includes(user.id);
                     return (
                       <div key={user.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
-                        <div onClick={() => { setShowFollowList(null); router.push(`/profile?user=${user.id}`); }} className="cursor-pointer">
+                        <div onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }} className="cursor-pointer">
                           <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
                         </div>
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
-                          onClick={() => { setShowFollowList(null); router.push(`/profile?user=${user.id}`); }}
+                          onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{user.displayName}</p>
                           <p className="text-[11px] text-zinc-500">@{user.username}</p>

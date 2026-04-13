@@ -61,7 +61,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
 
   const goToProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(item.userId === currentUser?.id ? '/profile' : `/profile?user=${item.userId}`);
+    router.push(item.userId === currentUser?.id ? '/profile' : `/profile/${item.userId}`);
   };
 
   const { sessionSummary: s } = item;
@@ -262,7 +262,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowLikesList(false);
-                        router.push(like.userId === currentUser?.id ? '/profile' : `/profile?user=${like.userId}`);
+                        router.push(like.userId === currentUser?.id ? '/profile' : `/profile/${like.userId}`);
                       }}
                       className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03] cursor-pointer"
                     >

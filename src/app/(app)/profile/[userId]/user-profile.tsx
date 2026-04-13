@@ -120,7 +120,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
       {/* Header */}
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.push('/feed')} aria-label="Back" className="p-2 -ml-2 active:text-white">
+          <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-white">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
           <h1 className="text-lg font-bold truncate flex-1">{user.displayName}</h1>
@@ -359,12 +359,12 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
                     const isMe = u.id === currentUser.id;
                     return (
                       <div key={u.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
-                        <div onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile?user=${u.id}`); }} className="cursor-pointer">
+                        <div onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile/${u.id}`); }} className="cursor-pointer">
                           <Avatar name={u.displayName} size="md" src={u.avatarUrl} />
                         </div>
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
-                          onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile?user=${u.id}`); }}
+                          onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile/${u.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{isMe ? 'You' : u.displayName}</p>
                           <p className="text-[11px] text-zinc-500">@{u.username}</p>

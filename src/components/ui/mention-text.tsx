@@ -28,7 +28,7 @@ export function MentionText({ text, className = '' }: MentionTextProps) {
                 key={i}
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(user.id === currentUser?.id ? '/profile' : `/profile?user=${user.id}`);
+                  router.push(user.id === currentUser?.id ? '/profile' : `/profile/${user.id}`);
                 }}
                 className="text-accent font-semibold"
               >

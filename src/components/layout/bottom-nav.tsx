@@ -79,7 +79,9 @@ export function BottomNav() {
       {/* Tab bar */}
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map((tab) => {
-          const isActive = pathname.startsWith(tab.path);
+          const isActive = tab.path === '/profile'
+            ? pathname === '/profile' || pathname.startsWith('/profile/settings')
+            : pathname.startsWith(tab.path);
           const Icon = tab.icon;
 
           if (tab.isCenter) {

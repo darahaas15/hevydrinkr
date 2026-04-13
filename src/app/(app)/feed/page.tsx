@@ -297,12 +297,12 @@ function FeedPageList() {
                       key={user.id}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] transition-colors"
                     >
-                      <div onClick={() => router.push(`/profile?user=${user.id}`)} className="cursor-pointer">
+                      <div onClick={() => router.push(`/profile/${user.id}`)} className="cursor-pointer">
                         <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
                       </div>
                       <div
                         className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => router.push(`/profile?user=${user.id}`)}
+                        onClick={() => router.push(`/profile/${user.id}`)}
                       >
                         <p className="text-sm font-semibold truncate">{user.displayName}</p>
                         <p className="text-[11px] text-zinc-500">@{user.username}</p>
@@ -346,7 +346,7 @@ function FeedPageList() {
             feedItems={items}
             followingIds={followingIds}
             onFollow={toggleFollow}
-            onViewProfile={(id) => router.push(`/profile?user=${id}`)}
+            onViewProfile={(id) => router.push(`/profile/${id}`)}
           />
         </div>
       )}
