@@ -30,7 +30,7 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
 
-  const [loadingUser, setLoadingUser] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(!allUsers.some((u) => u.id === resolvedUserId));
 
   useEffect(() => {
     fetchSessions(resolvedUserId);
