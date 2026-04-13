@@ -80,6 +80,15 @@ function LandingContent() {
     }
   };
 
+  // If the user lands here with a recovery hash (e.g. Supabase fell back to
+  // the Site URL instead of /reset-password), forward them immediately.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery')) {
+      router.replace(`/reset-password${hash}`);
+    }
+  }, [router]);
+
   useEffect(() => {
     migrateStorageKeys();
     initialize();

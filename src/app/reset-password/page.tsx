@@ -6,13 +6,10 @@ import { motion } from 'framer-motion';
 import { Loader2, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { AuthInput, ErrorMsg } from '@/components/ui/auth-input';
-import { useAuthStore } from '@/stores/use-auth-store';
-
 type PageState = 'loading' | 'ready' | 'success' | 'expired';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const initialize = useAuthStore((s) => s.initialize);
   const [state, setState] = useState<PageState>('loading');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -67,8 +64,8 @@ export default function ResetPasswordPage() {
       setState('success');
       // Clean hash fragment from URL
       window.history.replaceState(null, '', window.location.pathname);
-      await initialize();
-      setTimeout(() => router.replace('/feed'), 2000);
+      // Sign out the temporary recovery session — user will log in from the PWA
+      await supabase.auth.signOut();
     }
   };
 
@@ -132,7 +129,9 @@ export default function ResetPasswordPage() {
           >
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <h2 className="text-[22px] font-extrabold tracking-tight mb-2">Password Updated</h2>
-            <p className="text-sm text-zinc-500">Redirecting to your feed...</p>
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              Open the Drinkr app and sign in<br />with your new password.
+            </p>
           </motion.div>
         )}
 
