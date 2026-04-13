@@ -89,6 +89,9 @@ export default function ForgotPasswordPage() {
               We sent a password reset link to<br />
               <span className="text-zinc-300">{email}</span>
             </p>
+            <p className="text-xs text-zinc-600 mb-8">
+              Didn&apos;t get it? Check your spam folder.
+            </p>
             <button
               onClick={() => router.push('/')}
               className="text-sm text-accent active:text-accent/70 transition-colors"
