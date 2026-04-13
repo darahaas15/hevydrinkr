@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle, Flag } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
@@ -51,7 +52,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const [showLikesList, setShowLikesList] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  // portalReady removed — comment bar is now sticky, not portaled
+  const [portalReady, setPortalReady] = useState(false);
   const [postLoading, setPostLoading] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightCommentId ?? null);
   const allUsers = useAuthStore((s) => s.allUsers);
@@ -79,7 +80,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
 
   // Enable portal for the fixed comment bar so it renders outside <main>'s
   // scroll container — prevents iOS from locking scroll when the input is focused.
-  // portal mount removed — comment bar is now sticky
+  useEffect(() => setPortalReady(true), []);
 
   // iOS-style edge swipe to go back
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -256,7 +257,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   })();
 
   return (
-    <div className="min-h-full flex flex-col">
+    <div style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Header */}
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
@@ -277,7 +278,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
       </div>
 
       {/* Content */}
-      <div className="px-5 py-4 flex-1">
+      <div className="px-5 py-4">
         {/* User row */}
         <div className="flex items-center gap-3 mb-4">
           <Avatar name={item.userName} size="md" src={item.userAvatar} />
@@ -507,90 +508,99 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
         <div ref={bottomRef} />
       </div>
 
-      {/* Comment input — sticky inside the scroll container so it stays
-          above the keyboard on iOS without position:fixed viewport bugs. */}
-      <div
-        className="comment-input-bar sticky bottom-0 z-[55]"
-        style={{
-          background: '#09090b',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        {replyingTo && (
-          <div className="px-4 pt-2 pb-0 flex items-center gap-2 max-w-lg mx-auto">
-            <span className="text-[11px] text-zinc-500">
-              Replying to <span className="font-semibold text-zinc-400">@{replyingTo.userName}</span>
-            </span>
-            <button onClick={() => setReplyingTo(null)} className="p-2 rounded hover:bg-white/5 active:bg-white/[0.08]">
-              <X className="w-3.5 h-3.5 text-zinc-600" />
-            </button>
+      {/* Comment input — portaled to document.body so it lives outside
+          the <main> scroll container. This prevents iOS Safari from locking
+          scroll when the input is focused with the keyboard open. */}
+      {portalReady && createPortal(
+        <div
+          className="comment-input-bar"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 55,
+            background: '#09090b',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          {replyingTo && (
+            <div className="px-4 pt-2 pb-0 flex items-center gap-2 max-w-lg mx-auto">
+              <span className="text-[11px] text-zinc-500">
+                Replying to <span className="font-semibold text-zinc-400">@{replyingTo.userName}</span>
+              </span>
+              <button onClick={() => setReplyingTo(null)} className="p-2 rounded hover:bg-white/5 active:bg-white/[0.08]">
+                <X className="w-3.5 h-3.5 text-zinc-600" />
+              </button>
+            </div>
+          )}
+          <div className="px-4 py-2 flex gap-2.5 items-center max-w-lg mx-auto">
+            <Avatar name={currentUser?.displayName || 'You'} size="sm" src={currentUser?.avatarUrl || null} />
+            <div className="flex-1 relative">
+              {/* Mention suggestions */}
+              {mentionQuery !== null && (() => {
+                const q = mentionQuery.toLowerCase();
+                const matches = allUsers
+                  .filter((u) => u.id !== currentUser?.id && (u.username.toLowerCase().includes(q) || u.displayName.toLowerCase().includes(q)))
+                  .slice(0, 5);
+                if (matches.length === 0) return null;
+                return (
+                  <div className="absolute bottom-full mb-1 left-0 right-0 rounded-xl bg-zinc-900 border border-white/[0.08] shadow-lg overflow-hidden z-10">
+                    {matches.map((user) => (
+                      <button
+                        key={user.id}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/[0.06] active:bg-white/[0.08] transition-colors"
+                        onClick={() => {
+                          // Replace the @query with @username
+                          const beforeMention = commentText.slice(0, commentText.lastIndexOf('@'));
+                          setCommentText(`${beforeMention}@${user.username} `);
+                          setMentionQuery(null);
+                          inputRef.current?.focus();
+                        }}
+                      >
+                        <Avatar name={user.displayName} size="sm" src={user.avatarUrl} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold truncate">{user.displayName}</p>
+                          <p className="text-[10px] text-zinc-600">@{user.username}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+              <input
+                ref={inputRef}
+                value={commentText}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCommentText(val);
+                  // Detect if user is typing a mention
+                  const lastAt = val.lastIndexOf('@');
+                  if (lastAt >= 0 && !val.slice(lastAt).includes(' ')) {
+                    setMentionQuery(val.slice(lastAt + 1));
+                  } else {
+                    setMentionQuery(null);
+                  }
+                }}
+                placeholder={replyingTo ? `Reply to @${replyingTo.userName}...` : 'Add a comment...'}
+                enterKeyHint="send"
+                autoCapitalize="sentences"
+                className="w-full px-3.5 py-2 rounded-full bg-white/[0.06] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                onKeyDown={(e) => { if (e.key === 'Enter') { handleComment(); setMentionQuery(null); } }}
+              />
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleComment}
+              disabled={!commentText.trim()}
+              className="p-2 rounded-full bg-accent disabled:opacity-20 transition-opacity"
+            >
+              <Send className="w-4 h-4 text-black" />
+            </motion.button>
           </div>
-        )}
-        <div className="px-4 py-2 flex gap-2.5 items-center max-w-lg mx-auto">
-          <Avatar name={currentUser?.displayName || 'You'} size="sm" src={currentUser?.avatarUrl || null} />
-          <div className="flex-1 relative">
-            {/* Mention suggestions */}
-            {mentionQuery !== null && (() => {
-              const q = mentionQuery.toLowerCase();
-              const matches = allUsers
-                .filter((u) => u.id !== currentUser?.id && (u.username.toLowerCase().includes(q) || u.displayName.toLowerCase().includes(q)))
-                .slice(0, 5);
-              if (matches.length === 0) return null;
-              return (
-                <div className="absolute bottom-full mb-1 left-0 right-0 rounded-xl bg-zinc-900 border border-white/[0.08] shadow-lg overflow-hidden z-10">
-                  {matches.map((user) => (
-                    <button
-                      key={user.id}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/[0.06] active:bg-white/[0.08] transition-colors"
-                      onClick={() => {
-                        // Replace the @query with @username
-                        const beforeMention = commentText.slice(0, commentText.lastIndexOf('@'));
-                        setCommentText(`${beforeMention}@${user.username} `);
-                        setMentionQuery(null);
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <Avatar name={user.displayName} size="sm" src={user.avatarUrl} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold truncate">{user.displayName}</p>
-                        <p className="text-[10px] text-zinc-600">@{user.username}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
-            <input
-              ref={inputRef}
-              value={commentText}
-              onChange={(e) => {
-                const val = e.target.value;
-                setCommentText(val);
-                // Detect if user is typing a mention
-                const lastAt = val.lastIndexOf('@');
-                if (lastAt >= 0 && !val.slice(lastAt).includes(' ')) {
-                  setMentionQuery(val.slice(lastAt + 1));
-                } else {
-                  setMentionQuery(null);
-                }
-              }}
-              placeholder={replyingTo ? `Reply to @${replyingTo.userName}...` : 'Add a comment...'}
-              enterKeyHint="send"
-              autoCapitalize="sentences"
-              className="w-full px-3.5 py-2 rounded-full bg-white/[0.06] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
-              onKeyDown={(e) => { if (e.key === 'Enter') { handleComment(); setMentionQuery(null); } }}
-            />
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={handleComment}
-            disabled={!commentText.trim()}
-            className="p-2 rounded-full bg-accent disabled:opacity-20 transition-opacity"
-          >
-            <Send className="w-4 h-4 text-black" />
-          </motion.button>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
       {/* Post Menu */}
       <AnimatePresence>
         {showMenu && (
