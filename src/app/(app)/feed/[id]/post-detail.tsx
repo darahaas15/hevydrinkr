@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState, useRef, useEffect, useCallback } from 'react';
-
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle, Flag } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
@@ -52,7 +52,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const [showLikesList, setShowLikesList] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-
+  const [portalReady, setPortalReady] = useState(false);
   const [postLoading, setPostLoading] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightCommentId ?? null);
   const allUsers = useAuthStore((s) => s.allUsers);
@@ -78,6 +78,9 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
     return () => setHideBottomNav(false);
   }, [setHideBottomNav]);
 
+  // Enable portal for the fixed comment bar so it renders outside <main>'s
+  // scroll container — prevents iOS from locking scroll when the input is focused.
+  useEffect(() => setPortalReady(true), []);
 
   // iOS-style edge swipe to go back
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -254,9 +257,9 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   })();
 
   return (
-    <div className="absolute inset-0 flex flex-col max-w-lg mx-auto">
+    <div style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Header */}
-      <div className="shrink-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
           <button onClick={goBack} className="p-2 -ml-2 active:text-white">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
@@ -275,7 +278,6 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
       <div className="px-5 py-4">
         {/* User row */}
         <div className="flex items-center gap-3 mb-4">
@@ -505,16 +507,23 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
         )}
         <div ref={bottomRef} />
       </div>
-      </div>
 
-      {/* Comment input bar */}
-      <div
-        className="comment-input-bar shrink-0"
-        style={{
-          background: '#09090b',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
+      {/* Comment input — portaled to document.body so it lives outside
+          the <main> scroll container. This prevents iOS Safari from locking
+          scroll when the input is focused with the keyboard open. */}
+      {portalReady && createPortal(
+        <div
+          className="comment-input-bar"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 55,
+            background: '#09090b',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
           {replyingTo && (
             <div className="px-4 pt-2 pb-0 flex items-center gap-2 max-w-lg mx-auto">
               <span className="text-[11px] text-zinc-500">
@@ -589,8 +598,9 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
               <Send className="w-4 h-4 text-black" />
             </motion.button>
           </div>
-      </div>
-
+        </div>,
+        document.body
+      )}
       {/* Post Menu */}
       <AnimatePresence>
         {showMenu && (
