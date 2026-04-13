@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
   follows_enabled boolean NOT NULL DEFAULT true,
   group_joins_enabled boolean NOT NULL DEFAULT true,
   challenges_enabled boolean NOT NULL DEFAULT true,
+  new_posts_enabled boolean NOT NULL DEFAULT true,
   session_reminders_enabled boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
