@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRoastStore } from '@/stores/use-roast-store';
 import { WeeklyRecap } from './weekly-recap';
 import { StreakBoard } from './streak-board';
@@ -39,7 +39,7 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
     attemptedRef.current = false;
   }, [groupId, fetchRecaps, fetchStreaks, fetchRecords]);
 
-  // Auto-generate roast for last week if it doesn't exist — one attempt only
+  // Auto-generate roundup for last week if it doesn't exist — one attempt only
   useEffect(() => {
     if (attemptedRef.current || generating || loading) return;
     const lastWeek = getLastWeekKey();
@@ -55,8 +55,8 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
     return (
       <div>
         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <Flame className="w-3.5 h-3.5" />
-          Weekly Roast
+          <BarChart3 className="w-3.5 h-3.5" />
+          Weekly Roundup
         </h3>
         <div className="space-y-2.5">
           <Skeleton variant="card" className="h-24" />
@@ -72,8 +72,8 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
       {/* Section header */}
       <div>
         <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <Flame className="w-3.5 h-3.5" />
-          Weekly Roast
+          <BarChart3 className="w-3.5 h-3.5" />
+          Weekly Roundup
         </h3>
 
         {generating && recaps.length === 0 && (
@@ -89,10 +89,10 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
 
         {!generating && recaps.length === 0 && (
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
-            <p className="text-2xl mb-2">🔥</p>
-            <p className="text-sm text-zinc-400">No roasts yet</p>
+            <BarChart3 className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
+            <p className="text-sm text-zinc-400">No roundups yet</p>
             <p className="text-[10px] text-zinc-600 mt-1">
-              Log some drinks and the roast drops next week
+              Log some drinks and the roundup drops next week
             </p>
           </div>
         )}

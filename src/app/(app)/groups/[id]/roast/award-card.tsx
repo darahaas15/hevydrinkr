@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Avatar } from '@/components/ui/avatar';
+import { AWARD_ICONS } from './award-icons';
 import type { RoastAward } from '@/types/roast';
 
 interface AwardCardProps {
@@ -11,6 +12,9 @@ interface AwardCardProps {
 }
 
 export function AwardCard({ award, index, streakCount }: AwardCardProps) {
+  const visual = AWARD_ICONS[award.awardType];
+  const Icon = visual.icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -23,8 +27,10 @@ export function AwardCard({ award, index, streakCount }: AwardCardProps) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{award.userName}</p>
           <div className="flex items-center gap-1.5">
-            <span className="text-base">{award.emoji}</span>
-            <span className="text-xs font-bold text-accent">{award.title}</span>
+            <div className={`w-5 h-5 rounded-md flex items-center justify-center ${visual.bg}`}>
+              <Icon className={`w-3 h-3 ${visual.color}`} />
+            </div>
+            <span className={`text-xs font-bold ${visual.color}`}>{award.title}</span>
             {streakCount && streakCount >= 2 && (
               <span className="text-[10px] bg-orange-500/15 text-orange-400 px-1.5 py-0.5 rounded-full font-bold">
                 x{streakCount}

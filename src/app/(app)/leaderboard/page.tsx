@@ -28,7 +28,7 @@ const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
 export default function LeaderboardPage() {
   const router = useRouter();
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
-  const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all-time');
+  const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('week');
   const feedItems = useFeedStore((s) => s.items);
   const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);

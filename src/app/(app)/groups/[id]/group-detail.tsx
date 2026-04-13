@@ -187,7 +187,7 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
           )}
         </div>
 
-        {/* Weekly Roast */}
+        {/* Weekly Roundup */}
         <RoastSection groupId={resolvedId} members={group.members} />
       </div>
 
