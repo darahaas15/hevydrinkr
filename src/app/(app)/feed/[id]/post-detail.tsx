@@ -3,7 +3,7 @@
 import { use, useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle } from 'lucide-react';
+import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle, Flag } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { getMilestoneBadge } from '@/lib/milestones';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { MentionText } from '@/components/ui/mention-text';
+import { ReportModal } from '@/components/moderation/report-modal';
 
 const MAX_VISIBLE_REPLIES = 2;
 
@@ -49,6 +50,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const [showDrinkPicker, setShowDrinkPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showLikesList, setShowLikesList] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
   const [postLoading, setPostLoading] = useState(false);
@@ -263,9 +265,13 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
           <h1 className="text-lg font-bold flex-1">Post</h1>
-          {item.userId === currentUser?.id && (
+          {item.userId === currentUser?.id ? (
             <button onClick={() => setShowMenu(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
               <MoreHorizontal className="w-5 h-5 text-zinc-500" />
+            </button>
+          ) : (
+            <button onClick={() => setShowReport(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
+              <Flag className="w-4 h-4 text-zinc-500" />
             </button>
           )}
         </div>
@@ -877,6 +883,14 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ReportModal
+        open={showReport}
+        onClose={() => setShowReport(false)}
+        targetType="post"
+        targetId={item.id}
+        targetLabel={`Post by ${item.userName}`}
+      />
     </div>
   );
 }

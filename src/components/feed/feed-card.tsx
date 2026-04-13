@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { memo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X, Flag, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X, MoreHorizontal } from 'lucide-react';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
@@ -11,7 +11,6 @@ import { hapticLight } from '@/lib/haptics';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
-import { ReportModal } from '@/components/moderation/report-modal';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem } from '@/types';
 
@@ -26,7 +25,6 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const getUserById = useAuthStore((s) => s.getUserById);
   const addToast = useUIStore((s) => s.addToast);
   const [showLikesList, setShowLikesList] = useState(false);
-  const [showReport, setShowReport] = useState(false);
 
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
@@ -184,12 +182,6 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           <button onClick={handleShare} aria-label="Share">
             <Share2 size={18} className="text-zinc-600" />
           </button>
-
-          {item.userId !== currentUser?.id && (
-            <button onClick={(e) => { e.stopPropagation(); setShowReport(true); }} aria-label="Report">
-              <Flag size={16} className="text-zinc-700" />
-            </button>
-          )}
         </div>
 
         {/* Liked by */}
@@ -219,14 +211,6 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           </button>
         )}
       </div>
-
-      <ReportModal
-        open={showReport}
-        onClose={() => setShowReport(false)}
-        targetType="post"
-        targetId={item.id}
-        targetLabel={`Post by ${item.userName}`}
-      />
 
       {/* Likes List Modal */}
       <AnimatePresence>
