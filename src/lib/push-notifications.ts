@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { useUIStore } from '@/stores/use-ui-store';
 
 let initialized = false;
 
@@ -60,25 +61,46 @@ export async function unregisterPushNotifications(userId: string) {
  * Request web push permission (call from a user-initiated action like settings).
  */
 export async function requestWebPushPermission(userId: string): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  const toast = (msg: string, type: 'success' | 'error' | 'info' = 'info') =>
+    useUIStore.getState().addToast(msg, type);
 
-  const permission = await Notification.requestPermission();
+  if (typeof window === 'undefined') { toast('Push: no window', 'error'); return false; }
+  if (!('serviceWorker' in navigator)) { toast('Push: no SW support', 'error'); return false; }
+  if (!('PushManager' in window)) { toast('Push: no PushManager', 'error'); return false; }
+
+  toast('Push: requesting permission…');
+  let permission: NotificationPermission;
+  try {
+    permission = await Notification.requestPermission();
+  } catch (e) {
+    toast(`Push: permission threw: ${e}`, 'error');
+    return false;
+  }
+  toast(`Push: permission = ${permission}`);
   if (permission !== 'granted') return false;
 
   try {
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!vapidKey) return false;
+    if (!vapidKey) { toast('Push: VAPID key missing', 'error'); return false; }
+    toast(`Push: VAPID key found (${vapidKey.slice(0, 8)}…)`);
 
+    toast('Push: waiting for SW ready…');
     const reg = await navigator.serviceWorker.ready;
+    toast('Push: SW ready ✓');
+
+    toast('Push: subscribing…');
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
+    toast('Push: subscribed ✓');
 
+    toast('Push: saving token…');
     await upsertWebPushSubscription(userId, sub);
+    toast('Push: token saved ✓', 'success');
     return true;
-  } catch {
+  } catch (e) {
+    toast(`Push: failed: ${e instanceof Error ? e.message : e}`, 'error');
     return false;
   }
 }
@@ -95,7 +117,8 @@ async function upsertWebPushSubscription(userId: string, sub: PushSubscription) 
     );
 
   if (error) {
-    console.error('Failed to store device token:', error);
+    useUIStore.getState().addToast(`Push: DB upsert error: ${error.message}`, 'error');
+    throw error;
   }
 }
 

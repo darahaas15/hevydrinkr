@@ -142,9 +142,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="px-4 py-3 flex items-center gap-3">
             <p className="text-sm font-medium text-black flex-1">Enable notifications to know when friends interact with your posts</p>
             <button
-              onClick={async () => {
-                await requestWebPushPermission(currentUser.id);
+              onClick={() => {
                 setShowNotifBanner(false);
+                requestWebPushPermission(currentUser.id);
               }}
               className="px-4 py-1.5 rounded-full bg-black/20 text-xs font-semibold text-white shrink-0 active:bg-black/30"
             >
