@@ -30,10 +30,14 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
 
+  const [loadingUser, setLoadingUser] = useState(false);
+
   useEffect(() => {
     fetchSessions(resolvedUserId);
     fetchFeed();
-    fetchAllUsers();
+    // Force-fetch users so the profile is always available
+    setLoadingUser(true);
+    fetchAllUsers(true).finally(() => setLoadingUser(false));
   }, [resolvedUserId, fetchSessions, fetchFeed, fetchAllUsers]);
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
@@ -42,6 +46,25 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
   if (resolvedUserId === currentUser?.id) {
     router.replace('/profile');
     return null;
+  }
+
+  if (loadingUser && !user) {
+    return (
+      <div className="min-h-full px-5 pt-16 space-y-5 animate-pulse">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-white/5" />
+          <div className="flex-1 space-y-2">
+            <div className="h-5 w-32 rounded bg-white/5" />
+            <div className="h-3 w-20 rounded bg-white/5" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 h-20" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!user || !currentUser) {
