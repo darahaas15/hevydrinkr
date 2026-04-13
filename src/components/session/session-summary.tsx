@@ -25,7 +25,7 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
 
   return (
     <div className="fixed inset-0 z-[55] bg-[#09090b] overflow-y-auto">
-      <div className="min-h-full px-5 pt-4 pb-4 safe-top safe-bottom">
+      <div className="min-h-full px-5 pt-4 pb-24 safe-top safe-bottom">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
