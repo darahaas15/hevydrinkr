@@ -1,9 +1,9 @@
 'use client';
 
-import { use, useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2, X, Heart, Trophy as TrophyIcon, Timer, Flag, Ban, MoreHorizontal } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useFeedStore } from '@/stores/use-feed-store';
@@ -17,8 +17,9 @@ import { ReportModal } from '@/components/moderation/report-modal';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { hapticLight } from '@/lib/haptics';
 
-export default function UserProfilePage({ params, userId: userIdProp }: { params?: Promise<{ userId: string }>; userId?: string }) {
-  const resolvedUserId = userIdProp || (params ? use(params).userId : '');
+export default function UserProfilePage({ userId: userIdProp }: { userId?: string }) {
+  const pathname = usePathname();
+  const resolvedUserId = userIdProp || pathname.split('/').pop() || '';
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const allUsers = useAuthStore((s) => s.allUsers);

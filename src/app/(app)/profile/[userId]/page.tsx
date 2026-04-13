@@ -4,6 +4,6 @@ export async function generateStaticParams() {
   return [{ userId: '_' }];
 }
 
-export default function Page(props: { params: Promise<{ userId: string }> }) {
-  return <UserProfilePage params={props.params} />;
+export default function Page() {
+  return <UserProfilePage />;
 }
