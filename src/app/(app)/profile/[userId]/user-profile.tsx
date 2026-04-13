@@ -50,18 +50,28 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
 
   if (loadingUser && !user) {
     return (
-      <div className="min-h-full px-5 pt-16 space-y-5 animate-pulse">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-white/5" />
-          <div className="flex-1 space-y-2">
-            <div className="h-5 w-32 rounded bg-white/5" />
-            <div className="h-3 w-20 rounded bg-white/5" />
+      <div className="min-h-full">
+        <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="px-5 py-3 flex items-center gap-3">
+            <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-white">
+              <ChevronLeft className="w-6 h-6 text-zinc-400" />
+            </button>
+            <div className="h-5 w-24 rounded bg-white/5 animate-pulse" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2.5">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 h-20" />
-          ))}
+        <div className="px-5 py-5 space-y-5 animate-pulse">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-white/5" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-32 rounded bg-white/5" />
+              <div className="h-3 w-20 rounded bg-white/5" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 h-20" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -69,8 +79,21 @@ export default function UserProfilePage({ params, userId: userIdProp }: { params
 
   if (!user || !currentUser) {
     return (
-      <div className="min-h-full flex items-center justify-center">
-        <p className="text-zinc-500">User not found</p>
+      <div className="min-h-full">
+        <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="px-5 py-3 flex items-center gap-3">
+            <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-white">
+              <ChevronLeft className="w-6 h-6 text-zinc-400" />
+            </button>
+            <h1 className="text-lg font-bold truncate flex-1">Profile</h1>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+            <ChevronLeft className="w-8 h-8 text-zinc-700" />
+          </div>
+          <p className="text-zinc-500 text-sm">User not found</p>
+        </div>
       </div>
     );
   }
