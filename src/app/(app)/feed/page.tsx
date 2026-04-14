@@ -43,23 +43,28 @@ function FeedPageInner() {
 
 function FeedPageList() {
   const router = useRouter();
-  // Returning users (who follow anyone) land on Home; new users land on Discover.
-  // The following list is hydrated instantly from localStorage (Zustand persist),
-  // so this works before the feed items load.
   const following = useAuthStore((s) => s.currentUser?.following || []);
-  const [tab, setTab] = useState<'home' | 'discover'>(following.length > 0 ? 'home' : 'discover');
   const items = useFeedStore((s) => s.items);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
+  // Default to home unless the home feed has nothing to show.
+  // Both stores are Zustand-persisted so this resolves synchronously.
+  const hasHomePosts = useMemo(() => {
+    const followSet = new Set(following);
+    const blockedSet = new Set(blockedUserIds);
+    const uid = currentUser?.id;
+    return items.some((item) => (followSet.has(item.userId) || item.userId === uid) && !blockedSet.has(item.userId));
+  }, [items, following, blockedUserIds, currentUser?.id]);
+  const [tab, setTab] = useState<'home' | 'discover'>(hasHomePosts ? 'home' : 'discover');
   const loading = useFeedStore((s) => s.loading);
   const loadingMore = useFeedStore((s) => s.loadingMore);
   const hasMore = useFeedStore((s) => s.hasMore);
   const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const fetchMoreFeed = useFeedStore((s) => s.fetchMoreFeed);
-  const currentUser = useAuthStore((s) => s.currentUser);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
-  const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   const [searchQuery, setSearchQuery] = useState('');
