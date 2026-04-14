@@ -85,16 +85,16 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   // iOS-style edge swipe to go back
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
   const goBack = useCallback(() => {
-    // The Navigation API reliably indicates whether there's a previous
-    // page in the session history. window.history.length is unreliable in
-    // PWA contexts — fresh windows opened from push notifications may have
-    // length > 1 due to initial about:blank entries, causing router.back()
-    // to navigate away from the app instead of to the feed.
-    const canGoBack = (window as unknown as { navigation?: { canGoBack?: boolean } }).navigation?.canGoBack;
-    if (canGoBack) {
+    // When opened from a push notification, the PWA may have no real in-app
+    // history. window.history.length is unreliable (about:blank entries) and
+    // navigation.canGoBack can be true even without a useful destination.
+    // Threshold of > 2 avoids the about:blank trap in fresh windows.
+    if (window.history.length > 2) {
       router.back();
     } else {
-      router.replace('/feed');
+      // Soft navigation (router.push/replace) can silently no-op when the
+      // pathname is already /feed. Hard-navigate to guarantee it works.
+      window.location.href = '/feed';
     }
   }, [router]);
 
