@@ -29,6 +29,7 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
   const [showEditName, setShowEditName] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [editName, setEditName] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -56,8 +57,6 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
     const result = await shareLink(url, `Join ${group.name} on Drinkr`, `Use this link to join ${group.name}`);
     if (result === 'copied') addToast('Invite link copied!', 'success');
   };
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleDeleteGroup = () => {
     if (!confirmDelete) {

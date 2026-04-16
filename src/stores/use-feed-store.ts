@@ -147,7 +147,11 @@ function mapComment(comments: FeedComment[], commentId: string, fn: (c: FeedComm
   });
 }
 
-function mapRow(row: FeedItemRow): FeedItem {
+function mapRow(row: FeedItemRow): FeedItem | null {
+  // Defend against corrupt rows: if session_summary is missing, the item
+  // is unrenderable (every consumer reads sessionSummary.totalDrinks etc.)
+  // and would crash the page. Drop it instead.
+  if (!row.session_summary) return null;
   return {
     id: row.id,
     userId: row.user_id,
@@ -166,6 +170,10 @@ function mapRow(row: FeedItemRow): FeedItem {
     comments: threadComments(row.feed_comments ?? []),
     createdAt: row.created_at,
   };
+}
+
+function mapRows(rows: FeedItemRow[]): FeedItem[] {
+  return rows.map(mapRow).filter((x): x is FeedItem => x !== null);
 }
 
 export const useFeedStore = create<FeedState>()(persist((set, get) => ({
@@ -193,8 +201,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return;
     }
 
-    const items = (data as unknown as FeedItemRow[]).map(mapRow);
-    set({ items, loading: false, hasMore: items.length === FEED_PAGE_SIZE });
+    const rows = data as unknown as FeedItemRow[];
+    const items = mapRows(rows);
+    set({ items, loading: false, hasMore: rows.length === FEED_PAGE_SIZE });
   },
 
   fetchMoreFeed: async () => {
@@ -216,11 +225,12 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return;
     }
 
-    const newItems = (data as unknown as FeedItemRow[]).map(mapRow);
+    const rows = data as unknown as FeedItemRow[];
+    const newItems = mapRows(rows);
     set((state) => ({
       items: [...state.items, ...newItems],
       loadingMore: false,
-      hasMore: newItems.length === FEED_PAGE_SIZE,
+      hasMore: rows.length === FEED_PAGE_SIZE,
     }));
   },
 
@@ -238,6 +248,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error || !data) return null;
 
     const item = mapRow(data as unknown as FeedItemRow);
+    if (!item) return null;
     // Merge into store so subsequent reads find it
     set((state) => ({
       items: state.items.some((i) => i.id === postId)
