@@ -57,9 +57,11 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightCommentId ?? null);
   const allUsers = useAuthStore((s) => s.allUsers);
   const inputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
   const addToast = useUIStore((s) => s.addToast);
+  const [composerHeight, setComposerHeight] = useState(76);
 
   const item = items.find((i) => i.id === resolvedId);
 
@@ -81,6 +83,26 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   // Enable portal for the fixed comment bar so it renders outside <main>'s
   // scroll container — prevents iOS from locking scroll when the input is focused.
   useEffect(() => setPortalReady(true), []);
+
+  useEffect(() => {
+    if (!portalReady) return;
+
+    const composer = composerRef.current;
+    if (!composer) return;
+
+    const measure = () => {
+      setComposerHeight(Math.ceil(composer.getBoundingClientRect().height));
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(composer);
+
+    return () => observer.disconnect();
+  }, [portalReady, replyingTo]);
 
   // iOS-style edge swipe to go back
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -197,6 +219,24 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
 
   const totalCommentCount = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
 
+  const focusCommentInput = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const input = inputRef.current;
+        if (!input) return;
+
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus();
+        }
+
+        const caret = input.value.length;
+        input.setSelectionRange(caret, caret);
+      });
+    });
+  };
+
   const handleComment = () => {
     if (!commentText.trim() || !currentUser) return;
     hapticLight();
@@ -221,16 +261,18 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
       setExpandedThreads((prev) => new Set(prev).add(parentId));
     }
     setCommentText('');
+    setMentionQuery(null);
     setReplyingTo(null);
-    inputRef.current?.focus();
+    focusCommentInput();
   };
 
   const handleReply = (comment: FeedComment) => {
     // Replying to a reply targets the parent thread (1-level nesting)
     const targetId = comment.parentCommentId ?? comment.id;
     const targetName = comment.userName;
+    setExpandedThreads((prev) => new Set(prev).add(targetId));
     setReplyingTo({ commentId: targetId, userName: targetName });
-    inputRef.current?.focus();
+    focusCommentInput();
   };
 
   const handleCommentLike = (comment: FeedComment) => {
@@ -261,7 +303,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   })();
 
   return (
-    <div style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
+    <div style={{ paddingBottom: `calc(${composerHeight}px + var(--visual-viewport-bottom-offset, 0px))` }}>
       {/* Header */}
       <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
@@ -517,15 +559,18 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
           scroll when the input is focused with the keyboard open. */}
       {portalReady && createPortal(
         <div
+          ref={composerRef}
           className="comment-input-bar"
           style={{
             position: 'fixed',
-            bottom: 0,
             left: 0,
             right: 0,
             zIndex: 55,
-            background: '#09090b',
+            background: 'rgba(9,9,11,0.92)',
+            backdropFilter: 'blur(24px) saturate(165%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(165%)',
             borderTop: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 -12px 32px rgba(0,0,0,0.32)',
           }}
         >
           {replyingTo && (
@@ -538,7 +583,13 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
               </button>
             </div>
           )}
-          <div className="px-4 py-2 flex gap-2.5 items-center max-w-lg mx-auto">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleComment();
+            }}
+            className="px-4 py-2 flex gap-2.5 items-center max-w-lg mx-auto"
+          >
             <Avatar name={currentUser?.displayName || 'You'} size="sm" src={currentUser?.avatarUrl || null} />
             <div className="flex-1 relative">
               {/* Mention suggestions */}
@@ -553,13 +604,15 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
                     {matches.map((user) => (
                       <button
                         key={user.id}
+                        type="button"
                         className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/[0.06] active:bg-white/[0.08] transition-colors"
+                        onPointerDown={(e) => e.preventDefault()}
                         onClick={() => {
                           // Replace the @query with @username
                           const beforeMention = commentText.slice(0, commentText.lastIndexOf('@'));
                           setCommentText(`${beforeMention}@${user.username} `);
                           setMentionQuery(null);
-                          inputRef.current?.focus();
+                          focusCommentInput();
                         }}
                       >
                         <Avatar name={user.displayName} size="sm" src={user.avatarUrl} />
@@ -572,6 +625,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
                   </div>
                 );
               })()}
+              {/* Keep the mobile font size at 16px so iOS does not zoom the page on focus. */}
               <input
                 ref={inputRef}
                 value={commentText}
@@ -589,19 +643,18 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
                 placeholder={replyingTo ? `Reply to @${replyingTo.userName}...` : 'Add a comment...'}
                 enterKeyHint="send"
                 autoCapitalize="sentences"
-                className="w-full px-3.5 py-2 rounded-full bg-white/[0.06] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
-                onKeyDown={(e) => { if (e.key === 'Enter') { handleComment(); setMentionQuery(null); } }}
+                className="w-full px-3.5 py-2 rounded-full bg-white/[0.06] border border-white/[0.06] text-[16px] md:text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
               />
             </div>
             <motion.button
+              type="submit"
               whileTap={{ scale: 0.9 }}
-              onClick={handleComment}
               disabled={!commentText.trim()}
               className="p-2 rounded-full bg-accent disabled:opacity-20 transition-opacity"
             >
               <Send className="w-4 h-4 text-black" />
             </motion.button>
-          </div>
+          </form>
         </div>,
         document.body
       )}

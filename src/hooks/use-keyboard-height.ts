@@ -3,13 +3,13 @@
 import { useEffect } from 'react';
 
 /**
- * Detects the on-screen keyboard and toggles a `keyboard-open` class
- * on the document root element.
+ * Tracks the visual viewport so fixed bottom bars can stay attached to
+ * the visible area when the on-screen keyboard opens.
  *
- * With `interactive-widget=resizes-content` in the viewport meta, the
- * layout viewport shrinks when the keyboard opens, so
- * `position: fixed; bottom: 0` already sits above the keyboard.
- * This hook only drives safe-area padding adjustments.
+ * `interactive-widget=resizes-content` helps on supporting browsers, but
+ * PWAs and some mobile browsers still report keyboard movement only via
+ * `window.visualViewport`. We keep a CSS class for safe-area padding and
+ * expose the current bottom inset as a CSS variable.
  *
  * Call this hook exactly once near the root of the app.
  */
@@ -21,24 +21,54 @@ export function useKeyboardHeight() {
     const vv = window.visualViewport;
     if (!vv) return;
 
-    // Capture the full viewport height before the keyboard opens.
-    let fullHeight = vv.height;
+    let baselineVisibleBottom = Math.max(window.innerHeight, vv.offsetTop + vv.height);
+    let lastViewportWidth = vv.width;
+    let raf = 0;
 
     const update = () => {
-      // Update reference when viewport grows (orientation change, URL bar hide).
-      if (vv.height > fullHeight) fullHeight = vv.height;
+      raf = 0;
+
+      const layoutHeight = window.innerHeight;
+      const visibleBottom = vv.offsetTop + vv.height;
+      const widthChanged = Math.abs(vv.width - lastViewportWidth) > 120;
+
+      // A large width change is almost certainly an orientation/layout change,
+      // not a keyboard transition, so re-baseline before computing the inset.
+      if (widthChanged) {
+        baselineVisibleBottom = Math.max(layoutHeight, visibleBottom);
+      }
+
+      const keyboardInset = Math.max(0, baselineVisibleBottom - visibleBottom);
+      const bottomOffset = Math.max(0, layoutHeight - visibleBottom);
+      const isKeyboardOpen = keyboardInset > 150;
+
+      if (!isKeyboardOpen) {
+        baselineVisibleBottom = Math.max(layoutHeight, visibleBottom);
+      }
+      lastViewportWidth = vv.width;
+
       // Keyboards are typically >150 px; browser-chrome changes are smaller.
-      root.classList.toggle('keyboard-open', fullHeight - vv.height > 150);
+      root.classList.toggle('keyboard-open', isKeyboardOpen);
+      root.style.setProperty('--visual-viewport-bottom-offset', `${isKeyboardOpen ? bottomOffset : 0}px`);
     };
 
-    // Only listen to resize — NOT scroll.  The scroll event fires during
-    // momentum scrolling and made the old --keyboard-height var jittery.
-    vv.addEventListener('resize', update);
-    update();
+    const scheduleUpdate = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(update);
+    };
+
+    vv.addEventListener('resize', scheduleUpdate);
+    vv.addEventListener('scroll', scheduleUpdate);
+    window.addEventListener('resize', scheduleUpdate);
+    scheduleUpdate();
 
     return () => {
-      vv.removeEventListener('resize', update);
+      if (raf) cancelAnimationFrame(raf);
+      vv.removeEventListener('resize', scheduleUpdate);
+      vv.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
       root.classList.remove('keyboard-open');
+      root.style.removeProperty('--visual-viewport-bottom-offset');
     };
   }, []);
 }

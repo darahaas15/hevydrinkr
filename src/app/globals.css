@@ -16,6 +16,7 @@
   --green: #10b981;
   --red: #ef4444;
   --pink: #ec4899;
+  --visual-viewport-bottom-offset: 0px;
 }
 
 @theme inline {
@@ -79,12 +80,11 @@ body {
 }
 
 /* ── Comment input bar ─────────────────────── */
-/* With `interactive-widget: resizes-content`, `position: fixed; bottom: 0`
-   already sits above the on-screen keyboard natively.
-   The `keyboard-open` class on <html> (toggled by useKeyboardHeight)
-   zeroes out the safe-area padding so the bar hugs the keyboard. */
+/* The comment composer follows the visual viewport bottom instead of assuming
+   `position: fixed; bottom: 0` always tracks the on-screen keyboard. */
 
 .comment-input-bar {
+  bottom: var(--visual-viewport-bottom-offset, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   overflow: visible;
 }
