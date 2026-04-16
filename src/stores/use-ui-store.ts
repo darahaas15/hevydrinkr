@@ -13,6 +13,7 @@ interface UIState {
   showCelebration: boolean;
   toasts: Toast[];
   hideBottomNav: boolean;
+  lockMainScroll: boolean;
   isOffline: boolean;
 
   triggerCelebration: (pr: PersonalRecord) => void;
@@ -20,6 +21,7 @@ interface UIState {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
   setHideBottomNav: (hide: boolean) => void;
+  setLockMainScroll: (lock: boolean) => void;
   setOffline: (offline: boolean) => void;
 }
 
@@ -28,6 +30,7 @@ export const useUIStore = create<UIState>()((set) => ({
   showCelebration: false,
   toasts: [],
   hideBottomNav: false,
+  lockMainScroll: false,
   isOffline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
 
   triggerCelebration: (pr) =>
@@ -63,6 +66,8 @@ export const useUIStore = create<UIState>()((set) => ({
     })),
 
   setHideBottomNav: (hide) => set({ hideBottomNav: hide }),
+
+  setLockMainScroll: (lock) => set({ lockMainScroll: lock }),
 
   setOffline: (offline) => set({ isOffline: offline }),
 }));

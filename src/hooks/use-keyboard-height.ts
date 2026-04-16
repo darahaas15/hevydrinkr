@@ -49,6 +49,8 @@ export function useKeyboardHeight() {
 
       // Keyboards are typically >150 px; browser-chrome changes are smaller.
       root.classList.toggle('keyboard-open', isKeyboardOpen);
+      root.style.setProperty('--visual-viewport-top-offset', `${vv.offsetTop}px`);
+      root.style.setProperty('--visual-viewport-height', `${vv.height}px`);
       root.style.setProperty('--visual-viewport-bottom-offset', `${isKeyboardOpen ? bottomOffset : 0}px`);
     };
 
@@ -68,6 +70,8 @@ export function useKeyboardHeight() {
       vv.removeEventListener('scroll', scheduleUpdate);
       window.removeEventListener('resize', scheduleUpdate);
       root.classList.remove('keyboard-open');
+      root.style.removeProperty('--visual-viewport-top-offset');
+      root.style.removeProperty('--visual-viewport-height');
       root.style.removeProperty('--visual-viewport-bottom-offset');
     };
   }, []);

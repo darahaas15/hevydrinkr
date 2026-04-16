@@ -16,6 +16,8 @@
   --green: #10b981;
   --red: #ef4444;
   --pink: #ec4899;
+  --visual-viewport-top-offset: 0px;
+  --visual-viewport-height: 100dvh;
   --visual-viewport-bottom-offset: 0px;
 }
 
@@ -80,11 +82,18 @@ body {
 }
 
 /* ── Comment input bar ─────────────────────── */
+/* Full-screen mobile shells track the visual viewport instead of the layout
+   viewport so the keyboard animation stays attached to the visible area. */
+
+.visual-viewport-shell {
+  top: var(--visual-viewport-top-offset, 0px);
+  height: var(--visual-viewport-height, 100dvh);
+}
+
 /* The comment composer follows the visual viewport bottom instead of assuming
    `position: fixed; bottom: 0` always tracks the on-screen keyboard. */
 
 .comment-input-bar {
-  bottom: var(--visual-viewport-bottom-offset, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   overflow: visible;
 }

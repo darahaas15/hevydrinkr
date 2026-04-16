@@ -28,7 +28,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchPreferences = useNotificationStore((s) => s.fetchPreferences);
   const fetchBlockedUsers = useModerationStore((s) => s.fetchBlockedUsers);
   const hideBottomNav = useUIStore((s) => s.hideBottomNav);
-  const [showNotifBanner, setShowNotifBanner] = useState(false);
+  const lockMainScroll = useUIStore((s) => s.lockMainScroll);
+  const [notifBannerDismissedUserId, setNotifBannerDismissedUserId] = useState<string | null>(null);
 
   // Toggle a `keyboard-open` class on <html> when the soft keyboard is
   // visible, so fixed input bars can adjust safe-area padding.
@@ -45,11 +46,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       fetchNotifications(currentUser.id);
       fetchPreferences(currentUser.id);
       fetchBlockedUsers(currentUser.id);
-
-      // Show notification permission banner if not yet decided
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-        setShowNotifBanner(true);
-      }
     }
   }, [currentUser?.id, fetchNotifications, fetchPreferences, fetchBlockedUsers]);
 
@@ -145,20 +141,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return null;
 
+  const shouldShowNotifBanner = Boolean(
+    !hideBottomNav &&
+    currentUser?.id &&
+    notifBannerDismissedUserId !== currentUser.id &&
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    Notification.permission === 'default'
+  );
+
   return (
     <div className="h-dvh flex flex-col" style={{ background: '#09090b' }}>
-      <main className={`relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${hideBottomNav ? '' : 'pb-20'}`}>
+      <main
+        className={`relative flex-1 overflow-x-hidden ${
+          lockMainScroll ? 'overflow-hidden overscroll-none' : 'overflow-y-auto overscroll-contain'
+        } ${hideBottomNav ? '' : 'pb-20'}`}
+      >
         <div className="max-w-lg mx-auto w-full">
           {children}
         </div>
       </main>
-      {showNotifBanner && currentUser?.id && (
+      {shouldShowNotifBanner && currentUser?.id && (
         <div className="fixed top-0 left-0 right-0 z-[60] safe-top" style={{ background: 'linear-gradient(135deg, #14b8a6, #06b6d4)' }}>
           <div className="px-4 py-3 flex items-center gap-3">
             <p className="text-sm font-medium text-black flex-1">Enable notifications to know when friends interact with your posts</p>
             <button
               onClick={() => {
-                setShowNotifBanner(false);
+                setNotifBannerDismissedUserId(currentUser.id);
                 requestWebPushPermission(currentUser.id);
               }}
               className="px-4 py-1.5 rounded-full bg-black/20 text-xs font-semibold text-white shrink-0 active:bg-black/30"
@@ -166,7 +175,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               Enable
             </button>
             <button
-              onClick={() => setShowNotifBanner(false)}
+              onClick={() => setNotifBannerDismissedUserId(currentUser.id)}
               className="text-black/60 text-lg font-bold leading-none px-1"
             >
               &times;

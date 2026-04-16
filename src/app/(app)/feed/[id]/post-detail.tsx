@@ -1,7 +1,6 @@
 'use client';
 
 import { use, useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, Plus, X, Camera, MessageCircle, Flag } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
@@ -52,57 +51,57 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const [showLikesList, setShowLikesList] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [portalReady, setPortalReady] = useState(false);
-  const [postLoading, setPostLoading] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightCommentId ?? null);
+  const [missingPostIds, setMissingPostIds] = useState<Set<string>>(() => new Set());
   const allUsers = useAuthStore((s) => s.allUsers);
   const inputRef = useRef<HTMLInputElement>(null);
-  const composerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const requestedPostIdsRef = useRef<Set<string>>(new Set());
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
+  const setLockMainScroll = useUIStore((s) => s.setLockMainScroll);
   const addToast = useUIStore((s) => s.addToast);
-  const [composerHeight, setComposerHeight] = useState(76);
 
   const item = items.find((i) => i.id === resolvedId);
 
   // If the post isn't in the store (e.g. deep-link from a notification),
   // fetch it directly from Supabase.
   useEffect(() => {
-    if (!item && resolvedId && !postLoading) {
-      setPostLoading(true);
-      fetchSinglePost(resolvedId).finally(() => setPostLoading(false));
+    if (item && resolvedId) {
+      requestedPostIdsRef.current.delete(resolvedId);
+      return;
     }
-  }, [item, resolvedId, fetchSinglePost, postLoading]);
+
+    if (item || !resolvedId || missingPostIds.has(resolvedId) || requestedPostIdsRef.current.has(resolvedId)) {
+      return;
+    }
+
+    requestedPostIdsRef.current.add(resolvedId);
+    let cancelled = false;
+
+    void fetchSinglePost(resolvedId).then((result) => {
+      if (cancelled) return;
+      if (!result) {
+        setMissingPostIds((prev) => {
+          const next = new Set(prev);
+          next.add(resolvedId);
+          return next;
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item, resolvedId, fetchSinglePost, missingPostIds]);
 
   // Hide bottom nav for full-screen post experience
   useEffect(() => {
     setHideBottomNav(true);
-    return () => setHideBottomNav(false);
-  }, [setHideBottomNav]);
-
-  // Enable portal for the fixed comment bar so it renders outside <main>'s
-  // scroll container — prevents iOS from locking scroll when the input is focused.
-  useEffect(() => setPortalReady(true), []);
-
-  useEffect(() => {
-    if (!portalReady) return;
-
-    const composer = composerRef.current;
-    if (!composer) return;
-
-    const measure = () => {
-      setComposerHeight(Math.ceil(composer.getBoundingClientRect().height));
+    setLockMainScroll(true);
+    return () => {
+      setHideBottomNav(false);
+      setLockMainScroll(false);
     };
-
-    measure();
-
-    if (typeof ResizeObserver === 'undefined') return;
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(composer);
-
-    return () => observer.disconnect();
-  }, [portalReady, replyingTo]);
+  }, [setHideBottomNav, setLockMainScroll]);
 
   // iOS-style edge swipe to go back
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -147,16 +146,6 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   useEffect(() => {
     if (!highlightCommentId || !item) return;
 
-    // Find which top-level comment thread contains the target
-    for (const comment of item.comments) {
-      if (comment.id === highlightCommentId) break; // top-level, no expansion needed
-      const inReplies = comment.replies.some((r) => r.id === highlightCommentId);
-      if (inReplies) {
-        setExpandedThreads((prev) => new Set(prev).add(comment.id));
-        break;
-      }
-    }
-
     // Give React a tick to render the expanded replies, then scroll
     requestAnimationFrame(() => {
       const el = document.getElementById(`comment-${highlightCommentId}`);
@@ -168,17 +157,61 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
     });
   }, [highlightCommentId, item]);
 
+  const postHeader = (
+    <div
+      className="safe-top shrink-0"
+      style={{
+        background: 'rgba(9,9,11,0.95)',
+        backdropFilter: 'blur(28px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="px-5 py-3 flex items-center gap-3">
+        <button onClick={goBack} className="p-2 -ml-2 active:text-white">
+          <ChevronLeft className="w-6 h-6 text-zinc-400" />
+        </button>
+        <h1 className="text-lg font-bold flex-1">Post</h1>
+        {item ? (
+          item.userId === currentUser?.id ? (
+            <button onClick={() => setShowMenu(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
+              <MoreHorizontal className="w-5 h-5 text-zinc-500" />
+            </button>
+          ) : (
+            <button onClick={() => setShowReport(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
+              <Flag className="w-4 h-4 text-zinc-500" />
+            </button>
+          )
+        ) : (
+          <div className="w-10 shrink-0" aria-hidden="true" />
+        )}
+      </div>
+    </div>
+  );
+
+  const postLoading = !item && Boolean(resolvedId) && !missingPostIds.has(resolvedId);
+
   if (!item) {
     if (postLoading) {
       return (
-        <div className="min-h-full flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-zinc-700 border-t-accent rounded-full animate-spin" />
+        <div className="visual-viewport-shell fixed inset-x-0 z-[61] bg-[#09090b]">
+          <div className="mx-auto flex h-full max-w-lg flex-col overflow-hidden bg-[#09090b]">
+            {postHeader}
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-zinc-700 border-t-accent rounded-full animate-spin" />
+            </div>
+          </div>
         </div>
       );
     }
     return (
-      <div className="min-h-full flex items-center justify-center">
-        <p className="text-zinc-500">Post not found</p>
+      <div className="visual-viewport-shell fixed inset-x-0 z-[61] bg-[#09090b]">
+        <div className="mx-auto flex h-full max-w-lg flex-col overflow-hidden bg-[#09090b]">
+          {postHeader}
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-zinc-500">Post not found</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -187,6 +220,9 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = !!userLike;
   const s = item.sessionSummary;
+  const highlightedThreadId = highlightCommentId
+    ? item.comments.find((comment) => comment.replies.some((reply) => reply.id === highlightCommentId))?.id ?? null
+    : null;
 
   const handleLike = () => {
     if (!currentUser) return;
@@ -303,270 +339,248 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   })();
 
   return (
-    <div style={{ paddingBottom: `calc(${composerHeight}px + var(--visual-viewport-bottom-offset, 0px))` }}>
-      {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={goBack} className="p-2 -ml-2 active:text-white">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
-          </button>
-          <h1 className="text-lg font-bold flex-1">Post</h1>
-          {item.userId === currentUser?.id ? (
-            <button onClick={() => setShowMenu(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
-              <MoreHorizontal className="w-5 h-5 text-zinc-500" />
-            </button>
-          ) : (
-            <button onClick={() => setShowReport(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
-              <Flag className="w-4 h-4 text-zinc-500" />
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="visual-viewport-shell fixed inset-x-0 z-[61] bg-[#09090b]">
+      <div className="mx-auto flex h-full max-w-lg flex-col overflow-hidden bg-[#09090b]">
+        {postHeader}
 
-      {/* Content */}
-      <div className="px-5 py-4">
-        {/* User row */}
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar name={item.userName} size="md" src={item.userAvatar} />
-          <div className="flex-1">
-            <p className="text-sm font-semibold cursor-pointer" onClick={() => goToUser(item.userId)}>{item.userName}</p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
-              {milestone && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
-                  {milestone.label}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {item.caption && (
-          <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
-        )}
-
-        {/* Photos */}
-        {item.photos && item.photos.length > 0 && (
-          <div className="-mx-5 mb-4">
-            <PhotoGallery photos={item.photos} variant="feed" />
-          </div>
-        )}
-
-        {/* Session details */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 space-y-3 mb-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] text-zinc-500">{s.venue}</p>
-            <div className="flex items-center gap-3 text-[11px] text-zinc-500">
-              <span className="flex items-center gap-1"><Wine className="w-3 h-3" />{s.totalDrinks}</span>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(s.durationMinutes)}</span>
-              <span>{s.totalStandardDrinks.toFixed(1)} std</span>
-            </div>
-          </div>
-
-          {/* Grouped drinks */}
-          {groupedDrinks.length > 0 ? (
-            <div className="space-y-1">
-              {groupedDrinks.map((g, i) => (
-                <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-white/[0.02]">
-                  <DrinkIcon category={g.drink.category} className="w-5 h-5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {g.drink.name}{g.count > 1 && <span className="text-zinc-500 font-normal"> x{g.count}</span>}
-                    </p>
-                    <p className="text-[10px] text-zinc-600">
-                      {g.drink.abvPercent}% · {g.drink.volumeMl}ml · {(g.drink.standardDrinks * g.count).toFixed(1)} std
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-zinc-700 capitalize">{g.drink.category}</span>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="px-5 py-4 pb-6">
+            {/* User row */}
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar name={item.userName} size="md" src={item.userAvatar} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold cursor-pointer" onClick={() => goToUser(item.userId)}>{item.userName}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[11px] text-zinc-600">{formatTimeAgo(item.createdAt)}</p>
+                  {milestone && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
+                      {milestone.label}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            /* Fallback for old posts without drink details */
-            s.drinkEmojis.length > 0 && (
-              <div className="flex flex-wrap gap-0.5">
-                {s.drinkEmojis.map((_, i) => (
-                  <DrinkIcon key={i} category="custom" className="w-4 h-4" />
-                ))}
               </div>
-            )
-          )}
-        </div>
+            </div>
 
-        {/* Actions */}
-        <div className="pb-3 mb-3 border-b border-white/[0.05]">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike}>
-                <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
-              </motion.button>
-              {item.likes.length > 0 && (
-                <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
+            {item.caption && (
+              <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
+            )}
+
+            {/* Photos */}
+            {item.photos && item.photos.length > 0 && (
+              <div className="-mx-5 mb-4">
+                <PhotoGallery photos={item.photos} variant="feed" />
+              </div>
+            )}
+
+            {/* Session details */}
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 space-y-3 mb-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-zinc-500">{s.venue}</p>
+                <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+                  <span className="flex items-center gap-1"><Wine className="w-3 h-3" />{s.totalDrinks}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(s.durationMinutes)}</span>
+                  <span>{s.totalStandardDrinks.toFixed(1)} std</span>
+                </div>
+              </div>
+
+              {/* Grouped drinks */}
+              {groupedDrinks.length > 0 ? (
+                <div className="space-y-1">
+                  {groupedDrinks.map((g, i) => (
+                    <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-white/[0.02]">
+                      <DrinkIcon category={g.drink.category} className="w-5 h-5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {g.drink.name}{g.count > 1 && <span className="text-zinc-500 font-normal"> x{g.count}</span>}
+                        </p>
+                        <p className="text-[10px] text-zinc-600">
+                          {g.drink.abvPercent}% · {g.drink.volumeMl}ml · {(g.drink.standardDrinks * g.count).toFixed(1)} std
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-zinc-700 capitalize">{g.drink.category}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Fallback for old posts without drink details */
+                s.drinkEmojis.length > 0 && (
+                  <div className="flex flex-wrap gap-0.5">
+                    {s.drinkEmojis.map((_, i) => (
+                      <DrinkIcon key={i} category="custom" className="w-4 h-4" />
+                    ))}
+                  </div>
+                )
               )}
             </div>
-            <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
-            <span className="text-[11px] text-zinc-700 ml-auto">
-              {totalCommentCount} comment{totalCommentCount !== 1 ? 's' : ''}
-            </span>
-          </div>
 
-          {/* Liked by */}
-          {item.likes.length > 0 && (
-            <button
-              onClick={() => setShowLikesList(true)}
-              className="flex items-center gap-2 mt-2"
-            >
-              <div className="flex -space-x-1.5">
-                {item.likes.slice(0, 3).map((like) => {
-                  const user = getUserById(like.userId);
+            {/* Actions */}
+            <div className="pb-3 mb-3 border-b border-white/[0.05]">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike}>
+                    <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+                  </motion.button>
+                  {item.likes.length > 0 && (
+                    <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
+                  )}
+                </div>
+                <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
+                <span className="text-[11px] text-zinc-700 ml-auto">
+                  {totalCommentCount} comment{totalCommentCount !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {/* Liked by */}
+              {item.likes.length > 0 && (
+                <button
+                  onClick={() => setShowLikesList(true)}
+                  className="flex items-center gap-2 mt-2"
+                >
+                  <div className="flex -space-x-1.5">
+                    {item.likes.slice(0, 3).map((like) => {
+                      const user = getUserById(like.userId);
+                      return (
+                        <Avatar
+                          key={like.id}
+                          name={like.userName}
+                          size="xs"
+                          src={user?.avatarUrl ?? null}
+                          className="ring-1 ring-black"
+                        />
+                      );
+                    })}
+                  </div>
+                  <p className="text-[12px] text-zinc-400">
+                    Liked by <span className="font-semibold text-zinc-200">{item.likes[0].userId === currentUser?.id ? 'you' : item.likes[0].userName}</span>
+                    {item.likes.length > 1 && <> and <span className="font-semibold text-zinc-200">{item.likes.length - 1} other{item.likes.length - 1 !== 1 ? 's' : ''}</span></>}
+                  </p>
+                </button>
+              )}
+            </div>
+
+            {/* Comments */}
+            {item.comments.length === 0 ? (
+              <p className="text-sm text-zinc-700 text-center py-6">No comments yet — be the first</p>
+            ) : (
+              <div className="space-y-4">
+                {item.comments.map((comment, i) => {
+                  const commentLiked = !!comment.likes.find((l) => l.userId === currentUser?.id);
+                  const isExpanded = expandedThreads.has(comment.id) || highlightedThreadId === comment.id;
+                  const visibleReplies = isExpanded ? comment.replies : comment.replies.slice(0, MAX_VISIBLE_REPLIES);
+                  const hiddenCount = comment.replies.length - MAX_VISIBLE_REPLIES;
+
                   return (
-                    <Avatar
-                      key={like.id}
-                      name={like.userName}
-                      size="xs"
-                      src={user?.avatarUrl ?? null}
-                      className="ring-1 ring-black"
-                    />
+                    <div key={comment.id}>
+                      {/* Top-level comment */}
+                      <motion.div
+                        id={`comment-${comment.id}`}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className={`flex gap-3 group rounded-lg transition-colors duration-700 ${highlightedId === comment.id ? 'bg-accent/10 -mx-2 px-2 py-1' : ''}`}
+                      >
+                        <div onClick={() => goToUser(comment.userId)} className="cursor-pointer">
+                          <Avatar name={comment.userName} size="sm" src={comment.userAvatar} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px]">
+                            <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(comment.userId)}>{comment.userName}</span>{' '}
+                            <MentionText text={comment.text} className="text-zinc-400" />
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] text-zinc-700">{formatTimeAgo(comment.createdAt)}</span>
+                            <button onClick={() => handleReply(comment)} className="text-[10px] text-zinc-600 font-semibold hover:text-zinc-400 active:text-zinc-300 py-1 px-1">
+                              Reply
+                            </button>
+                            <button onClick={() => handleCommentLike(comment)} className="flex items-center gap-1 py-1 px-1">
+                              <Heart className={`w-3.5 h-3.5 transition-colors ${commentLiked ? 'fill-red-500 text-red-500' : 'text-zinc-700 active:text-zinc-500'}`} />
+                              {comment.likes.length > 0 && (
+                                <span className={`text-[10px] ${commentLiked ? 'text-red-500' : 'text-zinc-700'}`}>{comment.likes.length}</span>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        {comment.userId === currentUser?.id && (
+                          <button
+                            onClick={() => deleteComment(item.id, comment.id)}
+                            className="p-2 rounded-lg hover:bg-red-500/10 active:bg-red-500/15 self-start"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-zinc-700 active:text-red-400" />
+                          </button>
+                        )}
+                      </motion.div>
+
+                      {/* Replies */}
+                      {comment.replies.length > 0 && (
+                        <div className="ml-11 mt-2 space-y-3">
+                          {visibleReplies.map((reply) => {
+                            const replyLiked = !!reply.likes.find((l) => l.userId === currentUser?.id);
+                            return (
+                              <motion.div
+                                id={`comment-${reply.id}`}
+                                key={reply.id}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`flex gap-3 group rounded-lg transition-colors duration-700 ${highlightedId === reply.id ? 'bg-accent/10 -mx-2 px-2 py-1' : ''}`}
+                              >
+                                <div onClick={() => goToUser(reply.userId)} className="cursor-pointer">
+                                  <Avatar name={reply.userName} size="sm" src={reply.userAvatar} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[12px]">
+                                    <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(reply.userId)}>{reply.userName}</span>{' '}
+                                    <MentionText text={reply.text} className="text-zinc-400" />
+                                  </p>
+                                  <div className="flex items-center gap-3 mt-0.5">
+                                    <span className="text-[10px] text-zinc-700">{formatTimeAgo(reply.createdAt)}</span>
+                                    <button onClick={() => handleReply(reply)} className="text-[10px] text-zinc-600 font-semibold hover:text-zinc-400 active:text-zinc-300 py-1 px-1">
+                                      Reply
+                                    </button>
+                                    <button onClick={() => handleCommentLike(reply)} className="flex items-center gap-1 py-1 px-1">
+                                      <Heart className={`w-3 h-3 transition-colors ${replyLiked ? 'fill-red-500 text-red-500' : 'text-zinc-700 active:text-zinc-500'}`} />
+                                      {reply.likes.length > 0 && (
+                                        <span className={`text-[10px] ${replyLiked ? 'text-red-500' : 'text-zinc-700'}`}>{reply.likes.length}</span>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                                {reply.userId === currentUser?.id && (
+                                  <button
+                                    onClick={() => deleteComment(item.id, reply.id)}
+                                    className="p-2 rounded-lg hover:bg-red-500/10 active:bg-red-500/15 self-start"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-zinc-700 active:text-red-400" />
+                                  </button>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+                          {!isExpanded && hiddenCount > 0 && (
+                            <button
+                              onClick={() => setExpandedThreads((prev) => new Set(prev).add(comment.id))}
+                              className="flex items-center gap-1.5 text-[11px] text-zinc-600 font-semibold hover:text-zinc-400 active:text-zinc-300 py-2"
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                              View {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
-              <p className="text-[12px] text-zinc-400">
-                Liked by <span className="font-semibold text-zinc-200">{item.likes[0].userId === currentUser?.id ? 'you' : item.likes[0].userName}</span>
-                {item.likes.length > 1 && <> and <span className="font-semibold text-zinc-200">{item.likes.length - 1} other{item.likes.length - 1 !== 1 ? 's' : ''}</span></>}
-              </p>
-            </button>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Comments */}
-        {item.comments.length === 0 ? (
-          <p className="text-sm text-zinc-700 text-center py-6">No comments yet — be the first</p>
-        ) : (
-          <div className="space-y-4">
-            {item.comments.map((comment, i) => {
-              const commentLiked = !!comment.likes.find((l) => l.userId === currentUser?.id);
-              const isExpanded = expandedThreads.has(comment.id);
-              const visibleReplies = isExpanded ? comment.replies : comment.replies.slice(0, MAX_VISIBLE_REPLIES);
-              const hiddenCount = comment.replies.length - MAX_VISIBLE_REPLIES;
-
-              return (
-                <div key={comment.id}>
-                  {/* Top-level comment */}
-                  <motion.div
-                    id={`comment-${comment.id}`}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className={`flex gap-3 group rounded-lg transition-colors duration-700 ${highlightedId === comment.id ? 'bg-accent/10 -mx-2 px-2 py-1' : ''}`}
-                  >
-                    <div onClick={() => goToUser(comment.userId)} className="cursor-pointer">
-                      <Avatar name={comment.userName} size="sm" src={comment.userAvatar} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px]">
-                        <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(comment.userId)}>{comment.userName}</span>{' '}
-                        <MentionText text={comment.text} className="text-zinc-400" />
-                      </p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] text-zinc-700">{formatTimeAgo(comment.createdAt)}</span>
-                        <button onClick={() => handleReply(comment)} className="text-[10px] text-zinc-600 font-semibold hover:text-zinc-400 active:text-zinc-300 py-1 px-1">
-                          Reply
-                        </button>
-                        <button onClick={() => handleCommentLike(comment)} className="flex items-center gap-1 py-1 px-1">
-                          <Heart className={`w-3.5 h-3.5 transition-colors ${commentLiked ? 'fill-red-500 text-red-500' : 'text-zinc-700 active:text-zinc-500'}`} />
-                          {comment.likes.length > 0 && (
-                            <span className={`text-[10px] ${commentLiked ? 'text-red-500' : 'text-zinc-700'}`}>{comment.likes.length}</span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    {comment.userId === currentUser?.id && (
-                      <button
-                        onClick={() => deleteComment(item.id, comment.id)}
-                        className="p-2 rounded-lg hover:bg-red-500/10 active:bg-red-500/15 self-start"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-zinc-700 active:text-red-400" />
-                      </button>
-                    )}
-                  </motion.div>
-
-                  {/* Replies */}
-                  {comment.replies.length > 0 && (
-                    <div className="ml-11 mt-2 space-y-3">
-                      {visibleReplies.map((reply) => {
-                        const replyLiked = !!reply.likes.find((l) => l.userId === currentUser?.id);
-                        return (
-                          <motion.div
-                            id={`comment-${reply.id}`}
-                            key={reply.id}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`flex gap-3 group rounded-lg transition-colors duration-700 ${highlightedId === reply.id ? 'bg-accent/10 -mx-2 px-2 py-1' : ''}`}
-                          >
-                            <div onClick={() => goToUser(reply.userId)} className="cursor-pointer">
-                              <Avatar name={reply.userName} size="sm" src={reply.userAvatar} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[12px]">
-                                <span className="font-semibold cursor-pointer hover:underline" onClick={() => goToUser(reply.userId)}>{reply.userName}</span>{' '}
-                                <MentionText text={reply.text} className="text-zinc-400" />
-                              </p>
-                              <div className="flex items-center gap-3 mt-0.5">
-                                <span className="text-[10px] text-zinc-700">{formatTimeAgo(reply.createdAt)}</span>
-                                <button onClick={() => handleReply(reply)} className="text-[10px] text-zinc-600 font-semibold hover:text-zinc-400 active:text-zinc-300 py-1 px-1">
-                                  Reply
-                                </button>
-                                <button onClick={() => handleCommentLike(reply)} className="flex items-center gap-1 py-1 px-1">
-                                  <Heart className={`w-3 h-3 transition-colors ${replyLiked ? 'fill-red-500 text-red-500' : 'text-zinc-700 active:text-zinc-500'}`} />
-                                  {reply.likes.length > 0 && (
-                                    <span className={`text-[10px] ${replyLiked ? 'text-red-500' : 'text-zinc-700'}`}>{reply.likes.length}</span>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                            {reply.userId === currentUser?.id && (
-                              <button
-                                onClick={() => deleteComment(item.id, reply.id)}
-                                className="p-2 rounded-lg hover:bg-red-500/10 active:bg-red-500/15 self-start"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-zinc-700 active:text-red-400" />
-                              </button>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                      {!isExpanded && hiddenCount > 0 && (
-                        <button
-                          onClick={() => setExpandedThreads((prev) => new Set(prev).add(comment.id))}
-                          className="flex items-center gap-1.5 text-[11px] text-zinc-600 font-semibold hover:text-zinc-400 active:text-zinc-300 py-2"
-                        >
-                          <MessageCircle className="w-3 h-3" />
-                          View {hiddenCount} more {hiddenCount === 1 ? 'reply' : 'replies'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Comment input — portaled to document.body so it lives outside
-          the <main> scroll container. This prevents iOS Safari from locking
-          scroll when the input is focused with the keyboard open. */}
-      {portalReady && createPortal(
         <div
-          ref={composerRef}
-          className="comment-input-bar"
+          className="comment-input-bar shrink-0"
           style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            zIndex: 55,
-            background: 'rgba(9,9,11,0.92)',
+            background: 'rgba(9,9,11,0.94)',
             backdropFilter: 'blur(24px) saturate(165%)',
             WebkitBackdropFilter: 'blur(24px) saturate(165%)',
             borderTop: '1px solid rgba(255,255,255,0.06)',
@@ -655,9 +669,8 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
               <Send className="w-4 h-4 text-black" />
             </motion.button>
           </form>
-        </div>,
-        document.body
-      )}
+        </div>
+      </div>
       {/* Post Menu */}
       <AnimatePresence>
         {showMenu && (

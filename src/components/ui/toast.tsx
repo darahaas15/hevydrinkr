@@ -36,7 +36,7 @@ export function ToastContainer() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[51] pointer-events-none"
+      className="fixed top-0 left-0 right-0 z-[80] pointer-events-none"
       style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
     >
       <div className="max-w-lg mx-auto px-3 flex flex-col gap-2">
