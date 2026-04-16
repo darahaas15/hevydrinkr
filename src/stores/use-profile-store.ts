@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PersonalRecord } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 const PRS_STALE_MS = 30_000;
 let _prsLastFetched = 0;
@@ -133,5 +134,6 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
     get().personalRecords.filter((pr) => !pr.celebrated),
 }), {
   name: 'hd-profile',
+  storage: safeJSONStorage(),
   partialize: (s) => ({ personalRecords: s.personalRecords }),
 }));

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 export interface Notification {
   id: string;
@@ -245,6 +246,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
   },
 }), {
   name: 'hd-notifications',
+  storage: safeJSONStorage(),
   partialize: (s) => ({
     preferences: s.preferences,
     unreadCount: s.unreadCount,

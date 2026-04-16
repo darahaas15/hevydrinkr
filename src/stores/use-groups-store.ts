@@ -6,6 +6,7 @@ import type {
 } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 const GROUPS_STALE_MS = 30_000;
 let _groupsLastFetched = 0;
@@ -311,6 +312,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
 
 }), {
   name: 'hd-groups',
+  storage: safeJSONStorage(),
   partialize: (s) => ({ groups: s.groups }),
   onRehydrateStorage: () => (state) => {
     if (state && state.groups.length > 0) state.loading = false;

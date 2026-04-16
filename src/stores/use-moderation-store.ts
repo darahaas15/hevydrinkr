@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabase/client';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 export type ReportReason =
   | 'spam'
@@ -96,5 +97,6 @@ export const useModerationStore = create<ModerationState>()(persist((set, get) =
   isBlocked: (userId) => get().blockedUserIds.includes(userId),
 }), {
   name: 'hd-moderation',
+  storage: safeJSONStorage(),
   partialize: (s) => ({ blockedUserIds: s.blockedUserIds }),
 }));

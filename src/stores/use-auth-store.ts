@@ -4,6 +4,7 @@ import type { UserProfile, Gender } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { hapticMedium } from '@/lib/haptics';
 import { useUIStore } from '@/stores/use-ui-store';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 interface AuthState {
   currentUser: UserProfile | null;
@@ -248,5 +249,6 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   },
 }), {
   name: 'hd-auth',
+  storage: safeJSONStorage(),
   partialize: (s) => ({ currentUser: s.currentUser, isAuthenticated: s.isAuthenticated }),
 }));

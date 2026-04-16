@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase/client';
 import { computeWeeklyAwards, type MemberWeekData } from '@/lib/algorithms/roast-engine';
 import { getAwardMeta } from '@/lib/algorithms/roast-copy';
 import { useUIStore } from '@/stores/use-ui-store';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 // ── Week helpers ──
 
@@ -562,6 +563,7 @@ export const useRoastStore = create<RoastState>()(
     }),
     {
       name: 'hd-roasts',
+      storage: safeJSONStorage(),
       partialize: (s) => ({
         recaps: s.recaps.slice(0, 50),
         streaks: s.streaks,
