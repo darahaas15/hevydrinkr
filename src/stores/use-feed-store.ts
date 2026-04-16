@@ -13,6 +13,10 @@ import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
 import { useUIStore } from '@/stores/use-ui-store';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
+
+// Photo data URLs are huge — Supabase is the source of truth, refetch on load.
+const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 
 const FEED_STALE_MS = 30_000;
 const FEED_PAGE_SIZE = 15;
@@ -697,7 +701,8 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 }), {
   name: 'hd-feed',
-  partialize: (s) => ({ items: s.items.slice(0, 50) }),
+  storage: safeJSONStorage(),
+  partialize: (s) => ({ items: s.items.slice(0, 50).map(stripFeedPhotos) }),
   onRehydrateStorage: () => (state) => {
     if (state && state.items.length > 0) state.loading = false;
   },

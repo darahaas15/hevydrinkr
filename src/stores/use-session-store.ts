@@ -3,6 +3,11 @@ import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
+import { safeJSONStorage } from '@/lib/storage/safe-storage';
+
+// Photo data URLs are huge (~100KB–1MB each, base64 PNG/JPG) and live in
+// Supabase already — keeping them out of localStorage avoids QuotaExceededError.
+const stripPhotos = (s: DrinkSession): DrinkSession => ({ ...s, photos: [] });
 
 const SESSIONS_STALE_MS = 30_000;
 let _sessionsLastFetched = 0;
@@ -569,5 +574,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     })),
 }), {
   name: 'hd-sessions',
-  partialize: (s) => ({ activeSession: s.activeSession, sessionHistory: s.sessionHistory.slice(0, 100) }),
+  storage: safeJSONStorage(),
+  partialize: (s) => ({
+    activeSession: s.activeSession ? stripPhotos(s.activeSession) : null,
+    sessionHistory: s.sessionHistory.slice(0, 100).map(stripPhotos),
+  }),
 }));
