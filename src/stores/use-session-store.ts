@@ -360,15 +360,17 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     const { activeSession } = get();
     if (!activeSession) return;
 
-    // Optimistic update — UI reflects the drink immediately
-    const newDrinks = [...activeSession.drinks, drink];
-    const newTotalStd = activeSession.totalStandardDrinks + drink.standardDrinks;
+    // Optimistic update — UI reflects the drink immediately.
+    // Coerce in case persisted state is missing fields from an older schema.
+    const existingDrinks = activeSession.drinks ?? [];
+    const newDrinks = [...existingDrinks, drink];
+    const newTotalStd = (activeSession.totalStandardDrinks ?? 0) + drink.standardDrinks;
     set({
       activeSession: {
         ...activeSession,
         drinks: newDrinks,
         totalStandardDrinks: newTotalStd,
-        totalVolumeMl: activeSession.totalVolumeMl + drink.volumeMl,
+        totalVolumeMl: (activeSession.totalVolumeMl ?? 0) + drink.volumeMl,
       },
     });
 
@@ -528,6 +530,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   updatePeakBac: (bac) => {
     const { activeSession } = get();
     if (!activeSession) return;
+    if (!Number.isFinite(bac)) return;
 
     if (bac > activeSession.peakBacEstimate) {
       set({

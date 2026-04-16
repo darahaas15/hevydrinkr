@@ -82,7 +82,8 @@ export function calculateBac(
   nowMs: number = Date.now(),
 ): BacEstimate {
   const r = DISTRIBUTION_RATIO[params.gender] ?? 0.615;
-  const bodyWeightGrams = params.weightKg * 1000;
+  const safeWeightKg = Number.isFinite(params.weightKg) && params.weightKg > 0 ? params.weightKg : 70;
+  const bodyWeightGrams = safeWeightKg * 1000;
 
   const sorted = [...drinks].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),

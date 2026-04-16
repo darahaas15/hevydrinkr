@@ -101,28 +101,29 @@ function SessionPageInner() {
   const timer = useTimer(activeSession?.startedAt || null);
   const updatePeakBac = useSessionStore((s) => s.updatePeakBac);
 
-  const totalStdDrinks = activeSession?.drinks.reduce((sum, d) => sum + d.standardDrinks, 0) || 0;
+  const activeDrinks = activeSession?.drinks ?? [];
+  const totalStdDrinks = activeDrinks.reduce((sum, d) => sum + (d?.standardDrinks ?? 0), 0);
 
   // Pace & context calculations
-  const myPosts = feedItems.filter((f) => f.userId === currentUser?.id);
+  const myPosts = feedItems.filter((f) => f.userId === currentUser?.id && f.sessionSummary);
   const avgDrinksPerSession = myPosts.length > 0
-    ? myPosts.reduce((sum, p) => sum + p.sessionSummary.totalDrinks, 0) / myPosts.length
+    ? myPosts.reduce((sum, p) => sum + (p.sessionSummary?.totalDrinks ?? 0), 0) / myPosts.length
     : 0;
 
   const hoursElapsed = activeSession
     ? (Date.now() - new Date(activeSession.startedAt).getTime()) / 3_600_000
     : 0;
   const drinksPerHour = hoursElapsed > 0.05 && activeSession
-    ? activeSession.drinks.length / hoursElapsed
+    ? activeDrinks.length / hoursElapsed
     : 0;
 
-  const drinkDiff = activeSession ? activeSession.drinks.length - avgDrinksPerSession : 0;
+  const drinkDiff = activeSession ? activeDrinks.length - avgDrinksPerSession : 0;
 
   // Live BAC estimate — recomputes every second via timer.elapsed
   const bacEstimate = useMemo(() => {
     if (!activeSession || !currentUser) return null;
     return calculateBac(
-      activeSession.drinks,
+      activeDrinks,
       { weightKg: currentUser.weightKg, gender: currentUser.gender },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,7 +131,7 @@ function SessionPageInner() {
 
   // Track peak BAC in the session store (persists to DB)
   useEffect(() => {
-    if (bacEstimate && bacEstimate.peakBac > 0) {
+    if (bacEstimate && Number.isFinite(bacEstimate.peakBac) && bacEstimate.peakBac > 0) {
       updatePeakBac(bacEstimate.peakBac);
     }
   }, [bacEstimate?.peakBac, updatePeakBac]);
@@ -346,7 +347,7 @@ function SessionPageInner() {
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={() => activeSession.drinks.length > 0 ? setShowPostPreview(true) : addToast('Add at least one drink first', 'error')}
+              onClick={() => activeDrinks.length > 0 ? setShowPostPreview(true) : addToast('Add at least one drink first', 'error')}
               className="px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-sm font-semibold"
             >
               End
@@ -374,13 +375,13 @@ function SessionPageInner() {
           </div>
         )}
 
-        <BacGauge standardDrinks={totalStdDrinks} drinks={activeSession.drinks} />
+        <BacGauge standardDrinks={totalStdDrinks} drinks={activeDrinks} />
 
         {/* Pace & Context */}
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-3xl font-extrabold">{activeSession.drinks.length}</p>
+              <p className="text-3xl font-extrabold">{activeDrinks.length}</p>
               <p className="text-[11px] text-zinc-500">drinks</p>
             </div>
             <div className="flex items-center gap-2">
@@ -414,7 +415,7 @@ function SessionPageInner() {
             </div>
           )}
 
-          {activeSession.drinks.length > 0 && (
+          {activeDrinks.length > 0 && (
             <div className="flex gap-3">
               {avgDrinksPerSession > 0 && (
                 <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
@@ -425,7 +426,7 @@ function SessionPageInner() {
                 </div>
               )}
               <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-                <p className="text-sm font-bold">{new Set(activeSession.drinks.map(d => d.drinkDefinitionId)).size}</p>
+                <p className="text-sm font-bold">{new Set(activeDrinks.map(d => d.drinkDefinitionId)).size}</p>
                 <p className="text-[10px] text-zinc-600">Types</p>
               </div>
             </div>
@@ -435,10 +436,10 @@ function SessionPageInner() {
           <p className="text-[9px] text-zinc-600 mt-3">{BAC_DISCLAIMER}</p>
         </div>
 
-        <DrinkList drinks={activeSession.drinks} onRemove={removeDrink} />
+        <DrinkList drinks={activeDrinks} onRemove={removeDrink} />
 
         {/* Session Photos */}
-        {activeSession.photos.length > 0 && (
+        {(activeSession.photos?.length ?? 0) > 0 && (
           <div>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Photos</p>
             <PhotoGallery photos={activeSession.photos} onRemove={removePhoto} />
@@ -471,7 +472,7 @@ function SessionPageInner() {
               addDrink(drink);
               setShowPicker(false);
               // Mid-session milestone toast
-              const count = (activeSession?.drinks.length ?? 0) + 1;
+              const count = activeDrinks.length + 1;
               const milestones: Record<number, string> = { 5: '5 drinks deep!', 10: 'Double digits!', 15: 'On a roll!', 20: 'Unstoppable!', 25: 'Quarter century!', 30: 'Legend status!' };
               if (milestones[count]) { hapticSuccess(); addToast(milestones[count], 'success'); }
             }}
@@ -506,21 +507,21 @@ function SessionPageInner() {
                   <h2 className="text-lg font-bold">End Session</h2>
                   <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
                     <MapPin className="w-3 h-3" />
-                    {activeSession.venue} · {activeSession.drinks.length} drinks · {timer.formatted}
+                    {activeSession.venue} · {activeDrinks.length} drinks · {timer.formatted}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-0.5 max-w-[80px] justify-end">
-                  {activeSession.drinks.slice(0, 6).map((d) => (
+                  {activeDrinks.slice(0, 6).map((d) => (
                     <DrinkIcon key={d.id} category={d.category} className="w-4 h-4" />
                   ))}
-                  {activeSession.drinks.length > 6 && (
-                    <span className="text-[10px] text-zinc-600">+{activeSession.drinks.length - 6}</span>
+                  {activeDrinks.length > 6 && (
+                    <span className="text-[10px] text-zinc-600">+{activeDrinks.length - 6}</span>
                   )}
                 </div>
               </div>
 
               {/* Photos */}
-              {activeSession.photos.length > 0 && (
+              {(activeSession.photos?.length ?? 0) > 0 && (
                 <PhotoGallery photos={activeSession.photos} />
               )}
 
