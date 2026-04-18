@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { hapticSelection, hapticLight } from '@/lib/haptics';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
 import { Avatar } from '@/components/ui/avatar';
-import type { LeaderboardMetric, LeaderboardTimeframe } from '@/types';
+import { supabase } from '@/lib/supabase/client';
+import type { LeaderboardMetric, LeaderboardTimeframe, FeedItem } from '@/types';
 
 const METRICS: { value: LeaderboardMetric; label: string }[] = [
   { value: 'total_standard_drinks', label: 'Drinks' },
@@ -25,24 +25,27 @@ const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
   { value: 'all-time', label: 'All Time' },
 ];
 
+// Slim leaderboard row — only the fields buildLeaderboard needs. Pulled
+// directly from the DB so rankings reflect ALL posts, not just whatever's
+// in the paginated feed cache.
+type LeaderboardPostRow = {
+  user_id: string;
+  session_summary: FeedItem['sessionSummary'];
+  created_at: string;
+};
+
+const LEADERBOARD_STALE_MS = 30_000;
+
 export default function LeaderboardPage() {
   const router = useRouter();
   const [metric, setMetric] = useState<LeaderboardMetric>('total_standard_drinks');
   const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('week');
-  const feedItems = useFeedStore((s) => s.items);
-  const feedError = useFeedStore((s) => s.error);
-  const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const currentUser = useAuthStore((s) => s.currentUser);
 
-  useEffect(() => {
-    fetchAllUsers();
-    fetchFeed();
-    const refetch = () => { fetchAllUsers(true); fetchFeed(true); };
-    window.addEventListener('focus', refetch);
-    return () => window.removeEventListener('focus', refetch);
-  }, [fetchAllUsers, fetchFeed]);
+  const [posts, setPosts] = useState<FeedItem[] | null>(null);
+  const [postsError, setPostsError] = useState<string | null>(null);
 
   const circleUsers = useMemo(() => {
     if (!currentUser) return [];
@@ -51,9 +54,67 @@ export default function LeaderboardPage() {
     return allUsers.filter((u) => followingSet.has(u.id));
   }, [allUsers, currentUser]);
 
+  const circleIds = useMemo(() => circleUsers.map((u) => u.id), [circleUsers]);
+  const circleIdsKey = circleIds.join(',');
+
+  const staleRef = useRef({ key: '', at: 0 });
+
+  const loadLeaderboard = useCallback(async (force?: boolean) => {
+    if (circleIds.length === 0) {
+      setPosts([]);
+      return;
+    }
+    const key = `${circleIdsKey}|${timeframe}`;
+    if (!force && key === staleRef.current.key && Date.now() - staleRef.current.at < LEADERBOARD_STALE_MS) return;
+    staleRef.current = { key, at: Date.now() };
+
+    let query = supabase
+      .from('feed_items')
+      .select('user_id, session_summary, created_at')
+      .in('user_id', circleIds);
+
+    if (timeframe !== 'all-time') {
+      const sinceMs = timeframe === 'week' ? 7 * 86400000 : 30 * 86400000;
+      query = query.gte('created_at', new Date(Date.now() - sinceMs).toISOString());
+    }
+
+    const { data, error } = await query;
+    if (error || !data) {
+      setPostsError(error?.message ?? 'Failed to load leaderboard');
+      return;
+    }
+    setPostsError(null);
+    // buildLeaderboard reads only id-less fields from FeedItem, so we adapt
+    // the slim row into a minimal FeedItem-shaped object.
+    const rows = data as unknown as LeaderboardPostRow[];
+    setPosts(rows.map((r) => ({
+      id: '',
+      userId: r.user_id,
+      userName: '',
+      userAvatar: null,
+      sessionId: '',
+      sessionSummary: r.session_summary,
+      photos: [],
+      caption: '',
+      likes: [],
+      comments: [],
+      createdAt: r.created_at,
+    })));
+  }, [circleIds, circleIdsKey, timeframe]);
+
+  useEffect(() => {
+    fetchAllUsers();
+    // Defer to a microtask so any sync setState inside loadLeaderboard
+    // doesn't fire during the effect body (avoids cascading renders).
+    Promise.resolve().then(() => loadLeaderboard());
+    const refetch = () => { fetchAllUsers(true); loadLeaderboard(true); };
+    window.addEventListener('focus', refetch);
+    return () => window.removeEventListener('focus', refetch);
+  }, [fetchAllUsers, loadLeaderboard]);
+
   const leaderboard = useMemo(
-    () => buildLeaderboard(feedItems, circleUsers, metric, timeframe),
-    [feedItems, circleUsers, metric, timeframe]
+    () => buildLeaderboard(posts ?? [], circleUsers, metric, timeframe),
+    [posts, circleUsers, metric, timeframe]
   );
 
   return (
@@ -100,11 +161,11 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      {feedError && <ErrorBanner message={feedError} onRetry={() => fetchFeed(true)} />}
+      {postsError && <ErrorBanner message={postsError} onRetry={() => loadLeaderboard(true)} />}
 
       {/* Rankings */}
       <div className="px-4 py-4">
-        {feedItems.length === 0 && !feedError ? (
+        {posts === null && !postsError ? (
           <div className="space-y-1.5">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 flex items-center gap-3 animate-pulse">

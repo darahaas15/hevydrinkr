@@ -21,6 +21,7 @@ const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 const FEED_STALE_MS = 30_000;
 const FEED_PAGE_SIZE = 15;
 let _feedLastFetched = 0;
+const _userPostsLastFetched = new Map<string, number>();
 
 const FEED_SELECT = `
   *,
@@ -31,6 +32,10 @@ const FEED_SELECT = `
 
 interface FeedState {
   items: FeedItem[];
+  // All posts per user, keyed by userId. Populated on demand via fetchUserPosts
+  // so profile pages and per-user calculations can see ALL of a user's posts,
+  // not just the slice that lands in the paginated `items` feed view.
+  userPosts: Record<string, FeedItem[]>;
   loading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
@@ -39,6 +44,7 @@ interface FeedState {
   fetchFeed: (force?: boolean) => Promise<void>;
   fetchMoreFeed: () => Promise<void>;
   fetchSinglePost: (postId: string) => Promise<FeedItem | null>;
+  fetchUserPosts: (userId: string, force?: boolean) => Promise<void>;
   addLike: (feedItemId: string, like: FeedLike) => Promise<void>;
   removeLike: (feedItemId: string, likeId: string) => Promise<void>;
   addComment: (feedItemId: string, comment: FeedComment, parentCommentId?: string | null) => Promise<void>;
@@ -176,8 +182,38 @@ function mapRows(rows: FeedItemRow[]): FeedItem[] {
   return rows.map(mapRow).filter((x): x is FeedItem => x !== null);
 }
 
+// Apply a transform to a feed item across both `items` and any cached
+// per-user post list it appears in. Keeps the two stores consistent so a
+// like/comment/edit reflects in profile views as well as the feed.
+function patchItemEverywhere(
+  state: { items: FeedItem[]; userPosts: Record<string, FeedItem[]> },
+  feedItemId: string,
+  fn: (item: FeedItem) => FeedItem,
+): { items: FeedItem[]; userPosts: Record<string, FeedItem[]> } {
+  const items = state.items.map((i) => (i.id === feedItemId ? fn(i) : i));
+  const userPosts: Record<string, FeedItem[]> = {};
+  for (const [uid, posts] of Object.entries(state.userPosts)) {
+    userPosts[uid] = posts.map((i) => (i.id === feedItemId ? fn(i) : i));
+  }
+  return { items, userPosts };
+}
+
+// Remove an item from both stores by id.
+function removeItemEverywhere(
+  state: { items: FeedItem[]; userPosts: Record<string, FeedItem[]> },
+  feedItemId: string,
+): { items: FeedItem[]; userPosts: Record<string, FeedItem[]> } {
+  const items = state.items.filter((i) => i.id !== feedItemId);
+  const userPosts: Record<string, FeedItem[]> = {};
+  for (const [uid, posts] of Object.entries(state.userPosts)) {
+    userPosts[uid] = posts.filter((i) => i.id !== feedItemId);
+  }
+  return { items, userPosts };
+}
+
 export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   items: [],
+  userPosts: {},
   loading: true,
   loadingMore: false,
   hasMore: true,
@@ -234,6 +270,24 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }));
   },
 
+  fetchUserPosts: async (userId: string, force?: boolean) => {
+    if (!userId) return;
+    const last = _userPostsLastFetched.get(userId) ?? 0;
+    if (!force && Date.now() - last < FEED_STALE_MS) return;
+    _userPostsLastFetched.set(userId, Date.now());
+
+    const { data, error } = await supabase
+      .from('feed_items')
+      .select(FEED_SELECT)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return;
+
+    const posts = mapRows(data as unknown as FeedItemRow[]);
+    set((state) => ({ userPosts: { ...state.userPosts, [userId]: posts } }));
+  },
+
   fetchSinglePost: async (postId: string) => {
     // Return from cache if already present
     const cached = get().items.find((i) => i.id === postId);
@@ -250,11 +304,16 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const item = mapRow(data as unknown as FeedItemRow);
     if (!item) return null;
     // Merge into store so subsequent reads find it
-    set((state) => ({
-      items: state.items.some((i) => i.id === postId)
+    set((state) => {
+      const items = state.items.some((i) => i.id === postId)
         ? state.items
-        : [item, ...state.items],
-    }));
+        : [item, ...state.items];
+      const existing = state.userPosts[item.userId];
+      const userPosts = existing && !existing.some((i) => i.id === postId)
+        ? { ...state.userPosts, [item.userId]: [item, ...existing] }
+        : state.userPosts;
+      return { items, userPosts };
+    });
     return item;
   },
 
@@ -335,20 +394,23 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       createdAt: inserted.created_at,
     };
 
-    set((state) => ({
-      items: [feedItem, ...state.items],
-    }));
+    set((state) => {
+      const existing = state.userPosts[user.id];
+      return {
+        items: [feedItem, ...state.items],
+        userPosts: existing
+          ? { ...state.userPosts, [user.id]: [feedItem, ...existing] }
+          : state.userPosts,
+      };
+    });
   },
 
   addLike: async (feedItemId, like) => {
     // Optimistic update
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? { ...item, likes: [...item.likes, like] }
-          : item
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      likes: [...item.likes, like],
+    })));
 
     const { data: inserted, error } = await supabase
       .from('feed_likes')
@@ -362,47 +424,30 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       // Roll back optimistic update
       set((state) => ({
-        items: state.items.map((item) =>
-          item.id === feedItemId
-            ? {
-                ...item,
-                likes: item.likes.filter((l) => l.id !== like.id),
-              }
-            : item
-        ),
+        ...patchItemEverywhere(state, feedItemId, (item) => ({
+          ...item,
+          likes: item.likes.filter((l) => l.id !== like.id),
+        })),
         error: error.message,
       }));
       return;
     }
 
     // Replace the temp like id with the real DB id
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? {
-              ...item,
-              likes: item.likes.map((l) =>
-                l.id === like.id ? { ...l, id: inserted.id } : l
-              ),
-            }
-          : item
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      likes: item.likes.map((l) => (l.id === like.id ? { ...l, id: inserted.id } : l)),
+    })));
   },
 
   removeLike: async (feedItemId, likeId) => {
-    const prev = get().items;
+    const prevItems = get().items;
+    const prevUserPosts = get().userPosts;
     // Optimistic update
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? {
-              ...item,
-              likes: item.likes.filter((l) => l.id !== likeId),
-            }
-          : item
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      likes: item.likes.filter((l) => l.id !== likeId),
+    })));
 
     const { error } = await supabase
       .from('feed_likes')
@@ -411,28 +456,38 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error) {
       // Roll back
-      set({ items: prev, error: error.message });
+      set({ items: prevItems, userPosts: prevUserPosts, error: error.message });
     }
   },
 
   addComment: async (feedItemId, comment, parentCommentId) => {
+    const insertComment = (item: FeedItem): FeedItem => {
+      if (parentCommentId) {
+        return {
+          ...item,
+          comments: mapComment(item.comments, parentCommentId, (parent) => ({
+            ...parent,
+            replies: [...parent.replies, comment],
+          })),
+        };
+      }
+      return { ...item, comments: [...item.comments, comment] };
+    };
+    const removeComment = (item: FeedItem): FeedItem => {
+      if (parentCommentId) {
+        return {
+          ...item,
+          comments: mapComment(item.comments, parentCommentId, (parent) => ({
+            ...parent,
+            replies: parent.replies.filter((r) => r.id !== comment.id),
+          })),
+        };
+      }
+      return { ...item, comments: item.comments.filter((c) => c.id !== comment.id) };
+    };
+
     // Optimistic update
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.id !== feedItemId) return item;
-        if (parentCommentId) {
-          // Push reply into parent's replies[]
-          return {
-            ...item,
-            comments: mapComment(item.comments, parentCommentId, (parent) => ({
-              ...parent,
-              replies: [...parent.replies, comment],
-            })),
-          };
-        }
-        return { ...item, comments: [...item.comments, comment] };
-      }),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, insertComment));
 
     const { data: inserted, error } = await supabase
       .from('feed_comments')
@@ -448,19 +503,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       // Roll back optimistic update
       set((state) => ({
-        items: state.items.map((item) => {
-          if (item.id !== feedItemId) return item;
-          if (parentCommentId) {
-            return {
-              ...item,
-              comments: mapComment(item.comments, parentCommentId, (parent) => ({
-                ...parent,
-                replies: parent.replies.filter((r) => r.id !== comment.id),
-              })),
-            };
-          }
-          return { ...item, comments: item.comments.filter((c) => c.id !== comment.id) };
-        }),
+        ...patchItemEverywhere(state, feedItemId, removeComment),
         error: error.message,
       }));
       useUIStore.getState().addToast('Something went wrong', 'error');
@@ -468,28 +511,22 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }
 
     // Replace the temp comment id with the real DB id
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.id !== feedItemId) return item;
-        return {
-          ...item,
-          comments: mapComment(item.comments, comment.id, (c) => ({ ...c, id: inserted.id })),
-        };
-      }),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      comments: mapComment(item.comments, comment.id, (c) => ({ ...c, id: inserted.id })),
+    })));
   },
 
   getFeedForUser: (userId) =>
     get().items.filter((item) => item.userId === userId),
 
   deleteFeedItem: async (feedItemId) => {
-    const prev = get().items;
-    const item = prev.find((i) => i.id === feedItemId);
+    const prevItems = get().items;
+    const prevUserPosts = get().userPosts;
+    const item = prevItems.find((i) => i.id === feedItemId);
     const currentUserId = useAuthStore.getState().currentUser?.id;
     if (!item || item.userId !== currentUserId) return;
-    set((state) => ({
-      items: state.items.filter((i) => i.id !== feedItemId),
-    }));
+    set((state) => removeItemEverywhere(state, feedItemId));
 
     // Delete the feed item
     const { error } = await supabase
@@ -499,7 +536,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error) {
       console.error('Failed to delete feed item:', error);
-      set({ items: prev });
+      set({ items: prevItems, userPosts: prevUserPosts });
       useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
@@ -520,16 +557,13 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 
   updateFeedItem: async (feedItemId, updates) => {
-    const prev = get().items;
-    const item = prev.find((i) => i.id === feedItemId);
+    const prevItems = get().items;
+    const prevUserPosts = get().userPosts;
+    const item = prevItems.find((i) => i.id === feedItemId);
     const currentUserId = useAuthStore.getState().currentUser?.id;
     if (!item || item.userId !== currentUserId) return;
 
-    set((state) => ({
-      items: state.items.map((i) =>
-        i.id === feedItemId ? { ...i, ...updates } : i
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (i) => ({ ...i, ...updates })));
 
     const dbUpdates: Record<string, unknown> = {};
     if (updates.caption !== undefined) dbUpdates.caption = updates.caption;
@@ -545,7 +579,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error || !updated) {
       console.error('Failed to update feed item:', error ?? 'No rows updated (RLS policy may be missing)');
-      set({ items: prev });
+      set({ items: prevItems, userPosts: prevUserPosts });
       useUIStore.getState().addToast('Something went wrong', 'error');
       return;
     }
@@ -612,29 +646,27 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 
   deleteComment: async (feedItemId, commentId) => {
-    const prev = get().items;
+    const prevItems = get().items;
+    const prevUserPosts = get().userPosts;
     const currentUserId = useAuthStore.getState().currentUser?.id;
-    const feedItem = prev.find((i) => i.id === feedItemId);
+    const feedItem = prevItems.find((i) => i.id === feedItemId);
     const comment = feedItem ? findComment(feedItem.comments, commentId) : undefined;
     if (!comment || comment.userId !== currentUserId) return;
 
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.id !== feedItemId) return item;
-        // Try removing from top-level first
-        const filtered = item.comments.filter((c) => c.id !== commentId);
-        if (filtered.length < item.comments.length) {
-          return { ...item, comments: filtered };
-        }
-        // Otherwise remove from a parent's replies
-        return {
-          ...item,
-          comments: item.comments.map((c) => ({
-            ...c,
-            replies: c.replies.filter((r) => r.id !== commentId),
-          })),
-        };
-      }),
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => {
+      // Try removing from top-level first
+      const filtered = item.comments.filter((c) => c.id !== commentId);
+      if (filtered.length < item.comments.length) {
+        return { ...item, comments: filtered };
+      }
+      // Otherwise remove from a parent's replies
+      return {
+        ...item,
+        comments: item.comments.map((c) => ({
+          ...c,
+          replies: c.replies.filter((r) => r.id !== commentId),
+        })),
+      };
     }));
 
     const { error } = await supabase
@@ -644,7 +676,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error) {
       console.error('Failed to delete comment:', error);
-      set({ items: prev });
+      set({ items: prevItems, userPosts: prevUserPosts });
       useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
@@ -657,13 +689,10 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const optimisticLike: CommentLike = { id: tempId, userId, createdAt: new Date().toISOString() };
 
     // Optimistic update
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: [...c.likes, optimisticLike] })) }
-          : item
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: [...c.likes, optimisticLike] })),
+    })));
 
     const { data: inserted, error } = await supabase
       .from('comment_likes')
@@ -673,41 +702,36 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error) {
       // Roll back
-      set((state) => ({
-        items: state.items.map((item) =>
-          item.id === feedItemId
-            ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.filter((l) => l.id !== tempId) })) }
-            : item
-        ),
-      }));
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+        ...item,
+        comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.filter((l) => l.id !== tempId) })),
+      })));
       return;
     }
 
     // Replace temp id with real id
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.map((l) => l.id === tempId ? { ...l, id: inserted.id } : l) })) }
-          : item
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      comments: mapComment(item.comments, commentId, (c) => ({
+        ...c,
+        likes: c.likes.map((l) => (l.id === tempId ? { ...l, id: inserted.id } : l)),
+      })),
+    })));
   },
 
   unlikeComment: async (feedItemId, commentId, likeId) => {
-    const prev = get().items;
+    const prevItems = get().items;
+    const prevUserPosts = get().userPosts;
 
     // Optimistic update
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === feedItemId
-          ? { ...item, comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.filter((l) => l.id !== likeId) })) }
-          : item
-      ),
-    }));
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      ...item,
+      comments: mapComment(item.comments, commentId, (c) => ({ ...c, likes: c.likes.filter((l) => l.id !== likeId) })),
+    })));
 
     const { error } = await supabase.from('comment_likes').delete().eq('id', likeId);
     if (error) {
-      set({ items: prev });
+      set({ items: prevItems, userPosts: prevUserPosts });
     }
   },
 }), {

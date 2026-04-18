@@ -63,26 +63,26 @@ function SessionPageInner() {
   const triggerCelebration = useUIStore((s) => s.triggerCelebration);
   const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
   const addToast = useUIStore((s) => s.addToast);
-  const feedItems = useFeedStore((s) => s.items);
-  const fetchFeed = useFeedStore((s) => s.fetchFeed);
+  const userPostsMap = useFeedStore((s) => s.userPosts);
+  const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
   const router = useRouter();
 
   useEffect(() => {
     if (currentUser) {
       fetchSessions(currentUser.id).finally(() => setLoadingHistory(false));
       fetchPRs(currentUser.id);
-      fetchFeed();
+      fetchUserPosts(currentUser.id);
     }
     const refetch = () => {
       if (currentUser) {
         fetchSessions(currentUser.id, true);
         fetchPRs(currentUser.id, true);
-        fetchFeed(true);
+        fetchUserPosts(currentUser.id, true);
       }
     };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
-  }, [currentUser, fetchSessions, fetchPRs, fetchFeed]);
+  }, [currentUser, fetchSessions, fetchPRs, fetchUserPosts]);
 
   const [venue, setVenue] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -105,7 +105,7 @@ function SessionPageInner() {
   const totalStdDrinks = activeDrinks.reduce((sum, d) => sum + (d?.standardDrinks ?? 0), 0);
 
   // Pace & context calculations
-  const myPosts = feedItems.filter((f) => f.userId === currentUser?.id && f.sessionSummary);
+  const myPosts = (currentUser ? userPostsMap[currentUser.id] ?? [] : []).filter((f) => f.sessionSummary);
   const avgDrinksPerSession = myPosts.length > 0
     ? myPosts.reduce((sum, p) => sum + (p.sessionSummary?.totalDrinks ?? 0), 0) / myPosts.length
     : 0;
@@ -232,7 +232,7 @@ function SessionPageInner() {
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Recent</h3>
               <div className="space-y-1.5">
                 {mySessions.map((session) => {
-                  const feedPost = feedItems.find((f) => f.sessionId === session.id);
+                  const feedPost = myPosts.find((f) => f.sessionId === session.id);
                   return (
                     <button
                       key={session.id}

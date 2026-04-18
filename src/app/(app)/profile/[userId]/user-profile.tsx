@@ -28,8 +28,8 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   const addToast = useUIStore((s) => s.addToast);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
-  const feedItems = useFeedStore((s) => s.items);
-  const fetchFeed = useFeedStore((s) => s.fetchFeed);
+  const userPostsMap = useFeedStore((s) => s.userPosts);
+  const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
 
   const [loadingUser, setLoadingUser] = useState(!allUsers.some((u) => u.id === resolvedUserId));
@@ -42,7 +42,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
 
   useEffect(() => {
     fetchSessions(resolvedUserId);
-    fetchFeed();
+    fetchUserPosts(resolvedUserId);
     // Only force-fetch if this user isn't already in the store
     const alreadyLoaded = useAuthStore.getState().allUsers.some((u) => u.id === resolvedUserId);
     if (alreadyLoaded) {
@@ -52,12 +52,15 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
       setLoadingUser(true);
       fetchAllUsers(true).finally(() => setLoadingUser(false));
     }
-  }, [resolvedUserId, fetchSessions, fetchFeed, fetchAllUsers]);
+  }, [resolvedUserId, fetchSessions, fetchUserPosts, fetchAllUsers]);
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
   const isFollowing = currentUser?.following.includes(resolvedUserId) ?? false;
 
-  const userPosts = feedItems.filter((f) => f.userId === resolvedUserId);
+  const userPosts = useMemo(
+    () => userPostsMap[resolvedUserId] ?? [],
+    [userPostsMap, resolvedUserId]
+  );
 
   const stats = useMemo(() => {
     const totalSessions = userPosts.length;

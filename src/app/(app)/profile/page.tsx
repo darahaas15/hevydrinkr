@@ -34,9 +34,9 @@ function ProfilePageOwn() {
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const addToast = useUIStore((s) => s.addToast);
-  const feedItems = useFeedStore((s) => s.items);
+  const userPostsMap = useFeedStore((s) => s.userPosts);
   const feedError = useFeedStore((s) => s.error);
-  const fetchFeed = useFeedStore((s) => s.fetchFeed);
+  const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
   const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
   const sessionHistory = useSessionStore((s) => s.sessionHistory);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
@@ -49,14 +49,14 @@ function ProfilePageOwn() {
       fetchSessions(currentUser.id);
       fetchPRs(currentUser.id);
       fetchAllUsers();
-      fetchFeed();
+      fetchUserPosts(currentUser.id);
     }
     const refetch = () => {
       if (currentUser) {
         fetchSessions(currentUser.id, true);
         fetchPRs(currentUser.id, true);
         fetchAllUsers(true);
-        fetchFeed(true);
+        fetchUserPosts(currentUser.id, true);
       }
     };
     window.addEventListener('focus', refetch);
@@ -67,7 +67,11 @@ function ProfilePageOwn() {
   const mySessions = sessionHistory.filter(
     (s) => s.userId === currentUser?.id && s.status === 'completed'
   );
-  const myPosts = feedItems.filter((f) => f.userId === currentUser?.id);
+  const myPosts = useMemo(
+    () => (currentUser ? userPostsMap[currentUser.id] ?? [] : []),
+    [currentUser, userPostsMap]
+  );
+  const myPostsLoaded = currentUser ? userPostsMap[currentUser.id] !== undefined : false;
 
   const streak = useMemo(() => calculateWeeklyStreak(mySessions), [mySessions]);
 
@@ -167,7 +171,7 @@ function ProfilePageOwn() {
         </div>
       </div>
 
-      {feedError && <ErrorBanner message={feedError} onRetry={() => fetchFeed(true)} />}
+      {feedError && currentUser && <ErrorBanner message={feedError} onRetry={() => fetchUserPosts(currentUser.id, true)} />}
 
       <div className="px-5 py-5 space-y-6">
         {/* User */}
@@ -376,7 +380,7 @@ function ProfilePageOwn() {
         {/* My Posts */}
         {(() => {
           const sortedPosts = [...myPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          if (feedItems.length === 0 && !feedError) {
+          if (!myPostsLoaded && !feedError) {
             return (
               <div>
                 <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
