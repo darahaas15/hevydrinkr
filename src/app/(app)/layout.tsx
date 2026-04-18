@@ -89,48 +89,119 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Supabase Realtime — refresh feed on new posts, likes, comments
+  // Supabase Realtime — patch feed state from per-row payloads (no full
+  // refetch so concurrent optimistic updates aren't clobbered). Auto-resubscribes
+  // on channel error / timeout / close so a Realtime hiccup self-heals.
   useEffect(() => {
     if (!currentUser?.id) return;
-    const channel = supabase
-      .channel('feed-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_items' }, (payload) => {
-        // Only refresh if someone else posted (our own posts are added optimistically)
-        if (payload.new.user_id !== currentUser.id) {
-          useFeedStore.getState().fetchFeed(true);
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_likes' }, (payload) => {
-        // Only refetch for others' likes — our own are applied optimistically
-        if (payload.new.user_id !== currentUser.id) {
-          useFeedStore.getState().fetchFeed(true);
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed_comments' }, (payload) => {
-        if (payload.new.user_id !== currentUser.id) {
-          useFeedStore.getState().fetchFeed(true);
-        }
-      })
-      .subscribe();
+    const userId = currentUser.id;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let resubscribeTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
-    return () => { supabase.removeChannel(channel); };
+    const subscribe = () => {
+      if (cancelled) return;
+      channel = supabase
+        .channel(`feed-realtime-${userId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_items' }, (payload) => {
+          useFeedStore.getState().applyFeedItemChange(payload as never, userId);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_likes' }, (payload) => {
+          useFeedStore.getState().applyLikeChange(payload as never, userId);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_comments' }, (payload) => {
+          useFeedStore.getState().applyCommentChange(payload as never, userId);
+        })
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            if (resubscribeTimer) clearTimeout(resubscribeTimer);
+            resubscribeTimer = setTimeout(() => {
+              if (channel) supabase.removeChannel(channel);
+              subscribe();
+            }, 3000);
+          }
+        });
+    };
+
+    subscribe();
+
+    return () => {
+      cancelled = true;
+      if (resubscribeTimer) clearTimeout(resubscribeTimer);
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [currentUser?.id]);
 
-  // Supabase Realtime — update unread badge when new notifications arrive
+  // Supabase Realtime — update unread badge when new notifications arrive.
+  // Same auto-resubscribe pattern as the feed channel.
   useEffect(() => {
     if (!currentUser?.id) return;
-    const channel = supabase
-      .channel('notifications-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-        () => {
-          useNotificationStore.getState().fetchNotifications(currentUser.id, true);
-        }
-      )
-      .subscribe();
+    const userId = currentUser.id;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let resubscribeTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
-    return () => { supabase.removeChannel(channel); };
+    const subscribe = () => {
+      if (cancelled) return;
+      channel = supabase
+        .channel(`notifications-realtime-${userId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          () => {
+            useNotificationStore.getState().fetchNotifications(userId, true);
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            if (resubscribeTimer) clearTimeout(resubscribeTimer);
+            resubscribeTimer = setTimeout(() => {
+              if (channel) supabase.removeChannel(channel);
+              subscribe();
+            }, 3000);
+          }
+        });
+    };
+
+    subscribe();
+
+    return () => {
+      cancelled = true;
+      if (resubscribeTimer) clearTimeout(resubscribeTimer);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id]);
+
+  // Bulletproof fallback: refetch on tab/app focus, online, or visibility return.
+  // Catches anything Realtime missed — service down, lost socket, backgrounded tab.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const userId = currentUser.id;
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      useFeedStore.getState().fetchFeed(true);
+      useNotificationStore.getState().fetchNotifications(userId, true);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
+    };
+  }, [currentUser?.id]);
+
+  // Backstop poll while tab is visible — covers the case where Realtime is
+  // silently broken and the user never switches tabs.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        useFeedStore.getState().fetchFeed(true);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
   }, [currentUser?.id]);
 
   // Show spinner only on very first load (no cached auth data).

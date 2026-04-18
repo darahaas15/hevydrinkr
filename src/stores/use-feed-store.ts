@@ -63,7 +63,21 @@ interface FeedState {
     sessionSummary?: FeedItem['sessionSummary'];
   }) => Promise<void>;
   deleteComment: (feedItemId: string, commentId: string) => Promise<void>;
+
+  // Realtime payload appliers — patch state from a single Postgres change.
+  // Skip self-events (optimistic updates already cover those) and avoid full
+  // refetch so concurrent optimistic state can't be clobbered.
+  refreshFeedItem: (feedItemId: string) => Promise<void>;
+  applyFeedItemChange: (payload: RealtimePayload, currentUserId: string) => Promise<void>;
+  applyLikeChange: (payload: RealtimePayload, currentUserId: string) => Promise<void>;
+  applyCommentChange: (payload: RealtimePayload, currentUserId: string) => Promise<void>;
 }
+
+type RealtimePayload = {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: Record<string, unknown> | null;
+  old: Record<string, unknown> | null;
+};
 
 interface FeedItemRow {
   id: string;
@@ -769,6 +783,84 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       set({ items: prevItems, userPosts: prevUserPosts });
     }
+  },
+
+  refreshFeedItem: async (feedItemId) => {
+    const { data, error } = await supabase
+      .from('feed_items')
+      .select(FEED_SELECT)
+      .eq('id', feedItemId)
+      .single();
+    if (error || !data) return;
+    const fresh = mapRow(data as unknown as FeedItemRow);
+    if (!fresh) return;
+    set((state) => {
+      const items = state.items.some((i) => i.id === feedItemId)
+        ? state.items.map((i) => (i.id === feedItemId ? fresh : i))
+        : [fresh, ...state.items];
+      const userPosts: Record<string, FeedItem[]> = {};
+      for (const [uid, posts] of Object.entries(state.userPosts)) {
+        if (uid === fresh.userId) {
+          userPosts[uid] = posts.some((i) => i.id === feedItemId)
+            ? posts.map((i) => (i.id === feedItemId ? fresh : i))
+            : [fresh, ...posts];
+        } else {
+          userPosts[uid] = posts;
+        }
+      }
+      return { items, userPosts };
+    });
+  },
+
+  applyFeedItemChange: async (payload, currentUserId) => {
+    const id = (payload.new?.id ?? payload.old?.id) as string | undefined;
+    if (!id) return;
+    if (payload.eventType === 'DELETE') {
+      set((state) => removeItemEverywhere(state, id));
+      return;
+    }
+    // Skip self — optimistic update already applied
+    const userId = payload.new?.user_id as string | undefined;
+    if (userId === currentUserId) return;
+    await get().refreshFeedItem(id);
+  },
+
+  applyLikeChange: async (payload, currentUserId) => {
+    const userId = (payload.new?.user_id ?? payload.old?.user_id) as string | undefined;
+    if (userId === currentUserId) return;
+    const feedItemId = (payload.new?.feed_item_id ?? payload.old?.feed_item_id) as string | undefined;
+    if (!feedItemId) return;
+    if (payload.eventType === 'DELETE') {
+      const likeId = payload.old?.id as string | undefined;
+      if (!likeId) return;
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+        ...item,
+        likes: item.likes.filter((l) => l.id !== likeId),
+      })));
+      return;
+    }
+    // INSERT/UPDATE — payload lacks the joined liker profile, so refresh
+    await get().refreshFeedItem(feedItemId);
+  },
+
+  applyCommentChange: async (payload, currentUserId) => {
+    const userId = (payload.new?.user_id ?? payload.old?.user_id) as string | undefined;
+    if (userId === currentUserId) return;
+    const feedItemId = (payload.new?.feed_item_id ?? payload.old?.feed_item_id) as string | undefined;
+    if (!feedItemId) return;
+    if (payload.eventType === 'DELETE') {
+      const commentId = payload.old?.id as string | undefined;
+      if (!commentId) return;
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+        ...item,
+        comments: item.comments
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) })),
+      })));
+      return;
+    }
+    // INSERT/UPDATE — payload lacks joined commenter profile, so refresh
+    await get().refreshFeedItem(feedItemId);
   },
 }), {
   name: 'hd-feed',
