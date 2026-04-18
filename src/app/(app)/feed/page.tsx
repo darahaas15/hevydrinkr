@@ -157,21 +157,26 @@ function FeedPageList() {
     return allUsers.filter((u) => u.id !== currentUser.id && !followSet.has(u.id) && !blockedSet.has(u.id));
   }, [allUsers, currentUser, tab, followingIds, blockedUserIds]);
 
-  // Infinite scroll observer
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const observerCallback = useCallback((entries: IntersectionObserverEntry[]) => {
-    if (entries[0]?.isIntersecting && hasMore && !loadingMore) {
-      fetchMoreFeed();
+  // Infinite scroll observer. Use a callback ref so the observer attaches the
+  // moment the sentinel mounts and detaches when it unmounts — a useEffect keyed
+  // on a memoized callback can miss the sentinel's first mount if its deps
+  // haven't changed, leaving pagination silently dead until the page remounts.
+  // Read pagination state via getState() to dodge stale closures.
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const setSentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
     }
-  }, [hasMore, loadingMore, fetchMoreFeed]);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(observerCallback, { rootMargin: '200px' });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [observerCallback]);
+    if (!node) return;
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (!entries[0]?.isIntersecting) return;
+      const { hasMore, loadingMore, fetchMoreFeed } = useFeedStore.getState();
+      if (hasMore && !loadingMore) fetchMoreFeed();
+    }, { rootMargin: '200px' });
+    observerRef.current.observe(node);
+  }, []);
+  useEffect(() => () => observerRef.current?.disconnect(), []);
 
   // Swipe between tabs
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -449,7 +454,7 @@ function FeedPageList() {
                   </div>
                 ))}
                 {/* Infinite scroll sentinel */}
-                <div ref={sentinelRef} className="h-1" />
+                <div ref={setSentinelRef} className="h-1" />
                 {loadingMore && (
                   <div className="flex justify-center py-4">
                     <div className="w-5 h-5 border-2 border-zinc-700 border-t-accent rounded-full animate-spin" />

@@ -14,6 +14,7 @@ import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
+import { buildSessionSummary } from '@/lib/session-utils';
 
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
 const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
@@ -54,7 +55,8 @@ interface FeedState {
   createFeedItemFromSession: (
     session: DrinkSession,
     user: UserProfile,
-    caption: string
+    caption: string,
+    isBackfilled?: boolean,
   ) => Promise<void>;
   deleteFeedItem: (feedItemId: string) => Promise<void>;
   updateFeedItem: (feedItemId: string, updates: {
@@ -87,6 +89,7 @@ interface FeedItemRow {
   photos: string[];
   caption: string;
   created_at: string;
+  is_backfilled?: boolean;
   profile: { display_name: string; avatar_url: string | null };
   feed_likes: Array<{
     id: string;
@@ -189,6 +192,7 @@ function mapRow(row: FeedItemRow): FeedItem | null {
     })),
     comments: threadComments(row.feed_comments ?? []),
     createdAt: row.created_at,
+    isBackfilled: row.is_backfilled ?? false,
   };
 }
 
@@ -331,50 +335,8 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     return item;
   },
 
-  createFeedItemFromSession: async (session, user, caption) => {
-    const drinkCounts: Record<string, { count: number; emoji: string }> = {};
-    const drinkEmojis: string[] = [];
-
-    for (const drink of session.drinks) {
-      drinkEmojis.push(drink.emoji);
-      if (drinkCounts[drink.drinkName]) {
-        drinkCounts[drink.drinkName].count++;
-      } else {
-        drinkCounts[drink.drinkName] = { count: 1, emoji: drink.emoji };
-      }
-    }
-
-    let topDrink = '';
-    let topDrinkEmoji = '';
-    let maxCount = 0;
-
-    for (const [name, data] of Object.entries(drinkCounts)) {
-      if (data.count > maxCount) {
-        maxCount = data.count;
-        topDrink = name;
-        topDrinkEmoji = data.emoji;
-      }
-    }
-
-    const sessionSummary: FeedItem['sessionSummary'] = {
-      venue: session.venue,
-      totalDrinks: session.drinks.length,
-      totalStandardDrinks: session.totalStandardDrinks,
-      durationMinutes: session.durationMinutes,
-      topDrink,
-      topDrinkEmoji,
-      drinkEmojis,
-      drinks: session.drinks.map((d) => ({
-        name: d.drinkName,
-        emoji: d.emoji,
-        category: d.category,
-        abvPercent: d.abvPercent,
-        volumeMl: d.volumeMl,
-        standardDrinks: d.standardDrinks,
-      })),
-      mood: session.mood,
-      prsAchieved: session.prsAchieved,
-    };
+  createFeedItemFromSession: async (session, user, caption, isBackfilled = false) => {
+    const sessionSummary = buildSessionSummary(session);
 
     const { data: inserted, error } = await supabase
       .from('feed_items')
@@ -384,6 +346,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
         session_summary: sessionSummary,
         photos: session.photos ?? [],
         caption,
+        is_backfilled: isBackfilled,
       })
       .select()
       .single();
@@ -406,6 +369,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       likes: [],
       comments: [],
       createdAt: inserted.created_at,
+      isBackfilled,
     };
 
     set((state) => {

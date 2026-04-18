@@ -31,6 +31,10 @@ export interface FeedItem {
   likes: FeedLike[];
   comments: FeedComment[];
   createdAt: string;
+  // True when the post originated from the "log past session" flow. Drives
+  // the "Past session" badge on the feed card. Set at create time; never
+  // changed on edit.
+  isBackfilled: boolean;
 }
 
 export interface FeedLike {

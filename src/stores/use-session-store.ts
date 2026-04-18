@@ -1,9 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DrinkSession, DrinkEntry, Round, SessionMood } from '@/types';
+import type { DrinkSession, DrinkEntry, Round, SessionMood, UserProfile } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
+import {
+  spreadDrinkTimestamps,
+  buildSessionSummary,
+  durationMinutesBetween,
+} from '@/lib/session-utils';
 
 // Photo data URLs are huge (~100KB–1MB each, base64 PNG/JPG) and live in
 // Supabase already — keeping them out of localStorage avoids QuotaExceededError.
@@ -34,6 +39,32 @@ interface SessionState {
   getSessionById: (id: string) => DrinkSession | undefined;
   getSessionsByUser: (userId: string) => DrinkSession[];
   addCompletedSession: (session: DrinkSession) => void;
+
+  // Log a fully-formed past session. One atomic client flow: insert session,
+  // insert all drinks with spread timestamps, optionally insert photos. Refuses
+  // to run if there's an active session. Caller handles feed post creation.
+  createPastSession: (input: {
+    user: UserProfile;
+    venue: string;
+    startedAt: string;
+    endedAt: string;
+    drinks: DrinkEntry[];
+    mood: SessionMood;
+    photos?: string[];
+  }) => Promise<DrinkSession | null>;
+
+  // Edit a completed session. Partial update of venue / start-end / mood.
+  // If start/end change, re-spreads drink timestamps and recomputes duration.
+  // Returns the updated session, or null on failure.
+  updateSession: (
+    sessionId: string,
+    updates: {
+      venue?: string;
+      startedAt?: string;
+      endedAt?: string;
+      mood?: SessionMood;
+    },
+  ) => Promise<DrinkSession | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -645,6 +676,215 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
         },
       };
     }),
+
+  // -----------------------------------------------------------------------
+  // Create a past / backdated session in one atomic flow.
+  // -----------------------------------------------------------------------
+  createPastSession: async ({ user, venue, startedAt, endedAt, drinks, mood, photos }) => {
+    if (get().activeSession) {
+      useUIStore.getState().addToast('End your active session first', 'error');
+      return null;
+    }
+
+    const sessionId = crypto.randomUUID();
+    const durationMinutes = durationMinutesBetween(startedAt, endedAt);
+    const totalStandardDrinks = drinks.reduce((s, d) => s + d.standardDrinks, 0);
+    const totalVolumeMl = drinks.reduce((s, d) => s + d.volumeMl, 0);
+
+    // Spread drink timestamps evenly across the session window. Overwrite
+    // whatever the caller put on each DrinkEntry — the form has no
+    // per-drink time UI (see spec: "shopping-cart model").
+    const timestamps = spreadDrinkTimestamps(startedAt, endedAt, drinks.length);
+    const drinksWithIds: DrinkEntry[] = drinks.map((d, i) => ({
+      ...d,
+      id: crypto.randomUUID(),
+      timestamp: timestamps[i],
+      roundId: null,
+    }));
+
+    const completed: DrinkSession = {
+      id: sessionId,
+      userId: user.id,
+      status: 'completed',
+      startedAt,
+      endedAt,
+      venue,
+      drinks: drinksWithIds,
+      rounds: [],
+      totalStandardDrinks,
+      totalVolumeMl,
+      peakBacEstimate: 0,
+      durationMinutes,
+      isPartyMode: false,
+      partyId: null,
+      prsAchieved: [],
+      mood,
+      notes: '',
+      photos: photos ?? [],
+      photoIds: [],
+    };
+
+    // Insert session row first — drink_entries FK requires it to exist.
+    const { error: sessionError } = await supabase
+      .from('drink_sessions')
+      .insert(sessionToRow(completed));
+
+    if (sessionError) {
+      console.error('Failed to insert past session:', sessionError);
+      useUIStore.getState().addToast('Something went wrong', 'error');
+      return null;
+    }
+
+    // Insert drink entries in bulk. If this fails, clean up the session row
+    // so we don't leave an empty shell behind.
+    if (drinksWithIds.length > 0) {
+      const { error: drinksError } = await supabase
+        .from('drink_entries')
+        .insert(drinksWithIds.map((d) => drinkEntryToRow(d, sessionId)));
+      if (drinksError) {
+        console.error('Failed to insert past session drinks:', drinksError);
+        await supabase.from('drink_sessions').delete().eq('id', sessionId);
+        useUIStore.getState().addToast('Something went wrong', 'error');
+        return null;
+      }
+    }
+
+    // Insert photos (if any). Non-fatal on failure — the session is still
+    // valid without them, user can re-upload later.
+    const photoIds: string[] = [];
+    if (photos && photos.length > 0) {
+      const photoRows = photos.map((url, i) => {
+        const id = crypto.randomUUID();
+        photoIds.push(id);
+        return {
+          id,
+          session_id: sessionId,
+          storage_path: '',
+          url,
+          sort_order: i,
+        };
+      });
+      const { error: photoErr } = await supabase
+        .from('session_photos')
+        .insert(photoRows);
+      if (photoErr) console.error('Failed to insert past session photos:', photoErr);
+    }
+
+    const finalSession: DrinkSession = { ...completed, photoIds };
+
+    // Add to local history so profile stats / session detail work immediately.
+    set((state) => {
+      const existing = state.sessionsByUser[user.id] ?? [];
+      return {
+        sessionsByUser: {
+          ...state.sessionsByUser,
+          [user.id]: [finalSession, ...existing],
+        },
+      };
+    });
+
+    return finalSession;
+  },
+
+  // -----------------------------------------------------------------------
+  // Edit a completed session's venue / times / mood.
+  // -----------------------------------------------------------------------
+  updateSession: async (sessionId, updates) => {
+    // Find the session in local state. Active sessions aren't editable here.
+    let target: DrinkSession | undefined;
+    let ownerId: string | undefined;
+    const { sessionsByUser } = get();
+    for (const [uid, list] of Object.entries(sessionsByUser)) {
+      const found = list.find((s) => s.id === sessionId);
+      if (found) {
+        target = found;
+        ownerId = uid;
+        break;
+      }
+    }
+    if (!target || !ownerId) {
+      console.warn('updateSession: no session found', sessionId);
+      return null;
+    }
+    if (target.status !== 'completed') {
+      useUIStore.getState().addToast('Only completed sessions can be edited', 'error');
+      return null;
+    }
+
+    const newStart = updates.startedAt ?? target.startedAt;
+    const newEnd = updates.endedAt ?? target.endedAt ?? target.startedAt;
+    const timingChanged =
+      updates.startedAt !== undefined || updates.endedAt !== undefined;
+
+    const newDuration = timingChanged
+      ? durationMinutesBetween(newStart, newEnd)
+      : target.durationMinutes;
+
+    // Re-spread drink timestamps if the session window moved. Preserves
+    // drink.id so edits round-trip without orphaning drink_entries rows.
+    const newDrinks: DrinkEntry[] = timingChanged
+      ? (() => {
+          const stamps = spreadDrinkTimestamps(newStart, newEnd, target!.drinks.length);
+          return target!.drinks.map((d, i) => ({ ...d, timestamp: stamps[i] }));
+        })()
+      : target.drinks;
+
+    const updated: DrinkSession = {
+      ...target,
+      venue: updates.venue ?? target.venue,
+      startedAt: newStart,
+      endedAt: newEnd,
+      mood: updates.mood ?? target.mood,
+      durationMinutes: newDuration,
+      drinks: newDrinks,
+    };
+
+    // Optimistic local state update.
+    const prevByUser = sessionsByUser;
+    set({
+      sessionsByUser: {
+        ...sessionsByUser,
+        [ownerId]: (sessionsByUser[ownerId] ?? []).map((s) =>
+          s.id === sessionId ? updated : s,
+        ),
+      },
+    });
+
+    // Update the session row in Supabase with only changed fields.
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.venue !== undefined) dbUpdates.venue = updates.venue;
+    if (updates.startedAt !== undefined) dbUpdates.started_at = updates.startedAt;
+    if (updates.endedAt !== undefined) dbUpdates.ended_at = updates.endedAt;
+    if (updates.mood !== undefined) dbUpdates.mood = updates.mood;
+    if (timingChanged) dbUpdates.duration_minutes = newDuration;
+
+    const { error: sessionError } = await supabase
+      .from('drink_sessions')
+      .update(dbUpdates)
+      .eq('id', sessionId);
+
+    if (sessionError) {
+      console.error('Failed to update session:', sessionError);
+      set({ sessionsByUser: prevByUser });
+      useUIStore.getState().addToast('Something went wrong', 'error');
+      return null;
+    }
+
+    // If the window moved, sync the new per-drink timestamps to the DB.
+    // One UPDATE per drink — cheap for a handful, and simpler than upserts.
+    if (timingChanged && newDrinks.length > 0) {
+      await Promise.all(
+        newDrinks.map((d) =>
+          supabase
+            .from('drink_entries')
+            .update({ timestamp: d.timestamp })
+            .eq('id', d.id),
+        ),
+      );
+    }
+
+    return updated;
+  },
 }), {
   name: 'hd-sessions',
   storage: safeJSONStorage(),

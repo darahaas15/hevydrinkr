@@ -152,6 +152,7 @@ export const MOCK_FEED: FeedItem[] = feedSessions
       likes: makeLikes(i * 17, likeCount),
       comments: makeComments(i * 23, commentCount, user.id),
       createdAt: session.endedAt ?? session.startedAt,
+      isBackfilled: false,
     };
     return item;
   })

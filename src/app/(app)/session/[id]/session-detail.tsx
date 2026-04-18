@@ -2,7 +2,7 @@
 
 import { use, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Clock, Wine, Droplets, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Clock, Wine, Droplets, TrendingUp, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -45,14 +45,23 @@ export default function SessionDetailPage({ params, sessionId }: { params?: Prom
           <button onClick={() => router.push('/session')} className="p-2 -ml-2 active:text-white">
             <ChevronLeft className="w-6 h-6 text-zinc-400" />
           </button>
-          <div>
-            <h1 className="text-lg font-bold">{session.venue}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate">{session.venue}</h1>
             <p className="text-xs text-zinc-500">
               {new Date(session.startedAt).toLocaleDateString('en-US', {
                 weekday: 'short', month: 'short', day: 'numeric',
               })}
             </p>
           </div>
+          {currentUser && session.userId === currentUser.id && session.status === 'completed' && (
+            <button
+              onClick={() => router.push(`/session/edit?id=${resolvedId}`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] text-zinc-300 text-xs font-semibold active:bg-white/[0.08]"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </button>
+          )}
         </div>
       </div>
 

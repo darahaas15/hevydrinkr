@@ -76,6 +76,11 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           <p className="text-sm font-semibold truncate cursor-pointer" onClick={goToProfile}>{item.userName}</p>
           <div className="flex items-center gap-1.5">
             <p className="text-[11px] text-zinc-500">{formatTimeAgo(item.createdAt)}</p>
+            {item.isBackfilled && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 text-[10px] font-medium leading-none">
+                Past session
+              </span>
+            )}
             {milestone && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
                 {milestone.label}

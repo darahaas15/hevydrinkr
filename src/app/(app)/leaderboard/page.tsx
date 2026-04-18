@@ -102,6 +102,7 @@ export default function LeaderboardPage() {
       likes: [],
       comments: [],
       createdAt: r.created_at,
+      isBackfilled: false,
     })));
   }, [circleIds, circleIdsKey, timeframe]);
 

@@ -258,6 +258,7 @@ export const useRoastStore = create<RoastState>()(
                 likes: [],
                 comments: [],
                 createdAt: p.created_at as string,
+                isBackfilled: false,
               })),
           }));
 
@@ -520,6 +521,7 @@ export const useRoastStore = create<RoastState>()(
               likes: [],
               comments: [],
               createdAt: p.created_at as string,
+              isBackfilled: false,
             })),
         }));
 

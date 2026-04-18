@@ -209,6 +209,13 @@ function SessionPageInner() {
             >
               Start Drinking
             </motion.button>
+
+            <button
+              onClick={() => router.push('/session/log-past')}
+              className="w-full py-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-zinc-400 font-medium text-[13px] active:bg-white/[0.05] transition-colors"
+            >
+              Log past session
+            </button>
           </div>
 
           {loadingHistory ? (
