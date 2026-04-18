@@ -34,11 +34,17 @@ function FeedPageInner() {
   const postId = searchParams.get('post');
   const commentId = searchParams.get('comment');
 
-  if (postId) {
-    return <PostDetailPage postId={postId} highlightCommentId={commentId} />;
-  }
-
-  return <FeedPageList />;
+  // Keep the feed list mounted so scroll position is preserved when a post is
+  // opened and then dismissed. PostDetailPage uses position:fixed with a solid
+  // background and locks the main scroller, so it fully covers the feed
+  // without affecting the feed's layout or scrollTop. Keying by postId
+  // guarantees a fresh instance per post.
+  return (
+    <>
+      <FeedPageList />
+      {postId && <PostDetailPage key={postId} postId={postId} highlightCommentId={commentId} />}
+    </>
+  );
 }
 
 function FeedPageList() {
