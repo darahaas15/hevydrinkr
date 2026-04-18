@@ -47,15 +47,7 @@ function FeedPageList() {
   const items = useFeedStore((s) => s.items);
   const currentUser = useAuthStore((s) => s.currentUser);
   const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
-  // Default to home unless the home feed has nothing to show.
-  // Both stores are Zustand-persisted so this resolves synchronously.
-  const hasHomePosts = useMemo(() => {
-    const followSet = new Set(following);
-    const blockedSet = new Set(blockedUserIds);
-    const uid = currentUser?.id;
-    return items.some((item) => (followSet.has(item.userId) || item.userId === uid) && !blockedSet.has(item.userId));
-  }, [items, following, blockedUserIds, currentUser?.id]);
-  const [tab, setTab] = useState<'home' | 'discover'>(hasHomePosts ? 'home' : 'discover');
+  const [tab, setTab] = useState<'home' | 'discover'>('home');
   const loading = useFeedStore((s) => s.loading);
   const loadingMore = useFeedStore((s) => s.loadingMore);
   const hasMore = useFeedStore((s) => s.hasMore);
