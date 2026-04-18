@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
+import { useModerationStore } from '@/stores/use-moderation-store';
 import { hapticSelection, hapticLight } from '@/lib/haptics';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
@@ -43,6 +44,7 @@ export default function LeaderboardPage() {
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
 
   const [posts, setPosts] = useState<FeedItem[] | null>(null);
   const [postsError, setPostsError] = useState<string | null>(null);
@@ -51,8 +53,9 @@ export default function LeaderboardPage() {
     if (!currentUser) return [];
     const followingSet = new Set(currentUser.following);
     followingSet.add(currentUser.id);
-    return allUsers.filter((u) => followingSet.has(u.id));
-  }, [allUsers, currentUser]);
+    const blockedSet = new Set(blockedUserIds);
+    return allUsers.filter((u) => followingSet.has(u.id) && !blockedSet.has(u.id));
+  }, [allUsers, currentUser, blockedUserIds]);
 
   const circleIds = useMemo(() => circleUsers.map((u) => u.id), [circleUsers]);
   const circleIdsKey = circleIds.join(',');

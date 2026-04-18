@@ -262,6 +262,7 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
   },
 
   leaveGroup: async (groupId, userId) => {
+    const prev = get().groups;
     // Optimistic update
     set((state) => ({
       groups: state.groups.map((g) =>
@@ -279,11 +280,15 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
 
     if (error) {
       console.error('Failed to leave group:', error);
+      // Roll back so the user sees their actual server-side membership
+      // instead of an inconsistent "you left but you didn't" state.
+      set({ groups: prev });
       useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },
 
   removeMember: async (groupId, userId) => {
+    const prev = get().groups;
     // Optimistic update
     set((state) => ({
       groups: state.groups.map((g) =>
@@ -301,6 +306,9 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
 
     if (error) {
       console.error('Failed to remove member:', error);
+      // Roll back: the next fetchGroups would resurrect them anyway, but
+      // until then the admin would think the kick succeeded.
+      set({ groups: prev });
       useUIStore.getState().addToast('Something went wrong', 'error');
     }
   },

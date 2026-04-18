@@ -343,17 +343,30 @@ function FeedPageList() {
       )}
 
       {/* Discover: Suggested people carousel */}
-      {tab === 'discover' && !showSearchResults && discoverUsers.length > 0 && (
-        <div className="pt-3 pb-1">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-4">Suggested People</p>
-          <SuggestedPeopleCarousel
-            users={discoverUsers}
-            feedItems={items}
-            followingIds={followingIds}
-            onFollow={toggleFollow}
-            onViewProfile={(id) => router.push(`/profile/${id}`)}
-          />
-        </div>
+      {tab === 'discover' && !showSearchResults && (
+        <AnimatePresence initial={false}>
+          {discoverUsers.length > 0 && (
+            <motion.div
+              key="suggested"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-3 pb-1">
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-4">Suggested People</p>
+                <SuggestedPeopleCarousel
+                  users={discoverUsers}
+                  feedItems={items}
+                  followingIds={followingIds}
+                  onFollow={toggleFollow}
+                  onViewProfile={(id) => router.push(`/profile/${id}`)}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
 
       {/* Discover Posts header */}

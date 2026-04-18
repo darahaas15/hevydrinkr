@@ -201,6 +201,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   toggleFollow: async (userId) => {
     const { currentUser, allUsers } = get();
     if (!currentUser || followInFlight.has(userId)) return;
+    if (userId === currentUser.id) return;
     followInFlight.add(userId);
     hapticMedium();
 

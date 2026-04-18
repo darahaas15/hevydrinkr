@@ -22,7 +22,12 @@ export function calculateWeeklyStreak(sessions: DrinkSession[]): {
     completedSessions.map(s => getWeekNumber(new Date(s.startedAt)))
   );
 
-  const sortedWeeks = [...weeks].sort();
+  // Sort by parsed week start date — NOT lexically. Lexical sort puts
+  // "2026-W10" before "2026-W2" because the week number isn't zero-padded,
+  // which silently breaks every streak calculation that crosses W10.
+  const sortedWeeks = [...weeks].sort(
+    (a, b) => parseWeek(a).getTime() - parseWeek(b).getTime(),
+  );
   if (sortedWeeks.length === 0) return { currentStreak: 0, longestStreak: 0 };
 
   const currentWeek = getWeekNumber(new Date());
@@ -88,7 +93,11 @@ export function calculateDailyStreak(sessions: DrinkSession[]): {
     })
   );
 
-  const sortedDays = [...days].sort();
+  // Same hazard as the weekly version: lexical sort puts "2026-1-9" after
+  // "2026-1-10". Sort by the parsed Date instead.
+  const sortedDays = [...days].sort(
+    (a, b) => parseDayKey(a).getTime() - parseDayKey(b).getTime(),
+  );
   let longestStreak = 1;
   let currentRun = 1;
 

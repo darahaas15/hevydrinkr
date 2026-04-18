@@ -248,10 +248,15 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
               if (me) {
                 updateParticipantDrinks(currentUser.id, me.totalStandardDrinks + drink.standardDrinks);
               }
-              // Also add to personal session if active
-              if (activeSession) {
-                addDrink(drink);
+              // Mirror to personal session so the drink counts toward the
+              // user's profile stats / streak / PRs. If there's no active
+              // session yet, start one named after the party so the user
+              // doesn't have to remember to start one manually before
+              // joining.
+              if (!activeSession) {
+                startSession(activeParty.name || `${group.name} Party`, currentUser.id);
               }
+              addDrink(drink);
               setShowDrinkPicker(false);
             }}
             onClose={() => setShowDrinkPicker(false)}

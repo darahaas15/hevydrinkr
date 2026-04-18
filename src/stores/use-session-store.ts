@@ -7,7 +7,8 @@ import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 // Photo data URLs are huge (~100KB–1MB each, base64 PNG/JPG) and live in
 // Supabase already — keeping them out of localStorage avoids QuotaExceededError.
-const stripPhotos = (s: DrinkSession): DrinkSession => ({ ...s, photos: [] });
+// Drop the matching photoIds too so the parallel arrays stay aligned.
+const stripPhotos = (s: DrinkSession): DrinkSession => ({ ...s, photos: [], photoIds: [] });
 
 const SESSIONS_STALE_MS = 30_000;
 const _sessionsLastFetched = new Map<string, number>();
@@ -59,6 +60,7 @@ function rowToSession(
   row: Record<string, unknown>,
   drinks: DrinkEntry[],
   photos: string[],
+  photoIds: string[],
 ): DrinkSession {
   return {
     id: row.id as string,
@@ -79,6 +81,7 @@ function rowToSession(
     mood: (row.mood as DrinkSession['mood']) ?? null,
     notes: (row.notes as string) ?? '',
     photos,
+    photoIds,
   };
 }
 
@@ -185,12 +188,16 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       entriesBySession.get(sid)!.push(rowToDrinkEntry(row as Record<string, unknown>));
     }
 
-    // Group photos by session_id
+    // Group photos by session_id (URL + parallel id list, both sorted by sort_order)
     const photosBySession = new Map<string, string[]>();
+    const photoIdsBySession = new Map<string, string[]>();
     for (const row of photoRows) {
-      const sid = (row as Record<string, unknown>).session_id as string;
+      const r = row as Record<string, unknown>;
+      const sid = r.session_id as string;
       if (!photosBySession.has(sid)) photosBySession.set(sid, []);
-      photosBySession.get(sid)!.push((row as Record<string, unknown>).url as string);
+      if (!photoIdsBySession.has(sid)) photoIdsBySession.set(sid, []);
+      photosBySession.get(sid)!.push(r.url as string);
+      photoIdsBySession.get(sid)!.push(r.id as string);
     }
 
     // Build DrinkSession objects
@@ -200,6 +207,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
         row as Record<string, unknown>,
         entriesBySession.get(id) ?? [],
         photosBySession.get(id) ?? [],
+        photoIdsBySession.get(id) ?? [],
       );
     });
 
@@ -239,6 +247,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       prsAchieved: [],
       mood: null,
       notes: '',
+      photoIds: [],
       photos: [],
     };
 
@@ -459,13 +468,19 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     const { activeSession } = get();
     if (!activeSession) return;
 
+    // Generate the row id client-side so we can record it locally before
+    // the Supabase insert returns, and so removePhoto can later target the
+    // exact row even if two photos share the same data URL.
+    const newPhotoId = crypto.randomUUID();
     const newPhotos = [...activeSession.photos, photoDataUrl];
+    const newPhotoIds = [...(activeSession.photoIds ?? []), newPhotoId];
 
     // Optimistic update
     set({
       activeSession: {
         ...activeSession,
         photos: newPhotos,
+        photoIds: newPhotoIds,
       },
     });
 
@@ -478,6 +493,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       supabase
         .from('session_photos')
         .insert({
+          id: newPhotoId,
           session_id: sid,
           storage_path: '',
           url: photoDataUrl,
@@ -498,24 +514,50 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     const photoUrl = activeSession.photos[photoIndex];
     if (photoUrl === undefined) return;
+    const photoIds = activeSession.photoIds ?? [];
+    const photoId = photoIds[photoIndex];
 
-    // Optimistic update
+    // Optimistic update — drop both arrays at the same index.
     set({
       activeSession: {
         ...activeSession,
         photos: activeSession.photos.filter((_, i) => i !== photoIndex),
+        photoIds: photoIds.filter((_, i) => i !== photoIndex),
       },
     });
 
-    // Delete from Supabase by matching session + url
-    supabase
-      .from('session_photos')
-      .delete()
-      .eq('session_id', activeSession.id)
-      .eq('url', photoUrl)
-      .then(({ error }) => {
-        if (error) console.error('Failed to delete session photo:', error);
-      });
+    // Delete by row id when we have one (correct even with duplicate URLs).
+    // Fall back to URL-match for older sessions persisted before photoIds
+    // existed — limit to one to avoid wiping duplicates.
+    if (photoId) {
+      supabase
+        .from('session_photos')
+        .delete()
+        .eq('id', photoId)
+        .then(({ error }) => {
+          if (error) console.error('Failed to delete session photo:', error);
+        });
+    } else {
+      supabase
+        .from('session_photos')
+        .select('id')
+        .eq('session_id', activeSession.id)
+        .eq('url', photoUrl)
+        .limit(1)
+        .then(({ data, error }) => {
+          if (error || !data?.[0]) {
+            if (error) console.error('Failed to look up session photo:', error);
+            return;
+          }
+          supabase
+            .from('session_photos')
+            .delete()
+            .eq('id', data[0].id)
+            .then(({ error: delErr }) => {
+              if (delErr) console.error('Failed to delete session photo:', delErr);
+            });
+        });
+    }
   },
 
   // -----------------------------------------------------------------------

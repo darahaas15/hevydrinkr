@@ -23,6 +23,10 @@ export interface DrinkSession {
   mood: SessionMood | null;
   notes: string;
   photos: string[];
+  // Parallel to `photos`: the session_photos row id for each URL, so we
+  // can delete the right row even when the same data URL appears twice.
+  // Optional for backward-compat with persisted state pre-this-field.
+  photoIds?: string[];
 }
 
 export interface Round {
