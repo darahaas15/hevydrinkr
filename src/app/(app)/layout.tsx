@@ -125,7 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
         () => {
-          useNotificationStore.getState().fetchNotifications(currentUser.id);
+          useNotificationStore.getState().fetchNotifications(currentUser.id, true);
         }
       )
       .subscribe();

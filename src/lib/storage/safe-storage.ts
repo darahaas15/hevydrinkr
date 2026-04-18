@@ -30,12 +30,15 @@ export function safeJSONStorage<T>(): PersistStorage<T> {
       } catch (err) {
         if (isQuotaError(err)) {
           // Try to free room by dropping our own oldest persisted slice,
-          // then retry once. If it still fails, give up silently.
+          // then retry once. If it still fails, give up — but log so silent
+          // state desyncs (the cache is now out-of-sync with what's in
+          // memory) are observable instead of invisible.
+          console.warn(`[safeJSONStorage] quota exceeded writing "${name}", retrying after removing existing key`);
           try {
             window.localStorage.removeItem(name);
             window.localStorage.setItem(name, JSON.stringify(value));
-          } catch {
-            // swallow — better stale cache than a crashed page
+          } catch (retryErr) {
+            console.error(`[safeJSONStorage] retry failed for "${name}" — persisted cache will be stale until next successful write`, retryErr);
           }
           return;
         }

@@ -10,11 +10,14 @@ import { safeJSONStorage } from '@/lib/storage/safe-storage';
 const stripPhotos = (s: DrinkSession): DrinkSession => ({ ...s, photos: [] });
 
 const SESSIONS_STALE_MS = 30_000;
-let _sessionsLastFetched = 0;
+const _sessionsLastFetched = new Map<string, number>();
 
 interface SessionState {
   activeSession: DrinkSession | null;
-  sessionHistory: DrinkSession[];
+  // Completed sessions, keyed by userId. Per-user so viewing another user's
+  // profile doesn't clobber your own history (which would zero out the
+  // streak calculation that filters by currentUser.id).
+  sessionsByUser: Record<string, DrinkSession[]>;
 
   fetchSessions: (userId: string, force?: boolean) => Promise<void>;
   startSession: (venue: string, userId: string) => void;
@@ -129,28 +132,22 @@ let _sessionGeneration = 0;
 
 export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   activeSession: null,
-  sessionHistory: [],
+  sessionsByUser: {},
 
   // -----------------------------------------------------------------------
   // Fetch sessions from Supabase and hydrate local state
   // -----------------------------------------------------------------------
   fetchSessions: async (userId: string, force?: boolean) => {
-    if (!force && Date.now() - _sessionsLastFetched < SESSIONS_STALE_MS) return;
-    _sessionsLastFetched = Date.now();
-    // If userId is empty, fetch all sessions (for leaderboard) — only completed, no active
-    let query = supabase
+    if (!userId) return;
+    const last = _sessionsLastFetched.get(userId) ?? 0;
+    if (!force && Date.now() - last < SESSIONS_STALE_MS) return;
+    _sessionsLastFetched.set(userId, Date.now());
+
+    const { data: sessionRows, error: sessionsError } = await supabase
       .from('drink_sessions')
       .select('*')
+      .eq('user_id', userId)
       .order('started_at', { ascending: false });
-
-    if (userId) {
-      query = query.eq('user_id', userId);
-    } else {
-      // Leaderboard: only completed sessions, skip active ones
-      query = query.eq('status', 'completed');
-    }
-
-    const { data: sessionRows, error: sessionsError } = await query;
 
     if (sessionsError || !sessionRows) {
       console.error('Failed to fetch sessions:', sessionsError);
@@ -207,16 +204,16 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     });
 
     const history = sessions.filter((s) => s.status !== 'active');
+    const active = sessions.find((s) => s.status === 'active') ?? null;
 
-    if (userId) {
-      // User-specific fetch — set active session and history
-      const active = sessions.find((s) => s.status === 'active') ?? null;
-      set({ activeSession: active, sessionHistory: history });
-    } else {
-      // Leaderboard fetch — merge into history without overwriting user's own active session
-      // Keep existing activeSession untouched
-      set((state) => ({ sessionHistory: history, activeSession: state.activeSession }));
-    }
+    set((state) => ({
+      // Only replace activeSession when the fetched user owns the current
+      // active session — otherwise we'd wipe a different user's in-progress
+      // session by merely viewing this profile.
+      activeSession:
+        active ?? (state.activeSession?.userId === userId ? null : state.activeSession),
+      sessionsByUser: { ...state.sessionsByUser, [userId]: history },
+    }));
   },
 
   // -----------------------------------------------------------------------
@@ -278,8 +275,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   // End the active session
   // -----------------------------------------------------------------------
   endSession: (mood) => {
-    const { activeSession, sessionHistory } = get();
+    const { activeSession, sessionsByUser } = get();
     if (!activeSession) return;
+    const ownerId = activeSession.userId;
 
     const now = new Date();
     const startTime = new Date(activeSession.startedAt);
@@ -308,12 +306,19 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     // Optimistic update
     sessionInsertPromises.clear();
+    const ownerHistory = sessionsByUser[ownerId] ?? [];
     set({
       activeSession: null,
-      sessionHistory: [completedSession, ...sessionHistory],
+      sessionsByUser: {
+        ...sessionsByUser,
+        [ownerId]: [completedSession, ...ownerHistory],
+      },
     });
 
-    // Sync to Supabase
+    // Sync to Supabase. Roll the optimistic completion back if the DB
+    // refuses, otherwise local state shows a "ghost" completed session that
+    // never made it to the server (and would be silently dropped from
+    // leaderboards which only count status='completed' rows).
     supabase
       .from('drink_sessions')
       .update({
@@ -327,10 +332,21 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       })
       .eq('id', completedSession.id)
       .then(({ error }) => {
-        if (error) {
-          console.error('Failed to end session in Supabase:', error);
-          useUIStore.getState().addToast('Something went wrong', 'error');
-        }
+        if (!error) return;
+        console.error('Failed to end session in Supabase:', error);
+        // Roll back: restore as the active session and remove the optimistic
+        // completed entry from history.
+        set((state) => {
+          const owner = state.sessionsByUser[ownerId] ?? [];
+          return {
+            activeSession: state.activeSession ?? activeSession,
+            sessionsByUser: {
+              ...state.sessionsByUser,
+              [ownerId]: owner.filter((s) => s.id !== completedSession.id),
+            },
+          };
+        });
+        useUIStore.getState().addToast('Something went wrong', 'error');
       });
   },
 
@@ -341,20 +357,26 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     const { activeSession } = get();
     if (!activeSession) return;
 
-    const sessionId = activeSession.id;
+    const abandoned = activeSession;
+    const sessionId = abandoned.id;
     sessionInsertPromises.clear();
 
     // Clear local state — don't add to history
     set({ activeSession: null });
 
-    // Delete from Supabase entirely (cascades to drink_entries, photos, etc.)
+    // Delete from Supabase entirely (cascades to drink_entries, photos, etc.).
+    // Restore the active session if the delete fails — otherwise the row
+    // remains as 'active' in DB and the next fetchSessions would resurrect it
+    // anyway, but the user would see "no active session" until that happens.
     supabase
       .from('drink_sessions')
       .delete()
       .eq('id', sessionId)
       .then(({ error }) => {
-        if (error)
-          console.error('Failed to delete abandoned session:', error);
+        if (!error) return;
+        console.error('Failed to delete abandoned session:', error);
+        set((state) => ({ activeSession: state.activeSession ?? abandoned }));
+        useUIStore.getState().addToast('Something went wrong', 'error');
       });
   },
 
@@ -560,23 +582,39 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   // Read helpers (from local state)
   // -----------------------------------------------------------------------
   getSessionById: (id) => {
-    const { activeSession, sessionHistory } = get();
+    const { activeSession, sessionsByUser } = get();
     if (activeSession?.id === id) return activeSession;
-    return sessionHistory.find((s) => s.id === id);
+    for (const list of Object.values(sessionsByUser)) {
+      const found = list.find((s) => s.id === id);
+      if (found) return found;
+    }
+    return undefined;
   },
 
-  getSessionsByUser: (userId) =>
-    get().sessionHistory.filter((s) => s.userId === userId),
+  getSessionsByUser: (userId) => get().sessionsByUser[userId] ?? [],
 
   addCompletedSession: (session) =>
-    set((state) => ({
-      sessionHistory: [session, ...state.sessionHistory],
-    })),
+    set((state) => {
+      const existing = state.sessionsByUser[session.userId] ?? [];
+      return {
+        sessionsByUser: {
+          ...state.sessionsByUser,
+          [session.userId]: [session, ...existing],
+        },
+      };
+    }),
 }), {
   name: 'hd-sessions',
   storage: safeJSONStorage(),
   partialize: (s) => ({
     activeSession: s.activeSession ? stripPhotos(s.activeSession) : null,
-    sessionHistory: s.sessionHistory.slice(0, 100).map(stripPhotos),
+    // Cap each user's persisted history at 100 sessions to keep localStorage
+    // small. Sessions are refetched on focus, so dropped tail is recoverable.
+    sessionsByUser: Object.fromEntries(
+      Object.entries(s.sessionsByUser).map(([uid, list]) => [
+        uid,
+        list.slice(0, 100).map(stripPhotos),
+      ]),
+    ),
   }),
 }));

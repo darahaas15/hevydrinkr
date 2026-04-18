@@ -54,10 +54,10 @@ function SessionPageInner() {
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const addPhoto = useSessionStore((s) => s.addPhoto);
   const removePhoto = useSessionStore((s) => s.removePhoto);
-  const sessionHistory = useSessionStore((s) => s.sessionHistory);
+  const sessionsByUser = useSessionStore((s) => s.sessionsByUser);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const currentUser = useAuthStore((s) => s.currentUser);
-  const personalRecords = useProfileStore((s) => s.personalRecords);
+  const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
   const addPR = useProfileStore((s) => s.addPR);
   const triggerCelebration = useUIStore((s) => s.triggerCelebration);
@@ -95,7 +95,7 @@ function SessionPageInner() {
   const [selectedMood, setSelectedMood] = useState<'legendary' | 'great' | 'good' | 'meh' | 'rough'>('good');
   const [posting, setPosting] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['sessionHistory'][0] | null>(null);
+  const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['activeSession'] | null>(null);
   const [dismissedMetricsBanner, setDismissedMetricsBanner] = useState(false);
 
   const timer = useTimer(activeSession?.startedAt || null);
@@ -158,10 +158,10 @@ function SessionPageInner() {
     hapticSuccess();
     endSession(selectedMood);
 
-    const completed = useSessionStore.getState().sessionHistory[0];
+    const completed = useSessionStore.getState().sessionsByUser[currentUser.id]?.[0];
     if (completed) {
       setLastCompletedSession(completed);
-      const newPRs = detectPRs(completed, personalRecords);
+      const newPRs = detectPRs(completed, recordsByUser[currentUser.id] ?? []);
       newPRs.forEach((pr) => addPR(pr));
       if (newPRs.length > 0) {
         setTimeout(() => triggerCelebration(newPRs[0]), 500);
@@ -174,7 +174,7 @@ function SessionPageInner() {
 
   // ── Start screen ──
   if (!activeSession && !showSummary) {
-    const mySessions = sessionHistory.filter(s => s.userId === currentUser?.id).slice(0, 5);
+    const mySessions = (currentUser ? sessionsByUser[currentUser.id] ?? [] : []).slice(0, 5);
 
     return (
       <div className="min-h-full px-5 pt-14">

@@ -550,8 +550,12 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
       // Remove from session store's local state so profile stats update immediately
       const sessionStore = useSessionStore.getState();
+      const ownerHistory = sessionStore.sessionsByUser[item.userId] ?? [];
       useSessionStore.setState({
-        sessionHistory: sessionStore.sessionHistory.filter((s) => s.id !== item.sessionId),
+        sessionsByUser: {
+          ...sessionStore.sessionsByUser,
+          [item.userId]: ownerHistory.filter((s) => s.id !== item.sessionId),
+        },
       });
     }
   },
@@ -587,61 +591,93 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     // If session summary changed, sync drink_entries and drink_sessions
     if (updates.sessionSummary && item?.sessionId) {
       const s = updates.sessionSummary;
+      const sessionId = item.sessionId;
+      const timestamp = new Date().toISOString();
 
-      // Update session totals + replace drink entries in parallel
-      const sessionUpdate = supabase.from('drink_sessions').update({
-        total_standard_drinks: s.totalStandardDrinks,
-        duration_minutes: s.durationMinutes,
-        venue: s.venue,
-      }).eq('id', item.sessionId);
+      // Generate stable IDs once so DB rows and local-state drinks match.
+      const newDrinks = (s.drinks ?? []).map((d) => ({
+        id: crypto.randomUUID(),
+        drink: d,
+      }));
 
-      const drinkReplace = supabase.from('drink_entries').delete().eq('session_id', item.sessionId)
-        .then(() => {
-          if (s.drinks && s.drinks.length > 0) {
-            return supabase.from('drink_entries').insert(
-              s.drinks.map((d) => ({
-                id: crypto.randomUUID(),
-                session_id: item.sessionId,
-                drink_definition_id: 'edited',
-                drink_name: d.name,
-                emoji: d.emoji,
-                category: d.category,
-                abv_percent: d.abvPercent,
-                volume_ml: d.volumeMl,
-                standard_drinks: d.standardDrinks,
-                timestamp: new Date().toISOString(),
-              }))
-            );
-          }
-        });
+      // Phase 1: update session metadata and delete old drink entries in parallel.
+      const [sessionUpdateRes, deleteRes] = await Promise.all([
+        supabase.from('drink_sessions').update({
+          total_standard_drinks: s.totalStandardDrinks,
+          duration_minutes: s.durationMinutes,
+          venue: s.venue,
+        }).eq('id', sessionId),
+        supabase.from('drink_entries').delete().eq('session_id', sessionId),
+      ]);
 
-      await Promise.all([sessionUpdate, drinkReplace]);
+      if (sessionUpdateRes.error || deleteRes.error) {
+        // Couldn't apply the edit cleanly. Roll back the optimistic feed/userPosts
+        // state and leave drink_entries alone (delete may not have run).
+        console.error('Failed to apply edit:', sessionUpdateRes.error ?? deleteRes.error);
+        set({ items: prevItems, userPosts: prevUserPosts });
+        useUIStore.getState().addToast('Something went wrong', 'error');
+        return;
+      }
 
-      // Update session store so profile stats reflect changes
+      // Phase 2: insert the new drink entries (delete already succeeded).
+      if (newDrinks.length > 0) {
+        const { error: insertErr } = await supabase.from('drink_entries').insert(
+          newDrinks.map(({ id, drink }) => ({
+            id,
+            session_id: sessionId,
+            drink_definition_id: 'edited',
+            drink_name: drink.name,
+            emoji: drink.emoji,
+            category: drink.category,
+            abv_percent: drink.abvPercent,
+            volume_ml: drink.volumeMl,
+            standard_drinks: drink.standardDrinks,
+            timestamp,
+          })),
+        );
+        if (insertErr) {
+          // Drinks were deleted but not re-inserted. The DB session is now
+          // empty; surface the failure and roll back local feed state. The
+          // session store will reconcile on next focus refetch.
+          console.error('Failed to insert edited drinks:', insertErr);
+          set({ items: prevItems, userPosts: prevUserPosts });
+          useUIStore.getState().addToast('Edit partially failed — refreshing', 'error');
+          return;
+        }
+      }
+
+      // Sync session store with the same IDs we just wrote to the DB so
+      // local state and drink_entries.id stay aligned.
       const sessionStore = useSessionStore.getState();
-      const updatedHistory = sessionStore.sessionHistory.map((sess) => {
-        if (sess.id !== item.sessionId) return sess;
+      const ownerHistory = sessionStore.sessionsByUser[item.userId] ?? [];
+      const updatedOwnerHistory = ownerHistory.map((sess) => {
+        if (sess.id !== sessionId) return sess;
         return {
           ...sess,
           venue: s.venue,
           totalStandardDrinks: s.totalStandardDrinks,
           durationMinutes: s.durationMinutes,
-          drinks: (s.drinks || []).map((d, i) => ({
-            id: crypto.randomUUID(),
+          drinks: newDrinks.map(({ id, drink }) => ({
+            id,
             drinkDefinitionId: 'edited',
-            drinkName: d.name,
-            emoji: d.emoji,
-            category: d.category as DrinkCategory,
-            abvPercent: d.abvPercent,
-            volumeMl: d.volumeMl,
-            standardDrinks: d.standardDrinks,
-            timestamp: new Date().toISOString(),
+            drinkName: drink.name,
+            emoji: drink.emoji,
+            category: drink.category as DrinkCategory,
+            abvPercent: drink.abvPercent,
+            volumeMl: drink.volumeMl,
+            standardDrinks: drink.standardDrinks,
+            timestamp,
             roundId: null,
             notes: '',
           } as DrinkSession['drinks'][0])),
         };
       });
-      useSessionStore.setState({ sessionHistory: updatedHistory });
+      useSessionStore.setState({
+        sessionsByUser: {
+          ...sessionStore.sessionsByUser,
+          [item.userId]: updatedOwnerHistory,
+        },
+      });
     }
   },
 

@@ -37,13 +37,84 @@ const DEFAULT_PREFS: NotificationPreferences = {
   sessionRemindersEnabled: true,
 };
 
+const NOTIFICATIONS_STALE_MS = 30_000;
+const NOTIFICATIONS_PAGE_SIZE = 50;
+const _notificationsLastFetched = new Map<string, number>();
+const COMMENT_TYPES = ['comment', 'reply', 'mention'];
+
+type NotificationRow = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  read: boolean;
+  created_at: string;
+  actor_id: string | null;
+};
+
+// Hydrate raw rows with actor profiles + comment-preview backfill, then
+// project into the public Notification shape.
+async function hydrateNotificationRows(rows: NotificationRow[]): Promise<Notification[]> {
+  const actorIds = [...new Set(rows.map((r) => r.actor_id).filter(Boolean))] as string[];
+  const actorMap = new Map<string, { display_name: string; avatar_url: string | null }>();
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', actorIds);
+    for (const p of profiles ?? []) {
+      actorMap.set(p.id, p);
+    }
+  }
+
+  const needsPreview = rows.filter(
+    (r) => COMMENT_TYPES.includes(r.type) && r.data?.commentId && !r.data?.commentPreview,
+  );
+  const commentMap = new Map<string, string>();
+  if (needsPreview.length > 0) {
+    const commentIds = needsPreview.map((r) => r.data!.commentId as string);
+    const { data: comments } = await supabase
+      .from('feed_comments')
+      .select('id, text')
+      .in('id', commentIds);
+    for (const c of comments ?? []) {
+      commentMap.set(c.id, (c.text ?? '').slice(0, 100));
+    }
+  }
+
+  return rows.map((row) => {
+    const actor = row.actor_id ? actorMap.get(row.actor_id) : null;
+    const rowData = { ...(row.data ?? {}) } as Record<string, unknown>;
+    if (COMMENT_TYPES.includes(row.type) && rowData.commentId && !rowData.commentPreview) {
+      const preview = commentMap.get(rowData.commentId as string);
+      if (preview) rowData.commentPreview = preview;
+    }
+    return {
+      id: row.id,
+      type: row.type,
+      title: row.title,
+      body: row.body,
+      data: rowData,
+      read: row.read,
+      createdAt: row.created_at,
+      actorId: row.actor_id ?? null,
+      actorDisplayName: actor?.display_name ?? null,
+      actorAvatarUrl: actor?.avatar_url ?? null,
+    };
+  });
+}
+
 interface NotificationState {
   notifications: Notification[];
   preferences: NotificationPreferences;
   unreadCount: number;
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
 
-  fetchNotifications: (userId: string) => Promise<void>;
+  fetchNotifications: (userId: string, force?: boolean) => Promise<void>;
+  fetchMoreNotifications: (userId: string) => Promise<void>;
   fetchPreferences: (userId: string) => Promise<void>;
   updatePreferences: (userId: string, updates: Partial<NotificationPreferences>) => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
@@ -55,16 +126,22 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
   preferences: DEFAULT_PREFS,
   unreadCount: 0,
   loading: false,
+  loadingMore: false,
+  hasMore: true,
 
-  fetchNotifications: async (userId) => {
-    set({ loading: true });
+  fetchNotifications: async (userId, force) => {
+    if (!userId) return;
+    const last = _notificationsLastFetched.get(userId) ?? 0;
+    if (!force && Date.now() - last < NOTIFICATIONS_STALE_MS) return;
+    _notificationsLastFetched.set(userId, Date.now());
+    if (get().notifications.length === 0) set({ loading: true });
 
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(NOTIFICATIONS_PAGE_SIZE);
 
     if (error) {
       console.error('Failed to fetch notifications:', error);
@@ -72,63 +149,45 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
       return;
     }
 
-    // Batch-fetch actor profiles
-    const actorIds = [...new Set((data ?? []).map((r) => r.actor_id).filter(Boolean))] as string[];
-    const actorMap = new Map<string, { display_name: string; avatar_url: string | null }>();
-    if (actorIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url')
-        .in('id', actorIds);
-      for (const p of profiles ?? []) {
-        actorMap.set(p.id, p);
-      }
-    }
-
-    // Backfill commentPreview for existing comment-type notifications missing it
-    const COMMENT_TYPES = ['comment', 'reply', 'mention'];
-    const needsPreview = (data ?? []).filter(
-      (r) => COMMENT_TYPES.includes(r.type) && r.data?.commentId && !r.data?.commentPreview
-    );
-    const commentMap = new Map<string, string>();
-    if (needsPreview.length > 0) {
-      const commentIds = needsPreview.map((r) => r.data.commentId as string);
-      const { data: comments } = await supabase
-        .from('feed_comments')
-        .select('id, text')
-        .in('id', commentIds);
-      for (const c of comments ?? []) {
-        commentMap.set(c.id, (c.text ?? '').slice(0, 100));
-      }
-    }
-
-    const notifications: Notification[] = (data ?? []).map((row) => {
-      const actor = row.actor_id ? actorMap.get(row.actor_id) : null;
-      const rowData = row.data ?? {};
-      // Fill in commentPreview from backfill if missing
-      if (COMMENT_TYPES.includes(row.type) && rowData.commentId && !rowData.commentPreview) {
-        const preview = commentMap.get(rowData.commentId as string);
-        if (preview) rowData.commentPreview = preview;
-      }
-      return {
-        id: row.id,
-        type: row.type,
-        title: row.title,
-        body: row.body,
-        data: rowData,
-        read: row.read,
-        createdAt: row.created_at,
-        actorId: row.actor_id ?? null,
-        actorDisplayName: actor?.display_name ?? null,
-        actorAvatarUrl: actor?.avatar_url ?? null,
-      };
-    });
+    const rows = (data ?? []) as NotificationRow[];
+    const notifications = await hydrateNotificationRows(rows);
 
     set({
       notifications,
       unreadCount: notifications.filter((n) => !n.read).length,
       loading: false,
+      hasMore: rows.length === NOTIFICATIONS_PAGE_SIZE,
     });
+  },
+
+  fetchMoreNotifications: async (userId) => {
+    const { notifications, loadingMore, hasMore } = get();
+    if (!userId || loadingMore || !hasMore || notifications.length === 0) return;
+
+    set({ loadingMore: true });
+    const lastNotification = notifications[notifications.length - 1];
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .lt('created_at', lastNotification.createdAt)
+      .limit(NOTIFICATIONS_PAGE_SIZE);
+
+    if (error) {
+      console.error('Failed to fetch more notifications:', error);
+      set({ loadingMore: false });
+      return;
+    }
+
+    const rows = (data ?? []) as NotificationRow[];
+    const more = await hydrateNotificationRows(rows);
+    set((state) => ({
+      notifications: [...state.notifications, ...more],
+      loadingMore: false,
+      hasMore: rows.length === NOTIFICATIONS_PAGE_SIZE,
+    }));
   },
 
   fetchPreferences: async (userId) => {

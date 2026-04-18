@@ -5,18 +5,20 @@ import { supabase } from '@/lib/supabase/client';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
 const PRS_STALE_MS = 30_000;
-let _prsLastFetched = 0;
+const _prsLastFetched = new Map<string, number>();
 
 interface ProfileState {
-  personalRecords: PersonalRecord[];
+  // Personal records keyed by userId. Per-user so viewing another user's
+  // profile doesn't replace your own PR list (which would otherwise vanish
+  // until the stale guard expires).
+  recordsByUser: Record<string, PersonalRecord[]>;
   loading: boolean;
 
   fetchPRs: (userId: string, force?: boolean) => Promise<void>;
   addPR: (pr: PersonalRecord) => Promise<void>;
-  updatePRs: (prs: PersonalRecord[]) => void;
   getPRsByUser: (userId: string) => PersonalRecord[];
   markCelebrated: (prId: string) => Promise<void>;
-  getUncelebratedPRs: () => PersonalRecord[];
+  getUncelebratedPRs: (userId: string) => PersonalRecord[];
 }
 
 function mapDbPrToPersonalRecord(
@@ -35,14 +37,28 @@ function mapDbPrToPersonalRecord(
   };
 }
 
+function patchPrEverywhere(
+  state: { recordsByUser: Record<string, PersonalRecord[]> },
+  prId: string,
+  fn: (pr: PersonalRecord) => PersonalRecord,
+): { recordsByUser: Record<string, PersonalRecord[]> } {
+  const recordsByUser: Record<string, PersonalRecord[]> = {};
+  for (const [uid, list] of Object.entries(state.recordsByUser)) {
+    recordsByUser[uid] = list.map((pr) => (pr.id === prId ? fn(pr) : pr));
+  }
+  return { recordsByUser };
+}
+
 export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
-  personalRecords: [],
+  recordsByUser: {},
   loading: false,
 
   fetchPRs: async (userId, force) => {
-    if (!force && Date.now() - _prsLastFetched < PRS_STALE_MS) return;
-    _prsLastFetched = Date.now();
-    if (get().personalRecords.length === 0) set({ loading: true });
+    if (!userId) return;
+    const last = _prsLastFetched.get(userId) ?? 0;
+    if (!force && Date.now() - last < PRS_STALE_MS) return;
+    _prsLastFetched.set(userId, Date.now());
+    if ((get().recordsByUser[userId] ?? []).length === 0) set({ loading: true });
 
     const { data, error } = await supabase
       .from('personal_records')
@@ -55,28 +71,25 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
       return;
     }
 
-    set({
-      personalRecords: (data ?? []).map(mapDbPrToPersonalRecord),
+    set((state) => ({
+      recordsByUser: {
+        ...state.recordsByUser,
+        [userId]: (data ?? []).map(mapDbPrToPersonalRecord),
+      },
       loading: false,
-    });
+    }));
   },
 
   addPR: async (pr) => {
     // Optimistic update: replace existing PR for this user+category, or add new
     set((state) => {
-      const exists = state.personalRecords.some(
-        (existing) =>
-          existing.userId === pr.userId && existing.category === pr.category
-      );
+      const existing = state.recordsByUser[pr.userId] ?? [];
+      const sameCategoryIdx = existing.findIndex((e) => e.category === pr.category);
+      const updated = sameCategoryIdx >= 0
+        ? existing.map((e, i) => (i === sameCategoryIdx ? pr : e))
+        : [...existing, pr];
       return {
-        personalRecords: exists
-          ? state.personalRecords.map((existing) =>
-              existing.userId === pr.userId &&
-              existing.category === pr.category
-                ? pr
-                : existing
-            )
-          : [...state.personalRecords, pr],
+        recordsByUser: { ...state.recordsByUser, [pr.userId]: updated },
       };
     });
 
@@ -101,18 +114,11 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
     }
   },
 
-  updatePRs: (prs) => set({ personalRecords: prs }),
-
-  getPRsByUser: (userId) =>
-    get().personalRecords.filter((pr) => pr.userId === userId),
+  getPRsByUser: (userId) => get().recordsByUser[userId] ?? [],
 
   markCelebrated: async (prId) => {
     // Optimistic update
-    set((state) => ({
-      personalRecords: state.personalRecords.map((pr) =>
-        pr.id === prId ? { ...pr, celebrated: true } : pr
-      ),
-    }));
+    set((state) => patchPrEverywhere(state, prId, (pr) => ({ ...pr, celebrated: true })));
 
     const { error } = await supabase
       .from('personal_records')
@@ -122,18 +128,14 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
     if (error) {
       console.error('Failed to mark PR celebrated:', error);
       // Roll back
-      set((state) => ({
-        personalRecords: state.personalRecords.map((pr) =>
-          pr.id === prId ? { ...pr, celebrated: false } : pr
-        ),
-      }));
+      set((state) => patchPrEverywhere(state, prId, (pr) => ({ ...pr, celebrated: false })));
     }
   },
 
-  getUncelebratedPRs: () =>
-    get().personalRecords.filter((pr) => !pr.celebrated),
+  getUncelebratedPRs: (userId) =>
+    (get().recordsByUser[userId] ?? []).filter((pr) => !pr.celebrated),
 }), {
   name: 'hd-profile',
   storage: safeJSONStorage(),
-  partialize: (s) => ({ personalRecords: s.personalRecords }),
+  partialize: (s) => ({ recordsByUser: s.recordsByUser }),
 }));

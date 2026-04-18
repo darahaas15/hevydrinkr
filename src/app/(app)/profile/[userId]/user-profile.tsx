@@ -26,8 +26,8 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   const allUsers = useAuthStore((s) => s.allUsers);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const addToast = useUIStore((s) => s.addToast);
-  const sessionHistory = useSessionStore((s) => s.sessionHistory);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const sessionsByUser = useSessionStore((s) => s.sessionsByUser);
   const userPostsMap = useFeedStore((s) => s.userPosts);
   const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
@@ -62,21 +62,27 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
     [userPostsMap, resolvedUserId]
   );
 
+  const userSessions = useMemo(
+    () => (sessionsByUser[resolvedUserId] ?? []).filter((s) => s.status === 'completed'),
+    [sessionsByUser, resolvedUserId]
+  );
+
+  // Stats are computed from sessions (the source of truth).
   const stats = useMemo(() => {
-    const totalSessions = userPosts.length;
-    const totalDrinks = userPosts.reduce((sum, p) => sum + (p.sessionSummary.totalDrinks ?? 0), 0);
-    const totalMinutes = userPosts.reduce((sum, p) => sum + (p.sessionSummary.durationMinutes ?? 0), 0);
+    const totalSessions = userSessions.length;
+    const totalDrinks = userSessions.reduce((sum, s) => sum + s.drinks.length, 0);
+    const totalMinutes = userSessions.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0);
     const avgDrinks = totalSessions > 0 ? totalDrinks / totalSessions : 0;
     return { totalSessions, totalDrinks, totalMinutes, avgDrinks };
-  }, [userPosts]);
+  }, [userSessions]);
 
-  // Signature drink
+  // Signature drink — computed from sessions for completeness.
   const signatureDrink = useMemo(() => {
     const counts: Record<string, { count: number; category: string }> = {};
-    userPosts.forEach((p) =>
-      (p.sessionSummary.drinks ?? []).forEach((d) => {
-        if (!counts[d.name]) counts[d.name] = { count: 0, category: d.category };
-        counts[d.name].count++;
+    userSessions.forEach((s) =>
+      s.drinks.forEach((d) => {
+        if (!counts[d.drinkName]) counts[d.drinkName] = { count: 0, category: d.category };
+        counts[d.drinkName].count++;
       })
     );
     const entries = Object.entries(counts).sort(([, a], [, b]) => b.count - a.count);
@@ -84,7 +90,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
     const [name, { count, category }] = entries[0];
     const total = Object.values(counts).reduce((s, v) => s + v.count, 0);
     return { name, count, category, pct: Math.round((count / total) * 100) };
-  }, [userPosts]);
+  }, [userSessions]);
 
   // Session highlights
   const highlights = useMemo(() => {
@@ -105,14 +111,14 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
     return items;
   }, [userPosts]);
 
-  // Achievements
+  // Achievements — based on actual sessions completed.
   const milestones = [
     { threshold: 10, label: '10th Sesh' },
     { threshold: 25, label: '25th Sesh' },
     { threshold: 50, label: '50th Sesh' },
     { threshold: 100, label: '100th Sesh' },
   ];
-  const sessionCount = userPosts.length;
+  const sessionCount = userSessions.length;
   const earnedMilestones = milestones.filter((m) => sessionCount >= m.threshold);
 
   // Redirect to own profile

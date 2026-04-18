@@ -38,9 +38,9 @@ function ProfilePageOwn() {
   const feedError = useFeedStore((s) => s.error);
   const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
   const [showFollowList, setShowFollowList] = useState<'followers' | 'following' | null>(null);
-  const sessionHistory = useSessionStore((s) => s.sessionHistory);
+  const sessionsByUser = useSessionStore((s) => s.sessionsByUser);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
-  const personalRecords = useProfileStore((s) => s.personalRecords);
+  const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
 
   // Fetch on mount (respects stale guard) and force-refetch when page regains focus
@@ -64,8 +64,9 @@ function ProfilePageOwn() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
-  const mySessions = sessionHistory.filter(
-    (s) => s.userId === currentUser?.id && s.status === 'completed'
+  const mySessions = useMemo(
+    () => (currentUser ? (sessionsByUser[currentUser.id] ?? []).filter((s) => s.status === 'completed') : []),
+    [currentUser, sessionsByUser]
   );
   const myPosts = useMemo(
     () => (currentUser ? userPostsMap[currentUser.id] ?? [] : []),
@@ -75,31 +76,33 @@ function ProfilePageOwn() {
 
   const streak = useMemo(() => calculateWeeklyStreak(mySessions), [mySessions]);
 
+  // Stats are computed from sessions (the source of truth) — not feed posts,
+  // since a user can complete a session without sharing it to the feed.
   const stats = useMemo(() => {
-    const totalSessions = myPosts.length;
-    const totalDrinks = myPosts.reduce((sum, p) => sum + (p.sessionSummary.totalDrinks ?? 0), 0);
-    const totalMinutes = myPosts.reduce((sum, p) => sum + (p.sessionSummary.durationMinutes ?? 0), 0);
+    const totalSessions = mySessions.length;
+    const totalDrinks = mySessions.reduce((sum, s) => sum + s.drinks.length, 0);
+    const totalMinutes = mySessions.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0);
     const avgDrinksPerSession = totalSessions > 0 ? totalDrinks / totalSessions : 0;
 
     const categoryCounts: Record<string, number> = {};
-    myPosts.forEach((p) =>
-      (p.sessionSummary.drinks ?? []).forEach((d) => {
+    mySessions.forEach((s) =>
+      s.drinks.forEach((d) => {
         categoryCounts[d.category] = (categoryCounts[d.category] || 0) + 1;
       })
     );
 
     return { totalSessions, totalDrinks, totalMinutes, avgDrinksPerSession, categoryCounts };
-  }, [myPosts]);
+  }, [mySessions]);
 
-  const myPRs = personalRecords.filter((pr) => pr.userId === currentUser?.id);
+  const myPRs = currentUser ? recordsByUser[currentUser.id] ?? [] : [];
 
-  // Signature drink
+  // Signature drink — computed from sessions for completeness.
   const signatureDrink = useMemo(() => {
     const counts: Record<string, { count: number; category: string }> = {};
-    myPosts.forEach((p) =>
-      (p.sessionSummary.drinks ?? []).forEach((d) => {
-        if (!counts[d.name]) counts[d.name] = { count: 0, category: d.category };
-        counts[d.name].count++;
+    mySessions.forEach((s) =>
+      s.drinks.forEach((d) => {
+        if (!counts[d.drinkName]) counts[d.drinkName] = { count: 0, category: d.category };
+        counts[d.drinkName].count++;
       })
     );
     const entries = Object.entries(counts).sort(([, a], [, b]) => b.count - a.count);
@@ -107,7 +110,7 @@ function ProfilePageOwn() {
     const [name, { count, category }] = entries[0];
     const total = Object.values(counts).reduce((s, v) => s + v.count, 0);
     return { name, count, category, pct: Math.round((count / total) * 100) };
-  }, [myPosts]);
+  }, [mySessions]);
 
   // Session highlights
   const highlights = useMemo(() => {
@@ -131,14 +134,14 @@ function ProfilePageOwn() {
     return items;
   }, [myPosts]);
 
-  // Achievements (milestones)
+  // Achievements (milestones) — based on actual sessions completed.
   const milestones = [
     { threshold: 10, label: '10th Sesh' },
     { threshold: 25, label: '25th Sesh' },
     { threshold: 50, label: '50th Sesh' },
     { threshold: 100, label: '100th Sesh' },
   ];
-  const sessionCount = myPosts.length;
+  const sessionCount = mySessions.length;
   const earnedMilestones = milestones.filter((m) => sessionCount >= m.threshold);
   const nextMilestone = milestones.find((m) => sessionCount < m.threshold);
 

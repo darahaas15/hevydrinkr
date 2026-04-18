@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { Heart, MessageCircle, AtSign, UserPlus, Users, Flame, Clock, Bell, CheckCheck, ChevronLeft, ImageIcon } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
@@ -44,13 +44,31 @@ export default function NotificationsPage() {
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const loading = useNotificationStore((s) => s.loading);
+  const loadingMore = useNotificationStore((s) => s.loadingMore);
+  const hasMore = useNotificationStore((s) => s.hasMore);
   const fetchNotifications = useNotificationStore((s) => s.fetchNotifications);
+  const fetchMoreNotifications = useNotificationStore((s) => s.fetchMoreNotifications);
   const markAsRead = useNotificationStore((s) => s.markAsRead);
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
 
   useEffect(() => {
     if (currentUser?.id) fetchNotifications(currentUser.id);
   }, [currentUser?.id, fetchNotifications]);
+
+  // Infinite scroll: when the sentinel near the bottom enters the viewport,
+  // page in older notifications.
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !currentUser?.id || !hasMore) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        fetchMoreNotifications(currentUser.id);
+      }
+    }, { rootMargin: '200px' });
+    io.observe(node);
+    return () => io.disconnect();
+  }, [currentUser?.id, hasMore, fetchMoreNotifications, notifications.length]);
 
   const handleTap = (n: Notification) => {
     router.push(getNotificationPath(n));
@@ -154,6 +172,14 @@ export default function NotificationsPage() {
                 </button>
               );
             })}
+
+            {hasMore && (
+              <div ref={loadMoreRef} className="py-4 flex items-center justify-center">
+                {loadingMore && (
+                  <div className="w-5 h-5 rounded-full border-2 border-zinc-700 border-t-zinc-400 animate-spin" />
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
