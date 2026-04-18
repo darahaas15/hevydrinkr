@@ -70,6 +70,14 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const triggerCelebration = useUIStore((s) => s.triggerCelebration);
   const addToast = useUIStore((s) => s.addToast);
+  const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
+
+  // Hide the app's bottom tab bar while the form is open so the sticky
+  // Save button isn't obscured.
+  useEffect(() => {
+    setHideBottomNav(true);
+    return () => setHideBottomNav(false);
+  }, [setHideBottomNav]);
 
   const [venue, setVenue] = useState(existingSession?.venue ?? '');
   const [startedAt, setStartedAt] = useState(existingSession?.startedAt ?? defaultStart());
@@ -484,7 +492,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
       {/* Sticky submit */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-5 py-4 safe-bottom"
+        className="fixed bottom-0 left-0 right-0 z-40 px-5 py-4 safe-bottom"
         style={{
           background: 'rgba(9,9,11,0.92)',
           backdropFilter: 'blur(28px) saturate(180%)',

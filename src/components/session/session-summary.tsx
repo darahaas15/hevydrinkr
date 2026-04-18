@@ -1,11 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Wine, Droplets, TrendingUp } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
+import { useUIStore } from '@/stores/use-ui-store';
 import type { DrinkSession } from '@/types';
 
 interface SessionSummaryProps {
@@ -14,6 +16,16 @@ interface SessionSummaryProps {
 }
 
 export function SessionSummary({ session, onDone }: SessionSummaryProps) {
+  const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
+
+  // Hide the app tab bar so the Done button isn't obscured by it on tall
+  // summary content where the overlay's stacking context might let the nav
+  // bleed through.
+  useEffect(() => {
+    setHideBottomNav(true);
+    return () => setHideBottomNav(false);
+  }, [setHideBottomNav]);
+
   // Calculate category breakdown
   const categoryCounts: Record<string, number> = {};
   session.drinks.forEach((d) => {

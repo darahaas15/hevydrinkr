@@ -20,9 +20,9 @@ export function DateTimeField({ label, value, onChange, max, min }: DateTimeFiel
   const minLocal = min ? isoToLocalInputValue(min) : undefined;
 
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="text-[11px] text-zinc-500 mb-1.5 block">{label}</span>
-      <div className="relative">
+      <div className="relative min-w-0">
         <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
         <input
           type="datetime-local"
@@ -33,7 +33,8 @@ export function DateTimeField({ label, value, onChange, max, min }: DateTimeFiel
             if (!e.target.value) return;
             onChange(localInputValueToIso(e.target.value));
           }}
-          className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white focus:outline-none focus:border-accent/40 transition-colors [color-scheme:dark]"
+          style={{ minWidth: 0 }}
+          className="block w-full max-w-full box-border pl-12 pr-3 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white focus:outline-none focus:border-accent/40 transition-colors [color-scheme:dark]"
         />
       </div>
     </label>
