@@ -30,7 +30,10 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const isLiked = !!userLike;
   const handleCardClick = () => {
     hapticLight();
-    router.push(`/feed?post=${item.id}`);
+    // scroll:false so opening a post doesn't snap the feed to top — the feed
+    // stays mounted behind the overlay, and browser back restores this
+    // scroll position.
+    router.push(`/feed?post=${item.id}`, { scroll: false });
   };
 
   const handleLike = (e: React.MouseEvent) => {

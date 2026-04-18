@@ -34,11 +34,31 @@ function FeedPageInner() {
   const postId = searchParams.get('post');
   const commentId = searchParams.get('comment');
 
-  // Keep the feed list mounted so scroll position is preserved when a post is
-  // opened and then dismissed. PostDetailPage uses position:fixed with a solid
-  // background and locks the main scroller, so it fully covers the feed
-  // without affecting the feed's layout or scrollTop. Keying by postId
-  // guarantees a fresh instance per post.
+  // Save the feed's scrollTop when a post is opened and restore it on close.
+  // FeedPageList stays mounted behind the fixed-position PostDetailPage, but
+  // toggling `lockMainScroll` switches <main>'s overflow between auto and
+  // hidden, which can clamp scrollTop on some browsers. Explicit save/restore
+  // keeps behavior consistent.
+  const savedScrollRef = useRef(0);
+  const prevPostIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const main = document.querySelector('main');
+    if (!main) return;
+    const prev = prevPostIdRef.current;
+    if (!prev && postId) {
+      savedScrollRef.current = main.scrollTop;
+    } else if (prev && !postId) {
+      const target = savedScrollRef.current;
+      // Defer until after <main> flips back to overflow-y:auto in the next
+      // render, otherwise the write is clamped to 0.
+      requestAnimationFrame(() => {
+        main.scrollTop = target;
+      });
+    }
+    prevPostIdRef.current = postId;
+  }, [postId]);
+
   return (
     <>
       <FeedPageList />
