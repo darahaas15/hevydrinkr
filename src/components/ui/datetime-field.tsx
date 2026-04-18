@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Calendar } from 'lucide-react';
 import { isoToLocalInputValue, localInputValueToIso } from '@/lib/session-utils';
 
@@ -11,20 +12,43 @@ interface DateTimeFieldProps {
   min?: string; // ISO
 }
 
-// Thin wrapper around <input type="datetime-local"> styled to match the
-// rest of the app (matches the text input treatment in session/page.tsx).
-// Native picker means iOS gets the wheel, Android gets the modal, zero deps.
+function formatDisplay(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const time = d.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${date} at ${time}`;
+}
+
+// Native `<input type="datetime-local">` on iOS has an intrinsic min-width
+// that ignores `width: 100%`, so we render a styled surface for display and
+// overlay a transparent native input sized to the container (absolute inset-0)
+// purely to trigger the system picker. This keeps the field inside its row
+// on narrow screens.
 export function DateTimeField({ label, value, onChange, max, min }: DateTimeFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const inputValue = value ? isoToLocalInputValue(value) : '';
   const maxLocal = max ? isoToLocalInputValue(max) : undefined;
   const minLocal = min ? isoToLocalInputValue(min) : undefined;
+  const displayText = value ? formatDisplay(value) : 'Select date & time';
 
   return (
-    <label className="block min-w-0">
+    <label className="block">
       <span className="text-[11px] text-zinc-500 mb-1.5 block">{label}</span>
-      <div className="relative min-w-0">
-        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
+      <div className="relative">
+        <div className="flex items-center w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white">
+          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
+          <span className="flex-1 min-w-0 truncate">{displayText}</span>
+        </div>
         <input
+          ref={inputRef}
           type="datetime-local"
           value={inputValue}
           max={maxLocal}
@@ -33,8 +57,8 @@ export function DateTimeField({ label, value, onChange, max, min }: DateTimeFiel
             if (!e.target.value) return;
             onChange(localInputValueToIso(e.target.value));
           }}
-          style={{ minWidth: 0 }}
-          className="block w-full max-w-full box-border pl-12 pr-3 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white focus:outline-none focus:border-accent/40 transition-colors [color-scheme:dark]"
+          aria-label={label}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
         />
       </div>
     </label>
