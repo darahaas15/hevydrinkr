@@ -29,45 +29,36 @@ export default function FeedPage() {
   );
 }
 
+const FEED_SCROLL_KEY = 'feedScrollY';
+
 function FeedPageInner() {
   const searchParams = useSearchParams();
   const postId = searchParams.get('post');
   const commentId = searchParams.get('comment');
 
-  // Save the feed's scrollTop when a post is opened and restore it on close.
-  // FeedPageList stays mounted behind the fixed-position PostDetailPage, but
-  // toggling `lockMainScroll` switches <main>'s overflow between auto and
-  // hidden, which can clamp scrollTop on some browsers. Explicit save/restore
-  // keeps behavior consistent.
-  const savedScrollRef = useRef(0);
+  // Save main.scrollTop to sessionStorage when a post is opened. Restore
+  // happens in FeedPageList once items are present and the container has
+  // real height — writing scrollTop while the list is empty or before main
+  // flips back to overflow-y:auto silently clamps to 0.
   const prevPostIdRef = useRef<string | null>(null);
-
   useEffect(() => {
-    const main = document.querySelector('main');
-    if (!main) return;
     const prev = prevPostIdRef.current;
     if (!prev && postId) {
-      savedScrollRef.current = main.scrollTop;
-    } else if (prev && !postId) {
-      const target = savedScrollRef.current;
-      // Defer until after <main> flips back to overflow-y:auto in the next
-      // render, otherwise the write is clamped to 0.
-      requestAnimationFrame(() => {
-        main.scrollTop = target;
-      });
+      const main = document.querySelector('main');
+      if (main) sessionStorage.setItem(FEED_SCROLL_KEY, String(main.scrollTop));
     }
     prevPostIdRef.current = postId;
   }, [postId]);
 
   return (
     <>
-      <FeedPageList />
+      <FeedPageList feedActive={!postId} />
       {postId && <PostDetailPage key={postId} postId={postId} highlightCommentId={commentId} />}
     </>
   );
 }
 
-function FeedPageList() {
+function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   const router = useRouter();
   const following = useAuthStore((s) => s.currentUser?.following || []);
   const items = useFeedStore((s) => s.items);
@@ -164,6 +155,27 @@ function FeedPageList() {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }, [items, followingIds, currentUser?.id, tab, blockedUserIds]);
+
+  // Restore saved feed scroll once the feed is visible and has real height.
+  // Runs whenever feedActive/sorted-length changes, so if FeedPageList is
+  // remounted on back-nav and items rehydrate after a fetch, the first
+  // transition to a non-empty list performs the restore.
+  useEffect(() => {
+    if (!feedActive || sorted.length === 0) return;
+    const raw = sessionStorage.getItem(FEED_SCROLL_KEY);
+    if (raw == null) return;
+    const target = Number(raw);
+    if (!Number.isFinite(target) || target <= 0) {
+      sessionStorage.removeItem(FEED_SCROLL_KEY);
+      return;
+    }
+    const main = document.querySelector('main');
+    if (!main) return;
+    requestAnimationFrame(() => {
+      main.scrollTop = target;
+      sessionStorage.removeItem(FEED_SCROLL_KEY);
+    });
+  }, [feedActive, sorted.length]);
 
   const showSearchResults = tab === 'discover' && searchQuery.trim().length > 0;
 
