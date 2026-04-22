@@ -67,17 +67,25 @@ Result: one visual component for the grouped +/- list; the +/-/trash layout is d
 
 ### 4. Save path
 
-The existing `updateSession` store action does not persist drinks. `updateFeedItem` already does — it deletes/reinserts `drink_entries` and syncs session totals when `sessionSummary` is provided (see `use-feed-store.ts:570-658`). Reuse it.
+The existing `updateSession` store action does not persist drinks. `updateFeedItem` already does — it deletes/reinserts `drink_entries` and syncs session totals when `sessionSummary` is provided (see `use-feed-store.ts:570-658`). Reuse it, with two small store-side fixes (described below).
 
 On save in edit mode, after venue/times/mood sync via `updateSession`:
 
-- Expand cart into `DrinkEntry[]` the same way create-past does (`drinksForSubmit` in `session-form.tsx:112-120`).
+- Expand cart into `DrinkEntry[]` the same way create-past does (`drinksForSubmit` in `session-form.tsx:112-120`). Each row already carries its real `drinkDefinitionId` from the picker.
 - Compute whether drinks changed vs. `existingSession.drinks` (compare by length + per-group counts).
 - Compute whether photos changed vs. `existingSession.photos`.
 - Whether caption changed (already tracked today).
-- If any of those changed and the session has a feed item, build a `sessionSummary` payload and call `updateFeedItem` with `{ caption?, photos?, sessionSummary? }`.
+- If any of those changed and the session has a feed item, build a `sessionSummary` payload and call `updateFeedItem` with `{ caption?, photos?, sessionSummary? }`. Include the full `DrinkEntry[]` (with real definition IDs and standardDrinks) in the payload, not just name/abv/volume.
 
-`updateFeedItem` already handles: DB delete/reinsert of drink rows, session totals, optimistic rollback on error, keeping session store IDs aligned with DB rows. No store changes required.
+#### Store fixes (included in this spec)
+
+1. **Preserve real `drink_definition_id` on edit.**
+   Today `updateFeedItem` writes `drink_definition_id: 'edited'` when re-inserting drinks (`use-feed-store.ts:606`) because the old edit-post modal only kept name/category/abv/volume. After this change, the edit flow has real `DrinkEntry`s again. Extend `FeedItem.sessionSummary.drinks` to carry `drinkDefinitionId` (optional, for backfill safety) and have `updateFeedItem` write it through when present; fall back to `'edited'` only when missing. Similarly write through `timestamp` when provided, instead of stamping everything with `now`.
+
+2. **Re-spread drink timestamps when the drink count changes.**
+   `updateSession` re-spreads timestamps when `startedAt`/`endedAt` change but not when the drink count changes. In the unified edit save path, if drinks changed, re-spread the new drink list across `[startedAt, endedAt]` using `spreadDrinkTimestamps` before handing to `updateFeedItem`. This keeps derived analytics (drinks per hour, peak BAC) honest.
+
+`updateFeedItem` already handles: DB delete/reinsert of drink rows, session totals, optimistic rollback on error, keeping session store IDs aligned with DB rows. The two fixes above are local tweaks inside that function plus one type extension.
 
 ### 5. Entry-point changes
 
@@ -90,17 +98,20 @@ On save in edit mode, after venue/times/mood sync via `updateSession`:
 
 - `src/components/session/drink-cart.tsx` — new shared +/- list component.
 - `src/components/session/drink-list.tsx` — delegate rendering to `DrinkCart`.
-- `src/components/session/session-form.tsx` — init cart + photos from existing session in edit mode, remove the edit-mode gates on Add button / photos / cart render, extend save path to call `updateFeedItem` with `sessionSummary` / `photos` when changed.
+- `src/components/session/session-form.tsx` — init cart + photos from existing session in edit mode, remove the edit-mode gates on Add button / photos / cart render, extend save path to call `updateFeedItem` with `sessionSummary` / `photos` when changed, re-spread timestamps when drink count changed.
 - `src/app/(app)/feed/[id]/post-detail.tsx` — route "Edit Post" to the session edit page; delete modal + related state.
+- `src/stores/use-feed-store.ts` — in `updateFeedItem`, write through real `drinkDefinitionId` and `timestamp` from the payload when present (fallback to `'edited'` / now).
+- `src/types/*.ts` — extend `FeedItem['sessionSummary']['drinks']` with optional `drinkDefinitionId` and `timestamp` fields so the richer payload can travel through.
 
-Out of scope: store API changes, the live session UX (same UI, just refactored), anything outside edit/create-past flows.
+Out of scope: the live session UX (same UI, just refactored), anything outside edit/create-past flows. Items (3)-(7) from the initial review are deferred to their own specs.
 
 ## Risks / notes
 
-- **`drinkDefinitionId` for edited drinks.** `updateFeedItem` currently writes `drink_definition_id: 'edited'` when re-inserting drinks (use-feed-store.ts:606). This means drinks added/kept via the unified edit flow will lose their real definition ID server-side — matching today's Edit Post modal behavior. Acceptable; this is preexisting behavior. Not fixing here to keep scope tight.
 - **Feed item without a session.** All posts in this app originate from a session (every `FeedItem` has a `sessionId`). Navigating "Edit Post" to `/session/edit/[id]` is safe. If a future code path creates feed-only items, this assumption needs revisiting.
 - **Caption source in edit mode.** `SessionForm` already reads caption from `existingFeedItem`; unchanged.
 - **Photo source of truth.** `existingSession.photos` is populated by the session fetch. Confirm `session/edit/page.tsx` passes fresh photos; today it does (photos live on the session).
+- **Backfill posts with `'edited'` definition IDs.** Older posts already edited through the modal have `'edited'` baked into their drink rows. This spec doesn't retroactively fix those — the next edit on those posts will still write `'edited'` for rows that don't have a real ID in state. Acceptable: the new-edit fix prevents the regression going forward.
+- **Timestamp re-spread edge case.** Re-spreading on drink-count change assumes the session window is accurate. If `startedAt === endedAt`, `spreadDrinkTimestamps` should still produce valid (clustered) timestamps; verify behavior.
 
 ## Success criteria
 
@@ -108,3 +119,4 @@ Out of scope: store API changes, the live session UX (same UI, just refactored),
 - From the session detail's Edit button, same flow.
 - No remaining reference to the old Edit Post modal.
 - `DrinkCart` is the single component rendering grouped +/- drink rows across live session, create-past, and edit.
+- After an edit that changes drinks, `drink_entries` rows for that session carry the real `drink_definition_id` (not `'edited'`) and timestamps spread evenly across the session window.
