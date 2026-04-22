@@ -20,6 +20,7 @@ import {
   validateSessionForm,
   durationMinutesBetween,
   buildSessionSummary,
+  spreadDrinkTimestamps,
 } from '@/lib/session-utils';
 import { formatDuration } from '@/lib/utils';
 import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
@@ -237,6 +238,8 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       setSubmitting(false);
       return;
     }
+
+    // Step 1: sync session metadata (venue/times/mood) via updateSession.
     const updates: Parameters<typeof updateSession>[1] = {};
     if (venue.trim() !== existingSession.venue) updates.venue = venue.trim();
     if (startedAt !== existingSession.startedAt) updates.startedAt = startedAt;
@@ -254,22 +257,96 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       updatedSession = result;
     }
 
-    // Also sync feed item if the session has one, and venue/duration/mood or
-    // caption changed. Keeps the feed card's session_summary in sync.
-    if (existingFeedItem) {
-      const summaryChanged =
+    // Step 2: detect drink / photo / caption changes and sync via updateFeedItem.
+    const originalDrinksCount = existingSession.drinks.length;
+    const originalGroupCounts = new Map<string, number>();
+    for (const d of existingSession.drinks) {
+      originalGroupCounts.set(
+        d.drinkDefinitionId,
+        (originalGroupCounts.get(d.drinkDefinitionId) ?? 0) + 1,
+      );
+    }
+    const newGroupCounts = new Map<string, number>();
+    for (const c of cart) newGroupCounts.set(c.template.drinkDefinitionId, c.quantity);
+
+    let drinksChanged = drinksForSubmit.length !== originalDrinksCount;
+    if (!drinksChanged) {
+      if (originalGroupCounts.size !== newGroupCounts.size) {
+        drinksChanged = true;
+      } else {
+        for (const [key, count] of newGroupCounts) {
+          if (originalGroupCounts.get(key) !== count) {
+            drinksChanged = true;
+            break;
+          }
+        }
+      }
+    }
+
+    const originalPhotos = existingSession.photos ?? [];
+    const photosChanged =
+      photos.length !== originalPhotos.length ||
+      photos.some((p, i) => p !== originalPhotos[i]);
+    const captionChanged = !!existingFeedItem && caption !== existingFeedItem.caption;
+
+    if (existingFeedItem && (drinksChanged || photosChanged || captionChanged)) {
+      // When drink count changes, re-spread timestamps across the (possibly
+      // updated) session window so derived analytics stay honest.
+      let drinksToPersist = drinksForSubmit;
+      if (drinksChanged && drinksToPersist.length > 0) {
+        const stamps = spreadDrinkTimestamps(
+          updatedSession.startedAt,
+          updatedSession.endedAt ?? updatedSession.startedAt,
+          drinksToPersist.length,
+        );
+        drinksToPersist = drinksToPersist.map((d, i) => ({
+          ...d,
+          timestamp: stamps[i],
+        }));
+      }
+
+      const nextSession: DrinkSession = {
+        ...updatedSession,
+        drinks: drinksChanged ? drinksToPersist : updatedSession.drinks,
+        totalStandardDrinks: drinksChanged
+          ? drinksToPersist.reduce((s, d) => s + d.standardDrinks, 0)
+          : updatedSession.totalStandardDrinks,
+        totalVolumeMl: drinksChanged
+          ? drinksToPersist.reduce((s, d) => s + d.volumeMl, 0)
+          : updatedSession.totalVolumeMl,
+      };
+
+      const feedUpdates: Parameters<typeof updateFeedItem>[1] = {};
+      if (captionChanged) feedUpdates.caption = caption;
+      if (photosChanged) feedUpdates.photos = photos;
+      if (drinksChanged) {
+        // buildSessionSummary uses the session's current venue/duration/mood,
+        // so we feed it the post-updateSession state.
+        feedUpdates.sessionSummary = buildSessionSummary(nextSession);
+      } else if (
         updates.venue !== undefined ||
         updates.startedAt !== undefined ||
         updates.endedAt !== undefined ||
-        updates.mood !== undefined;
-      const captionChanged = caption !== existingFeedItem.caption;
-
-      if (summaryChanged || captionChanged) {
-        const feedUpdates: Parameters<typeof updateFeedItem>[1] = {};
-        if (captionChanged) feedUpdates.caption = caption;
-        if (summaryChanged) feedUpdates.sessionSummary = buildSessionSummary(updatedSession);
-        await updateFeedItem(existingFeedItem.id, feedUpdates);
+        updates.mood !== undefined
+      ) {
+        // Metadata-only change: keep the existing behavior of regenerating
+        // the summary so the feed card stays in sync.
+        feedUpdates.sessionSummary = buildSessionSummary(updatedSession);
       }
+
+      await updateFeedItem(existingFeedItem.id, feedUpdates);
+    } else if (
+      existingFeedItem &&
+      (updates.venue !== undefined ||
+        updates.startedAt !== undefined ||
+        updates.endedAt !== undefined ||
+        updates.mood !== undefined)
+    ) {
+      // Metadata changed but no drink/photo/caption change — still refresh
+      // the feed card's session_summary.
+      await updateFeedItem(existingFeedItem.id, {
+        sessionSummary: buildSessionSummary(updatedSession),
+      });
     }
 
     hapticSuccess();
