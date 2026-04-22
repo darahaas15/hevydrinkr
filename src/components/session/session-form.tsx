@@ -11,7 +11,6 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { DrinkPicker } from '@/components/session/drink-picker';
-import { DrinkIcon } from '@/components/ui/drink-icon';
 import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
 import { DateTimeField } from '@/components/ui/datetime-field';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
@@ -29,6 +28,21 @@ import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 interface CartItem {
   template: DrinkEntry; // any one instance — name/emoji/abv come from it
   quantity: number;
+}
+
+function groupDrinksIntoCart(drinks: DrinkEntry[]): CartItem[] {
+  const map = new Map<string, CartItem>();
+  const order: string[] = [];
+  for (const d of drinks) {
+    const existing = map.get(d.drinkDefinitionId);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      order.push(d.drinkDefinitionId);
+      map.set(d.drinkDefinitionId, { template: d, quantity: 1 });
+    }
+  }
+  return order.map((id) => map.get(id)!);
 }
 
 const MOODS: Array<{ value: SessionMood; emoji: string }> = [
@@ -88,24 +102,24 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const [mood, setMood] = useState<SessionMood>(existingSession?.mood ?? 'good');
   const [caption, setCaption] = useState(existingFeedItem?.caption ?? '');
 
-  // Cart (create-past only — edit mode doesn't change drinks).
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Cart — initialized from existing drinks in edit mode.
+  const [cart, setCart] = useState<CartItem[]>(() =>
+    mode === 'edit' && existingSession ? groupDrinksIntoCart(existingSession.drinks) : [],
+  );
   const [showPicker, setShowPicker] = useState(false);
 
-  // Photos (create-past only).
-  const [photos, setPhotos] = useState<string[]>([]);
+  // Photos — initialized from existing photos in edit mode.
+  const [photos, setPhotos] = useState<string[]>(
+    () => existingSession?.photos ?? [],
+  );
 
   const [submitting, setSubmitting] = useState(false);
 
-  // In edit mode we still want to show the drink list read-only in-line.
-  const existingDrinks = existingSession?.drinks ?? [];
-
-  const totalDrinks =
-    mode === 'edit' ? existingDrinks.length : cart.reduce((s, c) => s + c.quantity, 0);
-  const totalStandardDrinks =
-    mode === 'edit'
-      ? existingDrinks.reduce((s, d) => s + d.standardDrinks, 0)
-      : cart.reduce((s, c) => s + c.template.standardDrinks * c.quantity, 0);
+  const totalDrinks = cart.reduce((s, c) => s + c.quantity, 0);
+  const totalStandardDrinks = cart.reduce(
+    (s, c) => s + c.template.standardDrinks * c.quantity,
+    0,
+  );
 
   const durationMin = durationMinutesBetween(startedAt, endedAt);
 
@@ -125,10 +139,10 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       venue,
       startedAt,
       endedAt,
-      drinks: mode === 'edit' ? existingDrinks : drinksForSubmit,
+      drinks: drinksForSubmit,
       mood,
     });
-  }, [venue, startedAt, endedAt, drinksForSubmit, mood, mode, existingDrinks]);
+  }, [venue, startedAt, endedAt, drinksForSubmit, mood]);
 
   // Block create-past if there's an active session — drinks would be ambiguous.
   const blocked = mode === 'create-past' && !!activeSession;
@@ -347,18 +361,16 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             <span className="text-[11px] text-zinc-500">
               Drinks {totalDrinks > 0 && `(${totalDrinks})`}
             </span>
-            {mode === 'create-past' && (
-              <button
-                onClick={() => { hapticLight(); setShowPicker(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[11px] font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add
-              </button>
-            )}
+            <button
+              onClick={() => { hapticLight(); setShowPicker(true); }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[11px] font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add
+            </button>
           </div>
 
-          {mode === 'create-past' && cart.length === 0 && (
+          {cart.length === 0 && (
             <button
               onClick={() => { hapticLight(); setShowPicker(true); }}
               className="w-full flex items-center justify-center gap-2 px-3 py-6 rounded-2xl border border-dashed border-white/[0.08] active:bg-white/[0.03] text-zinc-500 text-sm"
@@ -368,7 +380,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             </button>
           )}
 
-          {mode === 'create-past' && cart.length > 0 && (
+          {cart.length > 0 && (
             <DrinkCart
               items={cart.map<DrinkCartItem>((c) => ({
                 key: c.template.drinkDefinitionId,
@@ -382,27 +394,6 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             />
           )}
 
-          {mode === 'edit' && existingDrinks.length > 0 && (
-            <div className="space-y-1.5">
-              {existingDrinks.map((d) => (
-                <div
-                  key={d.id}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]"
-                >
-                  <DrinkIcon category={d.category} className="w-5 h-5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{d.drinkName}</p>
-                    <p className="text-[10px] text-zinc-600">
-                      {d.abvPercent}% · {d.volumeMl}ml · {d.standardDrinks.toFixed(1)} std
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <p className="text-[10px] text-zinc-600 text-center pt-1">
-                Drinks aren&apos;t editable here
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Mood */}
@@ -436,24 +427,22 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
           />
         </label>
 
-        {/* Photos (create-past only) */}
-        {mode === 'create-past' && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-zinc-500">
-                Photos {photos.length > 0 && `(${photos.length})`}
-              </span>
-              <button
-                onClick={handleAddPhoto}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] text-zinc-400 text-[11px] font-semibold active:bg-white/[0.08]"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                Add
-              </button>
-            </div>
-            {photos.length > 0 && <PhotoGallery photos={photos} onRemove={removePhoto} />}
+        {/* Photos */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-zinc-500">
+              Photos {photos.length > 0 && `(${photos.length})`}
+            </span>
+            <button
+              onClick={handleAddPhoto}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] text-zinc-400 text-[11px] font-semibold active:bg-white/[0.08]"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              Add
+            </button>
           </div>
-        )}
+          {photos.length > 0 && <PhotoGallery photos={photos} onRemove={removePhoto} />}
+        </div>
 
         {/* Inline validation hint */}
         {validationError && (
