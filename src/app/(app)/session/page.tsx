@@ -443,7 +443,7 @@ function SessionPageInner() {
           <p className="text-[9px] text-zinc-600 mt-3">{BAC_DISCLAIMER}</p>
         </div>
 
-        <DrinkList drinks={activeDrinks} onRemove={removeDrink} />
+        <DrinkList drinks={activeDrinks} onRemove={removeDrink} onAdd={addDrink} />
 
         {/* Session Photos */}
         {(activeSession.photos?.length ?? 0) > 0 && (
