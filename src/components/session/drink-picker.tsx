@@ -68,6 +68,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   const [customError, setCustomError] = useState<string | null>(null);
   const currentUser = useAuthStore((s) => s.currentUser);
 
+  const customValidationError = validateCustomDrink(customName, customAbv, customVol);
+
   const dragControls = useDragControls();
 
   // Body scroll lock
@@ -267,7 +269,13 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                 </div>
               </div>
               <p className="text-xs text-zinc-600 text-center">
-                = <span className="font-bold text-white">{calculateStandardDrinks(parseFloat(customVol) || 0, parseFloat(customAbv) || 0)}</span> standard drinks
+                ={' '}
+                <span className="font-bold text-white">
+                  {customValidationError === null
+                    ? calculateStandardDrinks(parseFloat(customVol), parseFloat(customAbv))
+                    : '—'}
+                </span>{' '}
+                standard drinks
               </p>
               <p className="text-[10px] text-zinc-700 text-center">This drink will be saved to your list</p>
               {customError && (
@@ -276,7 +284,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCustomDrink}
-                disabled={validateCustomDrink(customName, customAbv, customVol) !== null}
+                disabled={customValidationError !== null}
                 className="w-full py-3.5 rounded-xl bg-accent text-black font-bold text-sm disabled:opacity-20"
               >
                 Add Drink
