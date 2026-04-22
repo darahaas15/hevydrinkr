@@ -62,6 +62,8 @@ export function buildSessionSummary(
       abvPercent: d.abvPercent,
       volumeMl: d.volumeMl,
       standardDrinks: d.standardDrinks,
+      drinkDefinitionId: d.drinkDefinitionId,
+      timestamp: d.timestamp,
     })),
     mood: session.mood,
     prsAchieved: session.prsAchieved,

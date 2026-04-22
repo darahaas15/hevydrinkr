@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, MapPin, Plus, Minus, Trash2, Camera } from 'lucide-react';
+import { ChevronLeft, MapPin, Plus, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { DrinkSession, DrinkEntry, SessionMood, FeedItem, UserProfile } from '@/types';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -11,7 +11,7 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { DrinkPicker } from '@/components/session/drink-picker';
-import { DrinkIcon } from '@/components/ui/drink-icon';
+import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
 import { DateTimeField } from '@/components/ui/datetime-field';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, compressImage } from '@/lib/image-utils';
@@ -20,14 +20,36 @@ import {
   validateSessionForm,
   durationMinutesBetween,
   buildSessionSummary,
+  spreadDrinkTimestamps,
 } from '@/lib/session-utils';
 import { formatDuration } from '@/lib/utils';
 import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
 // Aggregate-by-drink-definition shopping-cart row.
 interface CartItem {
+  key: string; // group key — usually drinkDefinitionId, but drink.id for legacy
   template: DrinkEntry; // any one instance — name/emoji/abv come from it
   quantity: number;
+}
+
+function groupDrinksIntoCart(drinks: DrinkEntry[]): CartItem[] {
+  const map = new Map<string, CartItem>();
+  const order: string[] = [];
+  for (const d of drinks) {
+    // Legacy rows edited via the old modal have drinkDefinitionId === 'edited'.
+    // Don't collapse them into one row — key by drink.id so each legacy drink
+    // stays distinct. Otherwise touching the cart would rewrite disparate
+    // drinks to a single template.
+    const key = d.drinkDefinitionId === 'edited' ? d.id : d.drinkDefinitionId;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      order.push(key);
+      map.set(key, { key, template: d, quantity: 1 });
+    }
+  }
+  return order.map((id) => map.get(id)!);
 }
 
 const MOODS: Array<{ value: SessionMood; emoji: string }> = [
@@ -68,7 +90,6 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const updateFeedItem = useFeedStore((s) => s.updateFeedItem);
   const addPR = useProfileStore((s) => s.addPR);
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
-  const triggerCelebration = useUIStore((s) => s.triggerCelebration);
   const addToast = useUIStore((s) => s.addToast);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
 
@@ -87,24 +108,24 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const [mood, setMood] = useState<SessionMood>(existingSession?.mood ?? 'good');
   const [caption, setCaption] = useState(existingFeedItem?.caption ?? '');
 
-  // Cart (create-past only — edit mode doesn't change drinks).
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Cart — initialized from existing drinks in edit mode.
+  const [cart, setCart] = useState<CartItem[]>(() =>
+    mode === 'edit' && existingSession ? groupDrinksIntoCart(existingSession.drinks) : [],
+  );
   const [showPicker, setShowPicker] = useState(false);
 
-  // Photos (create-past only).
-  const [photos, setPhotos] = useState<string[]>([]);
+  // Photos — initialized from existing photos in edit mode.
+  const [photos, setPhotos] = useState<string[]>(
+    () => existingSession?.photos ?? [],
+  );
 
   const [submitting, setSubmitting] = useState(false);
 
-  // In edit mode we still want to show the drink list read-only in-line.
-  const existingDrinks = existingSession?.drinks ?? [];
-
-  const totalDrinks =
-    mode === 'edit' ? existingDrinks.length : cart.reduce((s, c) => s + c.quantity, 0);
-  const totalStandardDrinks =
-    mode === 'edit'
-      ? existingDrinks.reduce((s, d) => s + d.standardDrinks, 0)
-      : cart.reduce((s, c) => s + c.template.standardDrinks * c.quantity, 0);
+  const totalDrinks = cart.reduce((s, c) => s + c.quantity, 0);
+  const totalStandardDrinks = cart.reduce(
+    (s, c) => s + c.template.standardDrinks * c.quantity,
+    0,
+  );
 
   const durationMin = durationMinutesBetween(startedAt, endedAt);
 
@@ -124,10 +145,10 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       venue,
       startedAt,
       endedAt,
-      drinks: mode === 'edit' ? existingDrinks : drinksForSubmit,
+      drinks: drinksForSubmit,
       mood,
     });
-  }, [venue, startedAt, endedAt, drinksForSubmit, mood, mode, existingDrinks]);
+  }, [venue, startedAt, endedAt, drinksForSubmit, mood]);
 
   // Block create-past if there's an active session — drinks would be ambiguous.
   const blocked = mode === 'create-past' && !!activeSession;
@@ -135,36 +156,32 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   // ── Handlers ─────────────────────────────────────────────────────────
   const addToCart = (drink: DrinkEntry) => {
     setCart((prev) => {
-      const existing = prev.find((c) => c.template.drinkDefinitionId === drink.drinkDefinitionId);
+      // New drinks from the picker always have a real drinkDefinitionId.
+      const key = drink.drinkDefinitionId;
+      const existing = prev.find((c) => c.key === key);
       if (existing) {
         return prev.map((c) =>
-          c.template.drinkDefinitionId === drink.drinkDefinitionId
-            ? { ...c, quantity: c.quantity + 1 }
-            : c,
+          c.key === key ? { ...c, quantity: c.quantity + 1 } : c,
         );
       }
-      return [...prev, { template: drink, quantity: 1 }];
+      return [...prev, { key, template: drink, quantity: 1 }];
     });
     setShowPicker(false);
     hapticLight();
   };
 
-  const incCart = (defId: string) =>
+  const incCart = (key: string) =>
     setCart((prev) =>
-      prev.map((c) =>
-        c.template.drinkDefinitionId === defId ? { ...c, quantity: c.quantity + 1 } : c,
-      ),
+      prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity + 1 } : c)),
     );
-  const decCart = (defId: string) =>
+  const decCart = (key: string) =>
     setCart((prev) =>
       prev
-        .map((c) =>
-          c.template.drinkDefinitionId === defId ? { ...c, quantity: c.quantity - 1 } : c,
-        )
+        .map((c) => (c.key === key ? { ...c, quantity: c.quantity - 1 } : c))
         .filter((c) => c.quantity > 0),
     );
-  const removeCart = (defId: string) =>
-    setCart((prev) => prev.filter((c) => c.template.drinkDefinitionId !== defId));
+  const removeCart = (key: string) =>
+    setCart((prev) => prev.filter((c) => c.key !== key));
 
   const handleAddPhoto = async () => {
     const file = await pickImage();
@@ -222,6 +239,8 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       setSubmitting(false);
       return;
     }
+
+    // Step 1: sync session metadata (venue/times/mood) via updateSession.
     const updates: Parameters<typeof updateSession>[1] = {};
     if (venue.trim() !== existingSession.venue) updates.venue = venue.trim();
     if (startedAt !== existingSession.startedAt) updates.startedAt = startedAt;
@@ -239,22 +258,97 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       updatedSession = result;
     }
 
-    // Also sync feed item if the session has one, and venue/duration/mood or
-    // caption changed. Keeps the feed card's session_summary in sync.
-    if (existingFeedItem) {
-      const summaryChanged =
+    // Step 2: detect drink / photo / caption changes and sync via updateFeedItem.
+    const originalDrinksCount = existingSession.drinks.length;
+    const originalGroupCounts = new Map<string, number>();
+    for (const d of existingSession.drinks) {
+      // Mirror the same keying logic as groupDrinksIntoCart so the comparison
+      // is apples-to-apples: legacy 'edited' drinks key by drink.id, not by
+      // drinkDefinitionId (which would be 'edited' for all of them).
+      const groupKey = d.drinkDefinitionId === 'edited' ? d.id : d.drinkDefinitionId;
+      originalGroupCounts.set(groupKey, (originalGroupCounts.get(groupKey) ?? 0) + 1);
+    }
+    const newGroupCounts = new Map<string, number>();
+    for (const c of cart) newGroupCounts.set(c.key, c.quantity);
+
+    let drinksChanged = drinksForSubmit.length !== originalDrinksCount;
+    if (!drinksChanged) {
+      if (originalGroupCounts.size !== newGroupCounts.size) {
+        drinksChanged = true;
+      } else {
+        for (const [key, count] of newGroupCounts) {
+          if (originalGroupCounts.get(key) !== count) {
+            drinksChanged = true;
+            break;
+          }
+        }
+      }
+    }
+
+    const originalPhotos = existingSession.photos ?? [];
+    const photosChanged =
+      photos.length !== originalPhotos.length ||
+      photos.some((p, i) => p !== originalPhotos[i]);
+    const captionChanged = !!existingFeedItem && caption !== existingFeedItem.caption;
+
+    if (existingFeedItem && (drinksChanged || photosChanged || captionChanged)) {
+      // When drink count changes, re-spread timestamps across the (possibly
+      // updated) session window so derived analytics stay honest.
+      let drinksToPersist = drinksForSubmit;
+      if (drinksChanged && drinksToPersist.length > 0) {
+        const stamps = spreadDrinkTimestamps(
+          updatedSession.startedAt,
+          updatedSession.endedAt ?? updatedSession.startedAt,
+          drinksToPersist.length,
+        );
+        drinksToPersist = drinksToPersist.map((d, i) => ({
+          ...d,
+          timestamp: stamps[i],
+        }));
+      }
+
+      const nextSession: DrinkSession = {
+        ...updatedSession,
+        drinks: drinksChanged ? drinksToPersist : updatedSession.drinks,
+        totalStandardDrinks: drinksChanged
+          ? drinksToPersist.reduce((s, d) => s + d.standardDrinks, 0)
+          : updatedSession.totalStandardDrinks,
+        totalVolumeMl: drinksChanged
+          ? drinksToPersist.reduce((s, d) => s + d.volumeMl, 0)
+          : updatedSession.totalVolumeMl,
+      };
+
+      const feedUpdates: Parameters<typeof updateFeedItem>[1] = {};
+      if (captionChanged) feedUpdates.caption = caption;
+      if (photosChanged) feedUpdates.photos = photos;
+      if (drinksChanged) {
+        // buildSessionSummary uses the session's current venue/duration/mood,
+        // so we feed it the post-updateSession state.
+        feedUpdates.sessionSummary = buildSessionSummary(nextSession);
+      } else if (
         updates.venue !== undefined ||
         updates.startedAt !== undefined ||
         updates.endedAt !== undefined ||
-        updates.mood !== undefined;
-      const captionChanged = caption !== existingFeedItem.caption;
-
-      if (summaryChanged || captionChanged) {
-        const feedUpdates: Parameters<typeof updateFeedItem>[1] = {};
-        if (captionChanged) feedUpdates.caption = caption;
-        if (summaryChanged) feedUpdates.sessionSummary = buildSessionSummary(updatedSession);
-        await updateFeedItem(existingFeedItem.id, feedUpdates);
+        updates.mood !== undefined
+      ) {
+        // Metadata-only change: keep the existing behavior of regenerating
+        // the summary so the feed card stays in sync.
+        feedUpdates.sessionSummary = buildSessionSummary(updatedSession);
       }
+
+      await updateFeedItem(existingFeedItem.id, feedUpdates);
+    } else if (
+      existingFeedItem &&
+      (updates.venue !== undefined ||
+        updates.startedAt !== undefined ||
+        updates.endedAt !== undefined ||
+        updates.mood !== undefined)
+    ) {
+      // Metadata changed but no drink/photo/caption change — still refresh
+      // the feed card's session_summary.
+      await updateFeedItem(existingFeedItem.id, {
+        sessionSummary: buildSessionSummary(updatedSession),
+      });
     }
 
     hapticSuccess();
@@ -346,18 +440,16 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             <span className="text-[11px] text-zinc-500">
               Drinks {totalDrinks > 0 && `(${totalDrinks})`}
             </span>
-            {mode === 'create-past' && (
-              <button
-                onClick={() => { hapticLight(); setShowPicker(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[11px] font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add
-              </button>
-            )}
+            <button
+              onClick={() => { hapticLight(); setShowPicker(true); }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[11px] font-semibold"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add
+            </button>
           </div>
 
-          {mode === 'create-past' && cart.length === 0 && (
+          {cart.length === 0 && (
             <button
               onClick={() => { hapticLight(); setShowPicker(true); }}
               className="w-full flex items-center justify-center gap-2 px-3 py-6 rounded-2xl border border-dashed border-white/[0.08] active:bg-white/[0.03] text-zinc-500 text-sm"
@@ -367,71 +459,20 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             </button>
           )}
 
-          {mode === 'create-past' && cart.length > 0 && (
-            <div className="space-y-1.5">
-              {cart.map((c) => (
-                <div
-                  key={c.template.drinkDefinitionId}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]"
-                >
-                  <DrinkIcon category={c.template.category} className="w-5 h-5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{c.template.drinkName}</p>
-                    <p className="text-[10px] text-zinc-600">
-                      {c.template.abvPercent}% · {c.template.volumeMl}ml · {(c.template.standardDrinks * c.quantity).toFixed(1)} std
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { hapticLight(); decCart(c.template.drinkDefinitionId); }}
-                      className="w-7 h-7 rounded-lg bg-white/[0.05] active:bg-white/[0.1] flex items-center justify-center"
-                    >
-                      <Minus className="w-3.5 h-3.5 text-zinc-400" />
-                    </button>
-                    <span className="w-6 text-center text-sm font-mono font-semibold">{c.quantity}</span>
-                    <button
-                      onClick={() => { hapticLight(); incCart(c.template.drinkDefinitionId); }}
-                      className="w-7 h-7 rounded-lg bg-white/[0.05] active:bg-white/[0.1] flex items-center justify-center"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-zinc-400" />
-                    </button>
-                    <button
-                      onClick={() => { hapticWarning(); removeCart(c.template.drinkDefinitionId); }}
-                      className="w-7 h-7 rounded-lg active:bg-red-500/10 flex items-center justify-center"
-                      aria-label="Remove"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-zinc-600" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <p className="text-[10px] text-zinc-600 text-center pt-1">
-                {totalStandardDrinks.toFixed(1)} std drinks total
-              </p>
-            </div>
+          {cart.length > 0 && (
+            <DrinkCart
+              items={cart.map<DrinkCartItem>((c) => ({
+                key: c.key,
+                template: c.template,
+                quantity: c.quantity,
+              }))}
+              onInc={incCart}
+              onDec={decCart}
+              onRemove={removeCart}
+              totalStandardDrinks={totalStandardDrinks}
+            />
           )}
 
-          {mode === 'edit' && existingDrinks.length > 0 && (
-            <div className="space-y-1.5">
-              {existingDrinks.map((d) => (
-                <div
-                  key={d.id}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]"
-                >
-                  <DrinkIcon category={d.category} className="w-5 h-5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{d.drinkName}</p>
-                    <p className="text-[10px] text-zinc-600">
-                      {d.abvPercent}% · {d.volumeMl}ml · {d.standardDrinks.toFixed(1)} std
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <p className="text-[10px] text-zinc-600 text-center pt-1">
-                Drinks aren&apos;t editable here
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Mood */}
@@ -465,24 +506,22 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
           />
         </label>
 
-        {/* Photos (create-past only) */}
-        {mode === 'create-past' && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-zinc-500">
-                Photos {photos.length > 0 && `(${photos.length})`}
-              </span>
-              <button
-                onClick={handleAddPhoto}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] text-zinc-400 text-[11px] font-semibold active:bg-white/[0.08]"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                Add
-              </button>
-            </div>
-            {photos.length > 0 && <PhotoGallery photos={photos} onRemove={removePhoto} />}
+        {/* Photos */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-zinc-500">
+              Photos {photos.length > 0 && `(${photos.length})`}
+            </span>
+            <button
+              onClick={handleAddPhoto}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] text-zinc-400 text-[11px] font-semibold active:bg-white/[0.08]"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              Add
+            </button>
           </div>
-        )}
+          {photos.length > 0 && <PhotoGallery photos={photos} onRemove={removePhoto} />}
+        </div>
 
         {/* Inline validation hint */}
         {validationError && (

@@ -566,16 +566,88 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return;
     }
 
+    // If photos changed, sync session_photos rows so the session detail page
+    // (which reads from session_photos, not feed_items.photos) stays in sync.
+    if (updates.photos !== undefined && item?.sessionId) {
+      const sessionId = item.sessionId;
+      const newPhotoUrls = updates.photos;
+
+      // Delete all existing session_photos for this session, then reinsert.
+      const { error: deletePhotoErr } = await supabase
+        .from('session_photos')
+        .delete()
+        .eq('session_id', sessionId);
+
+      if (deletePhotoErr) {
+        console.error('Failed to delete session_photos on edit:', deletePhotoErr);
+        useUIStore.getState().addToast('Photos may be out of sync — try again', 'error');
+        // Do NOT roll back the feed_items update — partial sync is better than losing the edit.
+      } else if (newPhotoUrls.length > 0) {
+        const { data: insertedPhotos, error: insertPhotoErr } = await supabase
+          .from('session_photos')
+          .insert(
+            newPhotoUrls.map((url, i) => ({
+              id: crypto.randomUUID(),
+              session_id: sessionId,
+              storage_path: '',
+              url,
+              sort_order: i,
+            })),
+          )
+          .select('id, url, sort_order');
+
+        if (insertPhotoErr) {
+          console.error('Failed to insert session_photos on edit:', insertPhotoErr);
+          useUIStore.getState().addToast('Photos may be out of sync — try again', 'error');
+        } else {
+          // Update local session store so the session detail page sees the new
+          // photos without a full refetch.
+          const sessionStore = useSessionStore.getState();
+          const ownerHistory = sessionStore.sessionsByUser[item.userId] ?? [];
+          const sortedPhotos = (insertedPhotos ?? []).sort((a, b) => a.sort_order - b.sort_order);
+          useSessionStore.setState({
+            sessionsByUser: {
+              ...sessionStore.sessionsByUser,
+              [item.userId]: ownerHistory.map((sess) => {
+                if (sess.id !== sessionId) return sess;
+                return {
+                  ...sess,
+                  photos: sortedPhotos.map((p) => p.url),
+                  photoIds: sortedPhotos.map((p) => p.id),
+                };
+              }),
+            },
+          });
+        }
+      } else {
+        // Photos cleared — update local session store to reflect empty photos.
+        const sessionStore = useSessionStore.getState();
+        const ownerHistory = sessionStore.sessionsByUser[item.userId] ?? [];
+        useSessionStore.setState({
+          sessionsByUser: {
+            ...sessionStore.sessionsByUser,
+            [item.userId]: ownerHistory.map((sess) => {
+              if (sess.id !== sessionId) return sess;
+              return { ...sess, photos: [], photoIds: [] };
+            }),
+          },
+        });
+      }
+    }
+
     // If session summary changed, sync drink_entries and drink_sessions
     if (updates.sessionSummary && item?.sessionId) {
       const s = updates.sessionSummary;
       const sessionId = item.sessionId;
-      const timestamp = new Date().toISOString();
-
       // Generate stable IDs once so DB rows and local-state drinks match.
+      const fallbackTimestamp = new Date().toISOString();
       const newDrinks = (s.drinks ?? []).map((d) => ({
         id: crypto.randomUUID(),
         drink: d,
+        // Prefer real IDs/timestamps from the payload; fall back to sentinels
+        // only when the payload predates the extended summary shape.
+        drinkDefinitionId: d.drinkDefinitionId ?? 'edited',
+        timestamp: d.timestamp ?? fallbackTimestamp,
       }));
 
       // Phase 1: update session metadata and delete old drink entries in parallel.
@@ -600,10 +672,10 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       // Phase 2: insert the new drink entries (delete already succeeded).
       if (newDrinks.length > 0) {
         const { error: insertErr } = await supabase.from('drink_entries').insert(
-          newDrinks.map(({ id, drink }) => ({
+          newDrinks.map(({ id, drink, drinkDefinitionId, timestamp }) => ({
             id,
             session_id: sessionId,
-            drink_definition_id: 'edited',
+            drink_definition_id: drinkDefinitionId,
             drink_name: drink.name,
             emoji: drink.emoji,
             category: drink.category,
@@ -635,9 +707,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
           venue: s.venue,
           totalStandardDrinks: s.totalStandardDrinks,
           durationMinutes: s.durationMinutes,
-          drinks: newDrinks.map(({ id, drink }) => ({
+          drinks: newDrinks.map(({ id, drink, drinkDefinitionId, timestamp }) => ({
             id,
-            drinkDefinitionId: 'edited',
+            drinkDefinitionId,
             drinkName: drink.name,
             emoji: drink.emoji,
             category: drink.category as DrinkCategory,
