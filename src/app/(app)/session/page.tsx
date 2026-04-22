@@ -401,11 +401,11 @@ function SessionPageInner() {
         )}
 
         {bacEstimate && bacEstimate.currentBac >= BAC_LEGAL_LIMIT && !dismissedBacWarning && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/25 px-4 py-3 flex items-start gap-3">
+          <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/25 px-4 py-3 flex items-start gap-3">
             <IconSteeringWheel className="w-5 h-5 text-red-400 shrink-0 mt-0.5" stroke={1.75} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-red-400">Over legal driving limit</p>
-              <p className="text-[11px] text-zinc-400 leading-snug">
+              <p className="text-[11px] text-zinc-300 leading-snug">
                 Estimated BAC is {bacEstimate.currentBac.toFixed(3)}% — do not drive. BAC is an estimate and can be inaccurate; arrange a ride.
               </p>
             </div>
