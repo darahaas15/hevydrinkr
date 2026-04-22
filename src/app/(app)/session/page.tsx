@@ -98,6 +98,11 @@ function SessionPageInner() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['activeSession'] | null>(null);
   const [dismissedMetricsBanner, setDismissedMetricsBanner] = useState(false);
+  const [dismissedBacWarning, setDismissedBacWarning] = useState(false);
+
+  useEffect(() => {
+    setDismissedBacWarning(false);
+  }, [activeSession?.id]);
 
   const timer = useTimer(activeSession?.startedAt || null);
   const updatePeakBac = useSessionStore((s) => s.updatePeakBac);
@@ -395,6 +400,25 @@ function SessionPageInner() {
           </div>
         )}
 
+        {bacEstimate && bacEstimate.currentBac >= BAC_LEGAL_LIMIT && !dismissedBacWarning && (
+          <div className="rounded-xl bg-red-500/10 border border-red-500/25 px-4 py-3 flex items-start gap-3">
+            <IconSteeringWheel className="w-5 h-5 text-red-400 shrink-0 mt-0.5" stroke={1.75} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-400">Over legal driving limit</p>
+              <p className="text-[11px] text-zinc-400 leading-snug">
+                Estimated BAC is {bacEstimate.currentBac.toFixed(3)}% — do not drive. BAC is an estimate and can be inaccurate; arrange a ride.
+              </p>
+            </div>
+            <button
+              onClick={() => setDismissedBacWarning(true)}
+              aria-label="Dismiss warning"
+              className="p-1 -mr-1 text-red-400/60 active:text-red-400"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <BacGauge standardDrinks={totalStdDrinks} drinks={activeDrinks} />
 
         {/* Pace & Context */}
@@ -453,7 +477,7 @@ function SessionPageInner() {
           )}
 
           {/* Disclaimer */}
-          <p className="text-[9px] text-zinc-600 mt-3">{BAC_DISCLAIMER}</p>
+          <p className="text-[11px] text-zinc-500 mt-3 leading-snug">{BAC_DISCLAIMER}</p>
         </div>
 
         <DrinkList drinks={activeDrinks} onRemove={handleRemoveDrink} onAdd={addDrink} />
