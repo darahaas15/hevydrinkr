@@ -22,6 +22,10 @@ export interface FeedItem {
       abvPercent: number;
       volumeMl: number;
       standardDrinks: number;
+      // Populated by newer writes so edits round-trip with the real
+      // drink_definitions row and per-drink times. Older rows omit these.
+      drinkDefinitionId?: string;
+      timestamp?: string;
     }[];
     mood: SessionMood | null;
     prsAchieved: PersonalRecord[];
