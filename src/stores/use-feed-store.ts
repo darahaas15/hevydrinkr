@@ -570,12 +570,15 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (updates.sessionSummary && item?.sessionId) {
       const s = updates.sessionSummary;
       const sessionId = item.sessionId;
-      const timestamp = new Date().toISOString();
-
       // Generate stable IDs once so DB rows and local-state drinks match.
+      const fallbackTimestamp = new Date().toISOString();
       const newDrinks = (s.drinks ?? []).map((d) => ({
         id: crypto.randomUUID(),
         drink: d,
+        // Prefer real IDs/timestamps from the payload; fall back to sentinels
+        // only when the payload predates the extended summary shape.
+        drinkDefinitionId: d.drinkDefinitionId ?? 'edited',
+        timestamp: d.timestamp ?? fallbackTimestamp,
       }));
 
       // Phase 1: update session metadata and delete old drink entries in parallel.
@@ -600,10 +603,10 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       // Phase 2: insert the new drink entries (delete already succeeded).
       if (newDrinks.length > 0) {
         const { error: insertErr } = await supabase.from('drink_entries').insert(
-          newDrinks.map(({ id, drink }) => ({
+          newDrinks.map(({ id, drink, drinkDefinitionId, timestamp }) => ({
             id,
             session_id: sessionId,
-            drink_definition_id: 'edited',
+            drink_definition_id: drinkDefinitionId,
             drink_name: drink.name,
             emoji: drink.emoji,
             category: drink.category,
@@ -635,9 +638,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
           venue: s.venue,
           totalStandardDrinks: s.totalStandardDrinks,
           durationMinutes: s.durationMinutes,
-          drinks: newDrinks.map(({ id, drink }) => ({
+          drinks: newDrinks.map(({ id, drink, drinkDefinitionId, timestamp }) => ({
             id,
-            drinkDefinitionId: 'edited',
+            drinkDefinitionId,
             drinkName: drink.name,
             emoji: drink.emoji,
             category: drink.category as DrinkCategory,
