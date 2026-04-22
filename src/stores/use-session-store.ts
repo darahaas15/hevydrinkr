@@ -31,6 +31,7 @@ interface SessionState {
   abandonSession: () => void;
   addDrink: (drink: DrinkEntry) => void;
   removeDrink: (drinkId: string) => void;
+  restoreDrink: (drink: DrinkEntry) => void;
   addPhoto: (photoDataUrl: string) => void;
   removePhoto: (photoIndex: number) => void;
   addRound: (round: Round) => void;
@@ -490,6 +491,41 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       .then(({ error }) => {
         if (error) console.error('Failed to delete drink entry:', error);
       });
+  },
+
+  // -----------------------------------------------------------------------
+  // Re-insert a previously removed drink (used by undo). Optimistic + DB insert.
+  // No-op if the session is no longer active or was replaced.
+  // -----------------------------------------------------------------------
+  restoreDrink: (drink) => {
+    const { activeSession } = get();
+    if (!activeSession) return;
+    // Prevent duplicate inserts if user taps undo twice or the drink
+    // somehow survived removal.
+    if (activeSession.drinks.some((d) => d.id === drink.id)) return;
+
+    set({
+      activeSession: {
+        ...activeSession,
+        drinks: [...activeSession.drinks, drink],
+        totalStandardDrinks: activeSession.totalStandardDrinks + drink.standardDrinks,
+        totalVolumeMl: (activeSession.totalVolumeMl ?? 0) + drink.volumeMl,
+      },
+    });
+
+    const insertPromise = sessionInsertPromises.get(activeSession.id) ?? Promise.resolve();
+    const gen = _sessionGeneration;
+    insertPromise.then(() => {
+      const current = get().activeSession;
+      if (!current || _sessionGeneration !== gen) return;
+      const sid = current.id;
+      supabase
+        .from('drink_entries')
+        .insert(drinkEntryToRow(drink, sid))
+        .then(({ error }) => {
+          if (error) console.error('Failed to restore drink entry:', error);
+        });
+    });
   },
 
   // -----------------------------------------------------------------------
