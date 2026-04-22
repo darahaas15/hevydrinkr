@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, MapPin, Plus, Minus, Trash2, Camera } from 'lucide-react';
+import { ChevronLeft, MapPin, Plus, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { DrinkSession, DrinkEntry, SessionMood, FeedItem, UserProfile } from '@/types';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -12,6 +12,7 @@ import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkIcon } from '@/components/ui/drink-icon';
+import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
 import { DateTimeField } from '@/components/ui/datetime-field';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, compressImage } from '@/lib/image-utils';
@@ -368,47 +369,17 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
           )}
 
           {mode === 'create-past' && cart.length > 0 && (
-            <div className="space-y-1.5">
-              {cart.map((c) => (
-                <div
-                  key={c.template.drinkDefinitionId}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]"
-                >
-                  <DrinkIcon category={c.template.category} className="w-5 h-5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{c.template.drinkName}</p>
-                    <p className="text-[10px] text-zinc-600">
-                      {c.template.abvPercent}% · {c.template.volumeMl}ml · {(c.template.standardDrinks * c.quantity).toFixed(1)} std
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { hapticLight(); decCart(c.template.drinkDefinitionId); }}
-                      className="w-7 h-7 rounded-lg bg-white/[0.05] active:bg-white/[0.1] flex items-center justify-center"
-                    >
-                      <Minus className="w-3.5 h-3.5 text-zinc-400" />
-                    </button>
-                    <span className="w-6 text-center text-sm font-mono font-semibold">{c.quantity}</span>
-                    <button
-                      onClick={() => { hapticLight(); incCart(c.template.drinkDefinitionId); }}
-                      className="w-7 h-7 rounded-lg bg-white/[0.05] active:bg-white/[0.1] flex items-center justify-center"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-zinc-400" />
-                    </button>
-                    <button
-                      onClick={() => { hapticWarning(); removeCart(c.template.drinkDefinitionId); }}
-                      className="w-7 h-7 rounded-lg active:bg-red-500/10 flex items-center justify-center"
-                      aria-label="Remove"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-zinc-600" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <p className="text-[10px] text-zinc-600 text-center pt-1">
-                {totalStandardDrinks.toFixed(1)} std drinks total
-              </p>
-            </div>
+            <DrinkCart
+              items={cart.map<DrinkCartItem>((c) => ({
+                key: c.template.drinkDefinitionId,
+                template: c.template,
+                quantity: c.quantity,
+              }))}
+              onInc={incCart}
+              onDec={decCart}
+              onRemove={removeCart}
+              totalStandardDrinks={totalStandardDrinks}
+            />
           )}
 
           {mode === 'edit' && existingDrinks.length > 0 && (
