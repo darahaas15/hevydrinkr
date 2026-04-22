@@ -566,6 +566,75 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return;
     }
 
+    // If photos changed, sync session_photos rows so the session detail page
+    // (which reads from session_photos, not feed_items.photos) stays in sync.
+    if (updates.photos !== undefined && item?.sessionId) {
+      const sessionId = item.sessionId;
+      const newPhotoUrls = updates.photos;
+
+      // Delete all existing session_photos for this session, then reinsert.
+      const { error: deletePhotoErr } = await supabase
+        .from('session_photos')
+        .delete()
+        .eq('session_id', sessionId);
+
+      if (deletePhotoErr) {
+        console.error('Failed to delete session_photos on edit:', deletePhotoErr);
+        useUIStore.getState().addToast('Photos may be out of sync — try again', 'error');
+        // Do NOT roll back the feed_items update — partial sync is better than losing the edit.
+      } else if (newPhotoUrls.length > 0) {
+        const { data: insertedPhotos, error: insertPhotoErr } = await supabase
+          .from('session_photos')
+          .insert(
+            newPhotoUrls.map((url, i) => ({
+              id: crypto.randomUUID(),
+              session_id: sessionId,
+              storage_path: '',
+              url,
+              sort_order: i,
+            })),
+          )
+          .select('id, url, sort_order');
+
+        if (insertPhotoErr) {
+          console.error('Failed to insert session_photos on edit:', insertPhotoErr);
+          useUIStore.getState().addToast('Photos may be out of sync — try again', 'error');
+        } else {
+          // Update local session store so the session detail page sees the new
+          // photos without a full refetch.
+          const sessionStore = useSessionStore.getState();
+          const ownerHistory = sessionStore.sessionsByUser[item.userId] ?? [];
+          const sortedPhotos = (insertedPhotos ?? []).sort((a, b) => a.sort_order - b.sort_order);
+          useSessionStore.setState({
+            sessionsByUser: {
+              ...sessionStore.sessionsByUser,
+              [item.userId]: ownerHistory.map((sess) => {
+                if (sess.id !== sessionId) return sess;
+                return {
+                  ...sess,
+                  photos: sortedPhotos.map((p) => p.url),
+                  photoIds: sortedPhotos.map((p) => p.id),
+                };
+              }),
+            },
+          });
+        }
+      } else {
+        // Photos cleared — update local session store to reflect empty photos.
+        const sessionStore = useSessionStore.getState();
+        const ownerHistory = sessionStore.sessionsByUser[item.userId] ?? [];
+        useSessionStore.setState({
+          sessionsByUser: {
+            ...sessionStore.sessionsByUser,
+            [item.userId]: ownerHistory.map((sess) => {
+              if (sess.id !== sessionId) return sess;
+              return { ...sess, photos: [], photoIds: [] };
+            }),
+          },
+        });
+      }
+    }
+
     // If session summary changed, sync drink_entries and drink_sessions
     if (updates.sessionSummary && item?.sessionId) {
       const s = updates.sessionSummary;

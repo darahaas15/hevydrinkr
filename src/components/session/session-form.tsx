@@ -27,6 +27,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
 // Aggregate-by-drink-definition shopping-cart row.
 interface CartItem {
+  key: string; // group key — usually drinkDefinitionId, but drink.id for legacy
   template: DrinkEntry; // any one instance — name/emoji/abv come from it
   quantity: number;
 }
@@ -35,12 +36,17 @@ function groupDrinksIntoCart(drinks: DrinkEntry[]): CartItem[] {
   const map = new Map<string, CartItem>();
   const order: string[] = [];
   for (const d of drinks) {
-    const existing = map.get(d.drinkDefinitionId);
+    // Legacy rows edited via the old modal have drinkDefinitionId === 'edited'.
+    // Don't collapse them into one row — key by drink.id so each legacy drink
+    // stays distinct. Otherwise touching the cart would rewrite disparate
+    // drinks to a single template.
+    const key = d.drinkDefinitionId === 'edited' ? d.id : d.drinkDefinitionId;
+    const existing = map.get(key);
     if (existing) {
       existing.quantity += 1;
     } else {
-      order.push(d.drinkDefinitionId);
-      map.set(d.drinkDefinitionId, { template: d, quantity: 1 });
+      order.push(key);
+      map.set(key, { key, template: d, quantity: 1 });
     }
   }
   return order.map((id) => map.get(id)!);
@@ -84,7 +90,6 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const updateFeedItem = useFeedStore((s) => s.updateFeedItem);
   const addPR = useProfileStore((s) => s.addPR);
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
-  const triggerCelebration = useUIStore((s) => s.triggerCelebration);
   const addToast = useUIStore((s) => s.addToast);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
 
@@ -151,36 +156,32 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   // ── Handlers ─────────────────────────────────────────────────────────
   const addToCart = (drink: DrinkEntry) => {
     setCart((prev) => {
-      const existing = prev.find((c) => c.template.drinkDefinitionId === drink.drinkDefinitionId);
+      // New drinks from the picker always have a real drinkDefinitionId.
+      const key = drink.drinkDefinitionId;
+      const existing = prev.find((c) => c.key === key);
       if (existing) {
         return prev.map((c) =>
-          c.template.drinkDefinitionId === drink.drinkDefinitionId
-            ? { ...c, quantity: c.quantity + 1 }
-            : c,
+          c.key === key ? { ...c, quantity: c.quantity + 1 } : c,
         );
       }
-      return [...prev, { template: drink, quantity: 1 }];
+      return [...prev, { key, template: drink, quantity: 1 }];
     });
     setShowPicker(false);
     hapticLight();
   };
 
-  const incCart = (defId: string) =>
+  const incCart = (key: string) =>
     setCart((prev) =>
-      prev.map((c) =>
-        c.template.drinkDefinitionId === defId ? { ...c, quantity: c.quantity + 1 } : c,
-      ),
+      prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity + 1 } : c)),
     );
-  const decCart = (defId: string) =>
+  const decCart = (key: string) =>
     setCart((prev) =>
       prev
-        .map((c) =>
-          c.template.drinkDefinitionId === defId ? { ...c, quantity: c.quantity - 1 } : c,
-        )
+        .map((c) => (c.key === key ? { ...c, quantity: c.quantity - 1 } : c))
         .filter((c) => c.quantity > 0),
     );
-  const removeCart = (defId: string) =>
-    setCart((prev) => prev.filter((c) => c.template.drinkDefinitionId !== defId));
+  const removeCart = (key: string) =>
+    setCart((prev) => prev.filter((c) => c.key !== key));
 
   const handleAddPhoto = async () => {
     const file = await pickImage();
@@ -261,13 +262,14 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
     const originalDrinksCount = existingSession.drinks.length;
     const originalGroupCounts = new Map<string, number>();
     for (const d of existingSession.drinks) {
-      originalGroupCounts.set(
-        d.drinkDefinitionId,
-        (originalGroupCounts.get(d.drinkDefinitionId) ?? 0) + 1,
-      );
+      // Mirror the same keying logic as groupDrinksIntoCart so the comparison
+      // is apples-to-apples: legacy 'edited' drinks key by drink.id, not by
+      // drinkDefinitionId (which would be 'edited' for all of them).
+      const groupKey = d.drinkDefinitionId === 'edited' ? d.id : d.drinkDefinitionId;
+      originalGroupCounts.set(groupKey, (originalGroupCounts.get(groupKey) ?? 0) + 1);
     }
     const newGroupCounts = new Map<string, number>();
-    for (const c of cart) newGroupCounts.set(c.template.drinkDefinitionId, c.quantity);
+    for (const c of cart) newGroupCounts.set(c.key, c.quantity);
 
     let drinksChanged = drinksForSubmit.length !== originalDrinksCount;
     if (!drinksChanged) {
@@ -460,7 +462,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
           {cart.length > 0 && (
             <DrinkCart
               items={cart.map<DrinkCartItem>((c) => ({
-                key: c.template.drinkDefinitionId,
+                key: c.key,
                 template: c.template,
                 quantity: c.quantity,
               }))}
