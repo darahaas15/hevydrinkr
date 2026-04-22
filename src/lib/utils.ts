@@ -1,3 +1,5 @@
+import type { DrinkCategory, DrinkEntry } from '@/types';
+
 export function cn(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ');
 }
@@ -37,6 +39,57 @@ export function formatNumber(n: number, decimals = 1): string {
 export function calculateStandardDrinks(volumeMl: number, abvPercent: number): number {
   const alcoholGrams = volumeMl * (abvPercent / 100) * 0.789;
   return Math.round((alcoholGrams / 14) * 10) / 10;
+}
+
+// Normal serving size per category. Oversized entries are split into pieces of
+// roughly this size so one DrinkEntry ≈ one serving (pint of beer, glass of
+// wine, shot of spirit, etc.). `custom` is omitted — we infer its unit from
+// ABV, since custom drinks don't carry a real category.
+export const DRINK_CATEGORY_UNIT_ML: Partial<Record<DrinkCategory, number>> = {
+  beer: 500,
+  cider: 500,
+  seltzer: 500,
+  wine: 150,
+  cocktail: 60,
+  whiskey: 30,
+  vodka: 30,
+  rum: 30,
+  gin: 30,
+  brandy: 30,
+  tequila: 30,
+  shot: 30,
+  desi: 30,
+};
+
+// 10% tolerance lets common sizes stay as one entry (e.g. a 330ml beer can
+// doesn't get compared against the 500ml pint unit and split).
+const SPLIT_TOLERANCE = 1.1;
+
+function unitForEntry(entry: DrinkEntry): number | null {
+  const fixed = DRINK_CATEGORY_UNIT_ML[entry.category];
+  if (fixed) return fixed;
+  // Custom drinks: size the unit from ABV so a 500ml 5% beer doesn't split
+  // against a shot unit, and a 300ml 40% spirit doesn't stay as one entry.
+  if (entry.abvPercent >= 20) return 30;
+  if (entry.abvPercent >= 8) return 150;
+  return 500;
+}
+
+export function splitOversizedDrink(entry: DrinkEntry): DrinkEntry[] {
+  const unit = unitForEntry(entry);
+  if (!unit || entry.volumeMl <= unit * SPLIT_TOLERANCE) return [entry];
+
+  const n = Math.max(2, Math.round(entry.volumeMl / unit));
+  const subVolume = Math.round(entry.volumeMl / n);
+  const subStd = calculateStandardDrinks(subVolume, entry.abvPercent);
+
+  return Array.from({ length: n }, () => ({
+    ...entry,
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    volumeMl: subVolume,
+    standardDrinks: subStd,
+  }));
 }
 
 export function getRelativeDate(daysAgo: number): string {

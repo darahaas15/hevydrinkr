@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, useDragControls } from 'framer-motion';
 import { Search, X, Plus, ChevronLeft } from 'lucide-react';
 import { DRINK_LIBRARY, getDrinksByCategory, searchDrinks } from '@/lib/data/drink-library';
-import { calculateStandardDrinks } from '@/lib/utils';
+import { calculateStandardDrinks, splitOversizedDrink } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { supabase } from '@/lib/supabase/client';
@@ -100,7 +100,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
 
   const handleSelect = (def: DrinkDefinition) => {
     hapticMedium();
-    onSelect({
+    const entry: DrinkEntry = {
       id: crypto.randomUUID(),
       drinkDefinitionId: def.id,
       drinkName: def.name,
@@ -112,7 +112,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
       timestamp: new Date().toISOString(),
       roundId: null,
       notes: '',
-    });
+    };
+    for (const sub of splitOversizedDrink(entry)) onSelect(sub);
   };
 
   const handleCustomDrink = async () => {
@@ -154,7 +155,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
     }
 
     // Select it immediately
-    onSelect({
+    const entry: DrinkEntry = {
       id: crypto.randomUUID(),
       drinkDefinitionId: inserted ? `custom-${(inserted as CustomDrinkRow).id}` : `custom-${crypto.randomUUID()}`,
       drinkName: customName.trim(),
@@ -166,7 +167,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
       timestamp: new Date().toISOString(),
       roundId: null,
       notes: '',
-    });
+    };
+    for (const sub of splitOversizedDrink(entry)) onSelect(sub);
   };
 
   return (
