@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
-import { AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 import { useUIStore } from '@/stores/use-ui-store';
 import { cn } from '@/lib/utils';
 import { hapticLight } from '@/lib/haptics';
@@ -71,6 +71,30 @@ export function ToastContainer() {
               >
                 <Icon className={cn('w-4 h-4 shrink-0', s.iconColor)} />
                 <p className="text-[13px] text-zinc-200 flex-1">{toast.message}</p>
+                {toast.action && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      hapticLight();
+                      toast.action!.onPress();
+                      removeToast(toast.id);
+                    }}
+                    className={cn('text-[13px] font-semibold px-2 py-1 rounded-md', s.iconColor)}
+                  >
+                    {toast.action.label}
+                  </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    hapticLight();
+                    removeToast(toast.id);
+                  }}
+                  aria-label="Dismiss"
+                  className="p-1 -mr-1 text-zinc-500 active:text-zinc-300"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </motion.div>
             );
           })}
