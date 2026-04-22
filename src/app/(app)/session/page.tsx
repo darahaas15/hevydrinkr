@@ -50,6 +50,7 @@ function SessionPageInner() {
   const endSession = useSessionStore((s) => s.endSession);
   const addDrink = useSessionStore((s) => s.addDrink);
   const removeDrink = useSessionStore((s) => s.removeDrink);
+  const restoreDrink = useSessionStore((s) => s.restoreDrink);
   const updateVenue = useSessionStore((s) => s.updateVenue);
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const addPhoto = useSessionStore((s) => s.addPhoto);
@@ -103,6 +104,18 @@ function SessionPageInner() {
 
   const activeDrinks = activeSession?.drinks ?? [];
   const totalStdDrinks = activeDrinks.reduce((sum, d) => sum + (d?.standardDrinks ?? 0), 0);
+
+  const handleRemoveDrink = (drink: typeof activeDrinks[number]) => {
+    removeDrink(drink.id);
+    addToast(`Removed ${drink.drinkName}`, {
+      type: 'info',
+      durationMs: 6000,
+      action: {
+        label: 'Undo',
+        onPress: () => restoreDrink(drink),
+      },
+    });
+  };
 
   // Pace & context calculations
   const myPosts = (currentUser ? userPostsMap[currentUser.id] ?? [] : []).filter((f) => f.sessionSummary);
@@ -443,7 +456,7 @@ function SessionPageInner() {
           <p className="text-[9px] text-zinc-600 mt-3">{BAC_DISCLAIMER}</p>
         </div>
 
-        <DrinkList drinks={activeDrinks} onRemove={removeDrink} onAdd={addDrink} />
+        <DrinkList drinks={activeDrinks} onRemove={handleRemoveDrink} onAdd={addDrink} />
 
         {/* Session Photos */}
         {(activeSession.photos?.length ?? 0) > 0 && (
