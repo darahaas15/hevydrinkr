@@ -368,7 +368,7 @@ function SessionPageInner() {
               onClick={() => setShowAbandonConfirm(true)}
               className="px-3 py-2 rounded-xl bg-white/[0.06] text-zinc-500 text-sm"
             >
-              Cancel
+              Abandon
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
