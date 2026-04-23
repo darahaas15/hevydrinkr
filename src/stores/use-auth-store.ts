@@ -88,6 +88,21 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
         get().fetchAllUsers();
         get().fetchFollowRequests();
         get().fetchOutgoingRequests();
+        supabase
+          .channel('follow-requests')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'follow_requests',
+              filter: `target_id=eq.${session.user.id}`,
+            },
+            () => {
+              get().fetchFollowRequests();
+            }
+          )
+          .subscribe();
         return;
       }
     }
@@ -142,6 +157,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   },
 
   logout: async () => {
+    supabase.removeChannel(supabase.channel('follow-requests'));
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
   },
@@ -362,6 +378,20 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
         ),
       });
     }
+      try {
+        const { currentUser: cu } = get();
+        if (cu) {
+          await supabase.functions.invoke('send-notification', {
+            body: {
+              recipientId: targetId,
+              type: 'follow_request',
+              title: 'Follow Request',
+              body: `@${cu.username} requested to follow you`,
+              data: { userId: cu.id },
+            },
+          });
+        }
+      } catch { /* notification failure is non-critical */ }
   },
 
   cancelFollowRequest: async (targetId) => {
@@ -406,6 +436,20 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       set({ followRequests, currentUser, allUsers });
       useUIStore.getState().addToast('Failed to accept request', 'error');
     }
+    try {
+      const { currentUser: cu } = get();
+      if (cu && request.requesterId) {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            recipientId: request.requesterId,
+            type: 'follow_request_accepted',
+            title: 'Follow Request Accepted',
+            body: `@${cu.username} accepted your follow request`,
+            data: { userId: cu.id },
+          },
+        });
+      }
+    } catch { /* notification failure is non-critical */ }
   },
 
   rejectFollowRequest: async (requestId) => {
