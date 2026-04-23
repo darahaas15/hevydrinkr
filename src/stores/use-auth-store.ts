@@ -37,6 +37,7 @@ const USERS_STALE_MS = 120_000;
 let _usersLastFetched = 0;
 let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 let _outgoingRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
+let _followsChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -142,6 +143,59 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
             }
           )
           .subscribe();
+        _followsChannel = supabase
+          .channel('follows-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'follows',
+              filter: `follower_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.old as { follower_id?: string; following_id?: string };
+              const targetId = row.following_id;
+              if (!targetId) return;
+              const { currentUser, allUsers } = get();
+              if (!currentUser) return;
+              if (!currentUser.following.includes(targetId)) return; // idempotent
+              set({
+                currentUser: { ...currentUser, following: currentUser.following.filter((id) => id !== targetId) },
+                allUsers: allUsers.map((u) => {
+                  if (u.id === currentUser.id) return { ...u, following: u.following.filter((id) => id !== targetId) };
+                  if (u.id === targetId) return { ...u, followers: u.followers.filter((id) => id !== currentUser.id) };
+                  return u;
+                }),
+              });
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'follows',
+              filter: `following_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.old as { follower_id?: string; following_id?: string };
+              const followerId = row.follower_id;
+              if (!followerId) return;
+              const { currentUser, allUsers } = get();
+              if (!currentUser) return;
+              if (!currentUser.followers.includes(followerId)) return; // idempotent
+              set({
+                currentUser: { ...currentUser, followers: currentUser.followers.filter((id) => id !== followerId) },
+                allUsers: allUsers.map((u) => {
+                  if (u.id === currentUser.id) return { ...u, followers: u.followers.filter((id) => id !== followerId) };
+                  if (u.id === followerId) return { ...u, following: u.following.filter((id) => id !== currentUser.id) };
+                  return u;
+                }),
+              });
+            }
+          )
+          .subscribe();
         return;
       }
     }
@@ -203,6 +257,10 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (_outgoingRequestsChannel) {
       supabase.removeChannel(_outgoingRequestsChannel);
       _outgoingRequestsChannel = null;
+    }
+    if (_followsChannel) {
+      supabase.removeChannel(_followsChannel);
+      _followsChannel = null;
     }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
