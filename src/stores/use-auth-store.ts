@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserProfile, Gender } from '@/types';
+import type { UserProfile, Gender, FollowRequest } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { hapticMedium } from '@/lib/haptics';
 import { useUIStore } from '@/stores/use-ui-store';
@@ -11,15 +11,24 @@ interface AuthState {
   allUsers: UserProfile[];
   isAuthenticated: boolean;
   isLoading: boolean;
+  followRequests: FollowRequest[];
+  outgoingRequests: FollowRequest[];
 
   initialize: () => Promise<void>;
   signup: (email: string, password: string, username: string, displayName: string, gender?: Gender, weightKg?: number, heightCm?: number) => Promise<string | null>;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
-  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'heightCm' | 'avatarUrl'>>) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'heightCm' | 'avatarUrl' | 'isPrivate'>>) => Promise<void>;
   getUserById: (id: string) => UserProfile | undefined;
   fetchAllUsers: (force?: boolean) => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
+  fetchFollowRequests: () => Promise<void>;
+  fetchOutgoingRequests: () => Promise<void>;
+  sendFollowRequest: (targetId: string) => Promise<void>;
+  cancelFollowRequest: (targetId: string) => Promise<void>;
+  acceptFollowRequest: (requestId: string) => Promise<void>;
+  rejectFollowRequest: (requestId: string) => Promise<void>;
+  removeFollower: (followerId: string) => Promise<void>;
 }
 
 // Guard against rapid follow/unfollow taps causing conflicting DB operations
@@ -39,6 +48,7 @@ function profileFromRow(row: Record<string, unknown>): UserProfile {
     heightCm: (row.height_cm as number) ?? null,
     joinedAt: row.created_at as string,
     isDemo: false,
+    isPrivate: (row.is_private as boolean) || false,
     followers: (row.followers as string[]) || [],
     following: (row.following as string[]) || [],
   };
@@ -49,6 +59,8 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   allUsers: [],
   isAuthenticated: false,
   isLoading: true,
+  followRequests: [],
+  outgoingRequests: [],
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -74,6 +86,8 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
 
         set({ currentUser: user, isAuthenticated: true, isLoading: false });
         get().fetchAllUsers();
+        get().fetchFollowRequests();
+        get().fetchOutgoingRequests();
         return;
       }
     }
@@ -129,7 +143,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
 
   logout: async () => {
     await supabase.auth.signOut();
-    set({ currentUser: null, allUsers: [], isAuthenticated: false });
+    set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
   },
 
   updateProfile: async (updates) => {
@@ -153,6 +167,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (updates.weightKg !== undefined) dbUpdates.weight_kg = updates.weightKg;
     if (updates.heightCm !== undefined) dbUpdates.height_cm = updates.heightCm;
     if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+    if (updates.isPrivate !== undefined) dbUpdates.is_private = updates.isPrivate;
     dbUpdates.updated_at = new Date().toISOString();
 
     const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', currentUser.id);
@@ -170,7 +185,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (!force && Date.now() - _usersLastFetched < USERS_STALE_MS) return;
     _usersLastFetched = Date.now();
     const [{ data: profiles }, { data: allFollows }] = await Promise.all([
-      supabase.from('profiles').select('id, username, display_name, avatar_url, bio, created_at').limit(500),
+      supabase.from('profiles').select('id, username, display_name, avatar_url, bio, is_private, created_at').limit(500),
       supabase.from('follows').select('follower_id, following_id').limit(5000),
     ]);
     if (!profiles) return;
@@ -206,47 +221,235 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     hapticMedium();
 
     const isFollowing = currentUser.following.includes(userId);
-    const prevCurrentUser = currentUser;
-    const prevAllUsers = allUsers;
+    const targetUser = allUsers.find((u) => u.id === userId);
 
-    // Optimistic update
-    const updatedFollowing = isFollowing
-      ? currentUser.following.filter((id) => id !== userId)
-      : [...currentUser.following, userId];
+    if (isFollowing) {
+      const prevCurrentUser = currentUser;
+      const prevAllUsers = allUsers;
+      const updatedFollowing = currentUser.following.filter((id) => id !== userId);
+      const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
+      const updatedAllUsers = allUsers.map((user) => {
+        if (user.id === currentUser.id) return updatedCurrentUser;
+        if (user.id === userId) {
+          return { ...user, followers: user.followers.filter((id) => id !== currentUser.id) };
+        }
+        return user;
+      });
+      set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
 
-    const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
+      const { error } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId);
 
-    const updatedAllUsers = allUsers.map((user) => {
-      if (user.id === currentUser.id) return updatedCurrentUser;
-      if (user.id === userId) {
-        return {
-          ...user,
-          followers: isFollowing
-            ? user.followers.filter((id) => id !== currentUser.id)
-            : [...user.followers, currentUser.id],
-        };
+      if (error) {
+        console.error('Failed to unfollow:', error);
+        set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
       }
-      return user;
-    });
+    } else if (targetUser?.isPrivate) {
+      await get().sendFollowRequest(userId);
+    } else {
+      const prevCurrentUser = currentUser;
+      const prevAllUsers = allUsers;
+      const updatedFollowing = [...currentUser.following, userId];
+      const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
+      const updatedAllUsers = allUsers.map((user) => {
+        if (user.id === currentUser.id) return updatedCurrentUser;
+        if (user.id === userId) {
+          return { ...user, followers: [...user.followers, currentUser.id] };
+        }
+        return user;
+      });
+      set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
 
-    set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
+      const { error } = await supabase
+        .from('follows')
+        .insert({ follower_id: currentUser.id, following_id: userId });
 
-    // Sync to DB
-    const { error } = isFollowing
-      ? await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', currentUser.id)
-          .eq('following_id', userId)
-      : await supabase
-          .from('follows')
-          .insert({ follower_id: currentUser.id, following_id: userId });
-
-    if (error) {
-      console.error('Failed to toggle follow:', error);
-      set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
+      if (error) {
+        console.error('Failed to follow:', error);
+        set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
+      }
     }
     followInFlight.delete(userId);
+  },
+
+  fetchFollowRequests: async () => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+    const { data } = await supabase
+      .from('follow_requests')
+      .select('id, requester_id, target_id, status, created_at, updated_at, requester:profiles!follow_requests_requester_id_fkey(display_name, avatar_url, username)')
+      .eq('target_id', currentUser.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      set({
+        followRequests: data.map((r) => ({
+          id: r.id,
+          requesterId: r.requester_id,
+          targetId: r.target_id,
+          status: r.status as 'pending',
+          createdAt: r.created_at,
+          requesterProfile: r.requester ? {
+            displayName: (r.requester as Record<string, string>).display_name,
+            avatarUrl: (r.requester as Record<string, string>).avatar_url,
+            username: (r.requester as Record<string, string>).username,
+          } : undefined,
+        })),
+      });
+    }
+  },
+
+  fetchOutgoingRequests: async () => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+    const { data } = await supabase
+      .from('follow_requests')
+      .select('id, requester_id, target_id, status, created_at')
+      .eq('requester_id', currentUser.id)
+      .eq('status', 'pending');
+
+    if (data) {
+      set({
+        outgoingRequests: data.map((r) => ({
+          id: r.id,
+          requesterId: r.requester_id,
+          targetId: r.target_id,
+          status: r.status as 'pending',
+          createdAt: r.created_at,
+        })),
+      });
+    }
+  },
+
+  sendFollowRequest: async (targetId) => {
+    const { currentUser, outgoingRequests } = get();
+    if (!currentUser) return;
+
+    await supabase
+      .from('follow_requests')
+      .delete()
+      .eq('requester_id', currentUser.id)
+      .eq('target_id', targetId)
+      .in('status', ['accepted', 'rejected']);
+
+    const optimistic: FollowRequest = {
+      id: crypto.randomUUID(),
+      requesterId: currentUser.id,
+      targetId,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    set({ outgoingRequests: [...outgoingRequests, optimistic] });
+
+    const { data, error } = await supabase
+      .from('follow_requests')
+      .insert({ requester_id: currentUser.id, target_id: targetId })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Failed to send follow request:', error);
+      set({ outgoingRequests: outgoingRequests.filter((r) => r.targetId !== targetId) });
+      useUIStore.getState().addToast('Failed to send request', 'error');
+    } else if (data) {
+      set({
+        outgoingRequests: get().outgoingRequests.map((r) =>
+          r.targetId === targetId ? { ...r, id: data.id } : r
+        ),
+      });
+    }
+  },
+
+  cancelFollowRequest: async (targetId) => {
+    const { outgoingRequests } = get();
+    const prev = outgoingRequests;
+    set({ outgoingRequests: outgoingRequests.filter((r) => r.targetId !== targetId) });
+
+    const { error } = await supabase
+      .from('follow_requests')
+      .delete()
+      .eq('requester_id', get().currentUser?.id ?? '')
+      .eq('target_id', targetId);
+
+    if (error) {
+      console.error('Failed to cancel follow request:', error);
+      set({ outgoingRequests: prev });
+    }
+  },
+
+  acceptFollowRequest: async (requestId) => {
+    const { followRequests, currentUser, allUsers } = get();
+    const request = followRequests.find((r) => r.id === requestId);
+    if (!request || !currentUser) return;
+
+    set({
+      followRequests: followRequests.filter((r) => r.id !== requestId),
+      currentUser: { ...currentUser, followers: [...currentUser.followers, request.requesterId] },
+      allUsers: allUsers.map((u) => {
+        if (u.id === currentUser.id) return { ...u, followers: [...u.followers, request.requesterId] };
+        if (u.id === request.requesterId) return { ...u, following: [...u.following, currentUser.id] };
+        return u;
+      }),
+    });
+
+    const { error } = await supabase
+      .from('follow_requests')
+      .update({ status: 'accepted' })
+      .eq('id', requestId);
+
+    if (error) {
+      console.error('Failed to accept follow request:', error);
+      set({ followRequests, currentUser, allUsers });
+      useUIStore.getState().addToast('Failed to accept request', 'error');
+    }
+  },
+
+  rejectFollowRequest: async (requestId) => {
+    const { followRequests } = get();
+    const prev = followRequests;
+    set({ followRequests: followRequests.filter((r) => r.id !== requestId) });
+
+    const { error } = await supabase
+      .from('follow_requests')
+      .update({ status: 'rejected' })
+      .eq('id', requestId);
+
+    if (error) {
+      console.error('Failed to reject follow request:', error);
+      set({ followRequests: prev });
+    }
+  },
+
+  removeFollower: async (followerId) => {
+    const { currentUser, allUsers } = get();
+    if (!currentUser) return;
+
+    const prevCurrentUser = currentUser;
+    const prevAllUsers = allUsers;
+    set({
+      currentUser: { ...currentUser, followers: currentUser.followers.filter((id) => id !== followerId) },
+      allUsers: allUsers.map((u) => {
+        if (u.id === currentUser.id) return { ...u, followers: u.followers.filter((id) => id !== followerId) };
+        if (u.id === followerId) return { ...u, following: u.following.filter((id) => id !== currentUser.id) };
+        return u;
+      }),
+    });
+
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .eq('follower_id', followerId)
+      .eq('following_id', currentUser.id);
+
+    if (error) {
+      console.error('Failed to remove follower:', error);
+      set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
+      useUIStore.getState().addToast('Failed to remove follower', 'error');
+    }
   },
 }), {
   name: 'hd-auth',
