@@ -14,6 +14,7 @@ CREATE TABLE profiles (
   weight_kg    REAL DEFAULT 70,
   height_cm    REAL DEFAULT NULL,
   is_demo      BOOLEAN DEFAULT FALSE,
+  is_private   BOOLEAN DEFAULT FALSE,
   created_at   TIMESTAMPTZ DEFAULT now(),
   updated_at   TIMESTAMPTZ DEFAULT now()
 );
@@ -27,6 +28,19 @@ CREATE TABLE follows (
   CHECK (follower_id != following_id)
 );
 CREATE INDEX idx_follows_following ON follows(following_id);
+
+-- 2b. Follow Requests
+CREATE TABLE follow_requests (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  target_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(requester_id, target_id)
+);
+CREATE INDEX idx_follow_requests_target_pending ON follow_requests(target_id) WHERE status = 'pending';
+CREATE INDEX idx_follow_requests_requester ON follow_requests(requester_id);
 
 -- 3. Drink Sessions
 CREATE TABLE drink_sessions (
@@ -320,7 +334,18 @@ CREATE POLICY "profiles_update" ON profiles FOR UPDATE TO authenticated USING (a
 -- Follows: anyone can read, owner can insert/delete
 CREATE POLICY "follows_select" ON follows FOR SELECT TO authenticated USING (true);
 CREATE POLICY "follows_insert" ON follows FOR INSERT TO authenticated WITH CHECK (auth.uid() = follower_id);
-CREATE POLICY "follows_delete" ON follows FOR DELETE TO authenticated USING (auth.uid() = follower_id);
+CREATE POLICY "follows_delete" ON follows FOR DELETE TO authenticated USING (auth.uid() = follower_id OR auth.uid() = following_id);
+
+-- Follow requests: only requester/target can see; requester inserts; target updates; either deletes
+ALTER TABLE follow_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "follow_requests_select" ON follow_requests FOR SELECT TO authenticated
+  USING (auth.uid() = requester_id OR auth.uid() = target_id);
+CREATE POLICY "follow_requests_insert" ON follow_requests FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = requester_id);
+CREATE POLICY "follow_requests_update" ON follow_requests FOR UPDATE TO authenticated
+  USING (auth.uid() = target_id);
+CREATE POLICY "follow_requests_delete" ON follow_requests FOR DELETE TO authenticated
+  USING (auth.uid() = requester_id OR auth.uid() = target_id);
 
 -- Sessions: anyone can read (leaderboards), owner can CUD
 CREATE POLICY "sessions_select" ON drink_sessions FOR SELECT TO authenticated USING (true);
