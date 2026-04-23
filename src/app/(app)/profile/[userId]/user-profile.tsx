@@ -51,10 +51,10 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
     fetchOutgoingRequests();
     const alreadyLoaded = useAuthStore.getState().allUsers.some((u) => u.id === resolvedUserId);
     if (alreadyLoaded) {
-      setLoadingUser(false);
       fetchAllUsers();
+      void Promise.resolve().then(() => setLoadingUser(false));
     } else {
-      setLoadingUser(true);
+      void Promise.resolve().then(() => setLoadingUser(true));
       fetchAllUsers(true).finally(() => setLoadingUser(false));
     }
   }, [resolvedUserId, fetchSessions, fetchUserPosts, fetchAllUsers, fetchOutgoingRequests]);

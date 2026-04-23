@@ -310,9 +310,9 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
           status: r.status as 'pending',
           createdAt: r.created_at,
           requesterProfile: r.requester ? {
-            displayName: (r.requester as Record<string, string>).display_name,
-            avatarUrl: (r.requester as Record<string, string>).avatar_url,
-            username: (r.requester as Record<string, string>).username,
+            displayName: (r.requester as unknown as Record<string, string>).display_name,
+            avatarUrl: (r.requester as unknown as Record<string, string>).avatar_url,
+            username: (r.requester as unknown as Record<string, string>).username,
           } : undefined,
         })),
       });

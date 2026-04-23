@@ -90,13 +90,12 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
 
   // Search users when query changes
   useEffect(() => {
-    if (!searchQuery.trim() || tab !== 'discover') {
-      setSearchResults([]);
-      setSearchFeedResults([]);
-      return;
-    }
-
     const timeout = setTimeout(async () => {
+      if (!searchQuery.trim() || tab !== 'discover') {
+        setSearchResults([]);
+        setSearchFeedResults([]);
+        return;
+      }
       setSearching(true);
       const q = searchQuery.trim().toLowerCase();
       const { data } = await supabase

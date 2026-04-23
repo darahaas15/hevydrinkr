@@ -13,6 +13,7 @@ export const MOCK_USERS: UserProfile[] = [
     heightCm: 175,
     joinedAt: getRelativeDate(180),
     isDemo: true,
+    isPrivate: false,
     followers: [],
     following: [],
   },
