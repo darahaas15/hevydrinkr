@@ -36,6 +36,7 @@ const followInFlight = new Set<string>();
 const USERS_STALE_MS = 120_000;
 let _usersLastFetched = 0;
 let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
+let _outgoingRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -68,7 +69,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (session?.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, bio, gender, weight_kg, height_cm, created_at')
+        .select('id, username, display_name, avatar_url, bio, gender, weight_kg, height_cm, is_private, created_at')
         .eq('id', session.user.id)
         .single();
 
@@ -101,6 +102,43 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
             },
             () => {
               get().fetchFollowRequests();
+            }
+          )
+          .subscribe();
+        _outgoingRequestsChannel = supabase
+          .channel('outgoing-follow-requests')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'follow_requests',
+              filter: `requester_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.new as { id: string; target_id: string; status: 'pending' | 'accepted' | 'rejected' };
+              const { currentUser, allUsers, outgoingRequests } = get();
+              if (!currentUser) return;
+
+              const nextOutgoing = outgoingRequests.filter((r) => r.id !== row.id && r.targetId !== row.target_id);
+
+              if (row.status === 'accepted') {
+                const alreadyFollowing = currentUser.following.includes(row.target_id);
+                const nextFollowing = alreadyFollowing
+                  ? currentUser.following
+                  : [...currentUser.following, row.target_id];
+                const nextCurrentUser = { ...currentUser, following: nextFollowing };
+                const nextAllUsers = allUsers.map((u) => {
+                  if (u.id === currentUser.id) return nextCurrentUser;
+                  if (u.id === row.target_id && !u.followers.includes(currentUser.id)) {
+                    return { ...u, followers: [...u.followers, currentUser.id] };
+                  }
+                  return u;
+                });
+                set({ currentUser: nextCurrentUser, allUsers: nextAllUsers, outgoingRequests: nextOutgoing });
+              } else if (row.status === 'rejected') {
+                set({ outgoingRequests: nextOutgoing });
+              }
             }
           )
           .subscribe();
@@ -161,6 +199,10 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (_followRequestsChannel) {
       supabase.removeChannel(_followRequestsChannel);
       _followRequestsChannel = null;
+    }
+    if (_outgoingRequestsChannel) {
+      supabase.removeChannel(_outgoingRequestsChannel);
+      _outgoingRequestsChannel = null;
     }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
@@ -349,6 +391,9 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     const { currentUser, outgoingRequests } = get();
     if (!currentUser) return;
 
+    // Idempotent: if a local pending row already exists, nothing to do.
+    if (outgoingRequests.some((r) => r.targetId === targetId)) return;
+
     await supabase
       .from('follow_requests')
       .delete()
@@ -372,28 +417,48 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       .single();
 
     if (error) {
+      // 23505 = unique_violation. A pending row already exists server-side
+      // (e.g. a prior attempt that failed locally). Recover the id instead
+      // of telling the user it failed.
+      if ((error as { code?: string }).code === '23505') {
+        const { data: existing } = await supabase
+          .from('follow_requests')
+          .select('id')
+          .eq('requester_id', currentUser.id)
+          .eq('target_id', targetId)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (existing) {
+          set({
+            outgoingRequests: get().outgoingRequests.map((r) =>
+              r.targetId === targetId ? { ...r, id: existing.id } : r
+            ),
+          });
+          return;
+        }
+      }
       console.error('Failed to send follow request:', error);
       set({ outgoingRequests: outgoingRequests.filter((r) => r.targetId !== targetId) });
       useUIStore.getState().addToast('Failed to send request', 'error');
-    } else if (data) {
+      return;
+    }
+
+    if (data) {
       set({
         outgoingRequests: get().outgoingRequests.map((r) =>
           r.targetId === targetId ? { ...r, id: data.id } : r
         ),
       });
       try {
-        const { currentUser: cu } = get();
-        if (cu) {
-          await supabase.functions.invoke('send-notification', {
-            body: {
-              recipientId: targetId,
-              type: 'follow_request',
-              title: 'Follow Request',
-              body: `@${cu.username} requested to follow you`,
-              data: { userId: cu.id },
-            },
-          });
-        }
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            recipientId: targetId,
+            type: 'follow_request',
+            title: 'Follow Request',
+            body: `@${currentUser.username} requested to follow you`,
+            data: { userId: currentUser.id },
+          },
+        });
       } catch { /* notification failure is non-critical */ }
     }
   },
