@@ -215,6 +215,20 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     const prevUser = currentUser;
     const prevAllUsers = get().allUsers;
 
+    // Capture pending requesters BEFORE update — the private→public trigger
+    // will flip them to 'accepted' server-side, so we need this snapshot to
+    // send notifications after the update succeeds.
+    const isUnlocking = currentUser.isPrivate === true && updates.isPrivate === false;
+    let pendingRequesterIds: string[] = [];
+    if (isUnlocking) {
+      const { data: pending } = await supabase
+        .from('follow_requests')
+        .select('requester_id')
+        .eq('target_id', currentUser.id)
+        .eq('status', 'pending');
+      pendingRequesterIds = (pending ?? []).map((r: { requester_id: string }) => r.requester_id);
+    }
+
     // Optimistic update
     const updated = { ...currentUser, ...updates };
     set({
@@ -238,6 +252,25 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       console.error('Failed to update profile:', error);
       set({ currentUser: prevUser, allUsers: prevAllUsers });
       useUIStore.getState().addToast('Something went wrong', 'error');
+      return;
+    }
+
+    // Fire accepted notifications for everyone whose pending request was
+    // bulk-accepted by the DB trigger. Best-effort, non-blocking on failure.
+    if (isUnlocking && pendingRequesterIds.length > 0) {
+      await Promise.all(
+        pendingRequesterIds.map((requesterId) =>
+          supabase.functions.invoke('send-notification', {
+            body: {
+              recipientId: requesterId,
+              type: 'follow_request_accepted',
+              title: 'Follow Request Accepted',
+              body: `@${currentUser.username} accepted your follow request`,
+              data: { userId: currentUser.id },
+            },
+          }).catch(() => { /* non-critical */ })
+        )
+      );
     }
   },
 
