@@ -7,7 +7,7 @@ import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
 
 interface DrinkListProps {
   drinks: DrinkEntry[];
-  onRemove: (drinkId: string) => void;
+  onRemove: (drink: DrinkEntry) => void;
   onAdd?: (drink: DrinkEntry) => void;
 }
 
@@ -67,13 +67,13 @@ export function DrinkList({ drinks, onRemove, onAdd }: DrinkListProps) {
     const group = groupByKey(key);
     if (!group) return;
     const latest = group.entries[group.entries.length - 1];
-    onRemove(latest.id);
+    onRemove(latest);
   };
 
   const handleRemoveAll = (key: string) => {
     const group = groupByKey(key);
     if (!group) return;
-    for (const entry of group.entries) onRemove(entry.id);
+    for (const entry of group.entries) onRemove(entry);
   };
 
   return (

@@ -42,6 +42,21 @@ interface DrinkPickerProps {
   onClose: () => void;
 }
 
+function validateCustomDrink(name: string, abvStr: string, volStr: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return 'Give your drink a name.';
+  if (trimmed.length > 60) return 'Name is too long (max 60 chars).';
+  const abv = parseFloat(abvStr);
+  if (!Number.isFinite(abv) || abv < 0.1 || abv > 80) {
+    return 'ABV must be between 0.1% and 80%.';
+  }
+  const vol = parseFloat(volStr);
+  if (!Number.isFinite(vol) || vol < 10 || vol > 2000) {
+    return 'Volume must be between 10 and 2000 ml.';
+  }
+  return null;
+}
+
 export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<DrinkCategory | 'all' | 'custom'>('all');
@@ -50,7 +65,10 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   const [customAbv, setCustomAbv] = useState('5');
   const [customVol, setCustomVol] = useState('330');
   const [customDrinks, setCustomDrinks] = useState<DrinkDefinition[]>([]);
+  const [customError, setCustomError] = useState<string | null>(null);
   const currentUser = useAuthStore((s) => s.currentUser);
+
+  const customValidationError = validateCustomDrink(customName, customAbv, customVol);
 
   const dragControls = useDragControls();
 
@@ -117,16 +135,23 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   };
 
   const handleCustomDrink = async () => {
-    if (!customName.trim() || !currentUser) return;
-    const abv = parseFloat(customAbv) || 5;
-    const vol = parseFloat(customVol) || 330;
+    if (!currentUser) return;
+    const err = validateCustomDrink(customName, customAbv, customVol);
+    if (err) {
+      setCustomError(err);
+      return;
+    }
+    setCustomError(null);
+    const abv = parseFloat(customAbv);
+    const vol = parseFloat(customVol);
+    const trimmedName = customName.trim();
 
     // Save to Supabase for future use
     const { data: inserted } = await supabase
       .from('custom_drinks')
       .insert({
         user_id: currentUser.id,
-        name: customName.trim(),
+        name: trimmedName,
         emoji: '🍸',
         category: 'custom',
         abv_percent: abv,
@@ -158,7 +183,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
     const entry: DrinkEntry = {
       id: crypto.randomUUID(),
       drinkDefinitionId: inserted ? `custom-${(inserted as CustomDrinkRow).id}` : `custom-${crypto.randomUUID()}`,
-      drinkName: customName.trim(),
+      drinkName: trimmedName,
       emoji: '🍸',
       category: 'custom' as DrinkCategory,
       abvPercent: abv,
@@ -214,7 +239,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
             <div className="space-y-3">
               <input
                 value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
+                onChange={(e) => { setCustomName(e.target.value); setCustomError(null); }}
                 placeholder="What are you drinking?"
                 autoFocus
                 autoCapitalize="words"
@@ -228,7 +253,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                     type="number"
                     inputMode="decimal"
                     value={customAbv}
-                    onChange={(e) => setCustomAbv(e.target.value)}
+                    onChange={(e) => { setCustomAbv(e.target.value); setCustomError(null); }}
                     className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.06] text-sm text-white focus:outline-none focus:border-accent/40"
                   />
                 </div>
@@ -238,19 +263,28 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                     type="number"
                     inputMode="decimal"
                     value={customVol}
-                    onChange={(e) => setCustomVol(e.target.value)}
+                    onChange={(e) => { setCustomVol(e.target.value); setCustomError(null); }}
                     className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.06] text-sm text-white focus:outline-none focus:border-accent/40"
                   />
                 </div>
               </div>
               <p className="text-xs text-zinc-600 text-center">
-                = <span className="font-bold text-white">{calculateStandardDrinks(parseFloat(customVol) || 0, parseFloat(customAbv) || 0)}</span> standard drinks
+                ={' '}
+                <span className="font-bold text-white">
+                  {customValidationError === null
+                    ? calculateStandardDrinks(parseFloat(customVol), parseFloat(customAbv))
+                    : '—'}
+                </span>{' '}
+                standard drinks
               </p>
               <p className="text-[10px] text-zinc-700 text-center">This drink will be saved to your list</p>
+              {customError && (
+                <p className="text-xs text-red-400 text-center" role="alert">{customError}</p>
+              )}
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCustomDrink}
-                disabled={!customName.trim()}
+                disabled={customValidationError !== null}
                 className="w-full py-3.5 rounded-xl bg-accent text-black font-bold text-sm disabled:opacity-20"
               >
                 Add Drink

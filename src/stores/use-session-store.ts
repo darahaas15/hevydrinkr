@@ -31,6 +31,7 @@ interface SessionState {
   abandonSession: () => void;
   addDrink: (drink: DrinkEntry) => void;
   removeDrink: (drinkId: string) => void;
+  restoreDrink: (drink: DrinkEntry) => void;
   addPhoto: (photoDataUrl: string) => void;
   removePhoto: (photoIndex: number) => void;
   addRound: (round: Round) => void;
@@ -155,6 +156,11 @@ function drinkEntryToRow(entry: DrinkEntry, sessionId: string) {
 // Maps session temp-ID → promise that resolves when the row exists in Supabase.
 // Scoped per session so abandoning session A doesn't affect session B.
 const sessionInsertPromises = new Map<string, PromiseLike<void>>();
+
+// Tracks pending DELETE requests per-drink so restoreDrink can await the
+// delete before issuing the re-insert. Prevents PK conflicts when the user
+// taps "Undo" faster than PostgREST can resolve the DELETE.
+const drinkDeletePromises: Map<string, Promise<unknown>> = new Map();
 
 // Increments every time a new session starts. Captured by addDrink closures
 // so stale callbacks from abandoned sessions can detect they're orphaned.
@@ -483,13 +489,62 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     });
 
     // Delete from Supabase
-    supabase
-      .from('drink_entries')
-      .delete()
-      .eq('id', drinkId)
-      .then(({ error }) => {
-        if (error) console.error('Failed to delete drink entry:', error);
-      });
+    const deletePromise: Promise<unknown> = Promise.resolve(
+      supabase
+        .from('drink_entries')
+        .delete()
+        .eq('id', drinkId)
+        .then(({ error }) => {
+          if (error) console.error('Failed to delete drink entry:', error);
+        }),
+    ).finally(() => {
+      // Only clear if the current pending promise is still this one.
+      if (drinkDeletePromises.get(drinkId) === deletePromise) {
+        drinkDeletePromises.delete(drinkId);
+      }
+    });
+    drinkDeletePromises.set(drinkId, deletePromise);
+  },
+
+  // -----------------------------------------------------------------------
+  // Re-insert a previously removed drink (used by undo). Optimistic + DB insert.
+  // No-op if the session is no longer active or was replaced.
+  // -----------------------------------------------------------------------
+  restoreDrink: (drink) => {
+    const { activeSession } = get();
+    if (!activeSession) return;
+    // Prevent duplicate inserts if user taps undo twice or the drink
+    // somehow survived removal.
+    if (activeSession.drinks.some((d) => d.id === drink.id)) return;
+
+    set({
+      activeSession: {
+        ...activeSession,
+        drinks: [...activeSession.drinks, drink],
+        totalStandardDrinks: (activeSession.totalStandardDrinks ?? 0) + drink.standardDrinks,
+        totalVolumeMl: (activeSession.totalVolumeMl ?? 0) + drink.volumeMl,
+      },
+    });
+
+    const insertPromise = sessionInsertPromises.get(activeSession.id) ?? Promise.resolve();
+    // Wait for any in-flight DELETE of this drink id to finish before re-inserting.
+    // Otherwise the INSERT can race ahead and fail with a PK conflict.
+    const deletePromise = drinkDeletePromises.get(drink.id) ?? Promise.resolve();
+    const gen = _sessionGeneration;
+    Promise.all([insertPromise, deletePromise]).then(() => {
+      const current = get().activeSession;
+      if (!current || _sessionGeneration !== gen) return;
+      const sid = current.id;
+      supabase
+        .from('drink_entries')
+        .insert(drinkEntryToRow(drink, sid))
+        .then(({ error }) => {
+          if (error) {
+            console.error('Failed to restore drink entry:', error);
+            useUIStore.getState().addToast('Could not restore drink — add it again', 'error');
+          }
+        });
+    });
   },
 
   // -----------------------------------------------------------------------

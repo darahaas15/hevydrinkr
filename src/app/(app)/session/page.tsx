@@ -50,6 +50,7 @@ function SessionPageInner() {
   const endSession = useSessionStore((s) => s.endSession);
   const addDrink = useSessionStore((s) => s.addDrink);
   const removeDrink = useSessionStore((s) => s.removeDrink);
+  const restoreDrink = useSessionStore((s) => s.restoreDrink);
   const updateVenue = useSessionStore((s) => s.updateVenue);
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const addPhoto = useSessionStore((s) => s.addPhoto);
@@ -97,12 +98,29 @@ function SessionPageInner() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [lastCompletedSession, setLastCompletedSession] = useState<ReturnType<typeof useSessionStore.getState>['activeSession'] | null>(null);
   const [dismissedMetricsBanner, setDismissedMetricsBanner] = useState(false);
+  const [dismissedBacWarning, setDismissedBacWarning] = useState(false);
+
+  useEffect(() => {
+    setDismissedBacWarning(false);
+  }, [activeSession?.id]);
 
   const timer = useTimer(activeSession?.startedAt || null);
   const updatePeakBac = useSessionStore((s) => s.updatePeakBac);
 
   const activeDrinks = activeSession?.drinks ?? [];
   const totalStdDrinks = activeDrinks.reduce((sum, d) => sum + (d?.standardDrinks ?? 0), 0);
+
+  const handleRemoveDrink = (drink: typeof activeDrinks[number]) => {
+    removeDrink(drink.id);
+    addToast(`Removed ${drink.drinkName}`, {
+      type: 'info',
+      durationMs: 6000,
+      action: {
+        label: 'Undo',
+        onPress: () => restoreDrink(drink),
+      },
+    });
+  };
 
   // Pace & context calculations
   const myPosts = (currentUser ? userPostsMap[currentUser.id] ?? [] : []).filter((f) => f.sessionSummary);
@@ -350,7 +368,7 @@ function SessionPageInner() {
               onClick={() => setShowAbandonConfirm(true)}
               className="px-3 py-2 rounded-xl bg-white/[0.06] text-zinc-500 text-sm"
             >
-              Cancel
+              Abandon
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -379,6 +397,25 @@ function SessionPageInner() {
                 <X className="w-4 h-4 text-zinc-600" />
               </button>
             </div>
+          </div>
+        )}
+
+        {bacEstimate && bacEstimate.currentBac >= BAC_LEGAL_LIMIT && !dismissedBacWarning && (
+          <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/25 px-4 py-3 flex items-start gap-3">
+            <IconSteeringWheel className="w-5 h-5 text-red-400 shrink-0 mt-0.5" stroke={1.75} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-400">Over legal driving limit</p>
+              <p className="text-[11px] text-zinc-300 leading-snug">
+                Estimated BAC is {bacEstimate.currentBac.toFixed(3)}% — do not drive. BAC is an estimate and can be inaccurate; arrange a ride.
+              </p>
+            </div>
+            <button
+              onClick={() => setDismissedBacWarning(true)}
+              aria-label="Dismiss warning"
+              className="p-1 -mr-1 text-red-400/60 active:text-red-400"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -440,10 +477,10 @@ function SessionPageInner() {
           )}
 
           {/* Disclaimer */}
-          <p className="text-[9px] text-zinc-600 mt-3">{BAC_DISCLAIMER}</p>
+          <p className="text-[11px] text-zinc-500 mt-3 leading-snug">{BAC_DISCLAIMER}</p>
         </div>
 
-        <DrinkList drinks={activeDrinks} onRemove={removeDrink} onAdd={addDrink} />
+        <DrinkList drinks={activeDrinks} onRemove={handleRemoveDrink} onAdd={addDrink} />
 
         {/* Session Photos */}
         {(activeSession.photos?.length ?? 0) > 0 && (
