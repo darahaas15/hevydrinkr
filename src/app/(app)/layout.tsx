@@ -42,10 +42,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Init push notifications + fetch user data once we have a user
   useEffect(() => {
     if (currentUser?.id) {
-      initPushNotifications(currentUser.id);
-      fetchNotifications(currentUser.id);
-      fetchPreferences(currentUser.id);
-      fetchBlockedUsers(currentUser.id);
+      const uid = currentUser.id;
+      initPushNotifications(uid);
+      Promise.all([
+        fetchNotifications(uid),
+        fetchPreferences(uid),
+        fetchBlockedUsers(uid),
+      ]);
     }
   }, [currentUser?.id, fetchNotifications, fetchPreferences, fetchBlockedUsers]);
 
@@ -200,7 +203,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         useFeedStore.getState().fetchFeed(true);
       }
-    }, 60_000);
+    }, 300_000);
     return () => clearInterval(id);
   }, [currentUser?.id]);
 
