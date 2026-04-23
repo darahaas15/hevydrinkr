@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, UserPlus, Check, X } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -39,6 +39,7 @@ export default function FollowRequestsPage() {
             <p className="text-sm text-zinc-600">No pending requests</p>
           </div>
         ) : (
+          <AnimatePresence>
           <div className="space-y-1">
             {followRequests.map((request) => (
               <motion.div
@@ -88,6 +89,7 @@ export default function FollowRequestsPage() {
               </motion.div>
             ))}
           </div>
+          </AnimatePresence>
         )}
       </div>
     </div>

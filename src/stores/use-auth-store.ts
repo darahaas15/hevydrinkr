@@ -35,6 +35,7 @@ interface AuthState {
 const followInFlight = new Set<string>();
 const USERS_STALE_MS = 30_000;
 let _usersLastFetched = 0;
+let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -88,7 +89,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
         get().fetchAllUsers();
         get().fetchFollowRequests();
         get().fetchOutgoingRequests();
-        supabase
+        _followRequestsChannel = supabase
           .channel('follow-requests')
           .on(
             'postgres_changes',
@@ -157,7 +158,10 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   },
 
   logout: async () => {
-    supabase.removeChannel(supabase.channel('follow-requests'));
+    if (_followRequestsChannel) {
+      supabase.removeChannel(_followRequestsChannel);
+      _followRequestsChannel = null;
+    }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
   },
@@ -377,7 +381,6 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
           r.targetId === targetId ? { ...r, id: data.id } : r
         ),
       });
-    }
       try {
         const { currentUser: cu } = get();
         if (cu) {
@@ -392,6 +395,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
           });
         }
       } catch { /* notification failure is non-critical */ }
+    }
   },
 
   cancelFollowRequest: async (targetId) => {
@@ -435,21 +439,22 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       console.error('Failed to accept follow request:', error);
       set({ followRequests, currentUser, allUsers });
       useUIStore.getState().addToast('Failed to accept request', 'error');
+    } else {
+      try {
+        const { currentUser: cu } = get();
+        if (cu && request.requesterId) {
+          await supabase.functions.invoke('send-notification', {
+            body: {
+              recipientId: request.requesterId,
+              type: 'follow_request_accepted',
+              title: 'Follow Request Accepted',
+              body: `@${cu.username} accepted your follow request`,
+              data: { userId: cu.id },
+            },
+          });
+        }
+      } catch { /* notification failure is non-critical */ }
     }
-    try {
-      const { currentUser: cu } = get();
-      if (cu && request.requesterId) {
-        await supabase.functions.invoke('send-notification', {
-          body: {
-            recipientId: request.requesterId,
-            type: 'follow_request_accepted',
-            title: 'Follow Request Accepted',
-            body: `@${cu.username} accepted your follow request`,
-            data: { userId: cu.id },
-          },
-        });
-      }
-    } catch { /* notification failure is non-critical */ }
   },
 
   rejectFollowRequest: async (requestId) => {

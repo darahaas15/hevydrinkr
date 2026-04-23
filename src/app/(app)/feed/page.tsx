@@ -100,7 +100,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
       const q = searchQuery.trim().toLowerCase();
       const { data } = await supabase
         .from('profiles')
-        .select('*, is_private')
+        .select('*')
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .neq('id', currentUser?.id ?? '')
         .limit(20);
