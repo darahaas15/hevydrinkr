@@ -200,7 +200,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         useFeedStore.getState().fetchFeed(true);
       }
-    }, 60_000);
+    }, 300_000);
     return () => clearInterval(id);
   }, [currentUser?.id]);
 

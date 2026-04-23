@@ -24,7 +24,7 @@ interface AuthState {
 
 // Guard against rapid follow/unfollow taps causing conflicting DB operations
 const followInFlight = new Set<string>();
-const USERS_STALE_MS = 30_000;
+const USERS_STALE_MS = 120_000;
 let _usersLastFetched = 0;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
@@ -55,7 +55,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (session?.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, username, display_name, avatar_url, bio, gender, weight_kg, height_cm, created_at')
         .eq('id', session.user.id)
         .single();
 
@@ -171,7 +171,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     _usersLastFetched = Date.now();
     const [{ data: profiles }, { data: allFollows }] = await Promise.all([
       supabase.from('profiles').select('id, username, display_name, avatar_url, bio, created_at').limit(500),
-      supabase.from('follows').select('follower_id, following_id').limit(5000),
+      supabase.from('follows').select('follower_id, following_id').limit(1000),
     ]);
     if (!profiles) return;
 

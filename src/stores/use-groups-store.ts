@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
-const GROUPS_STALE_MS = 30_000;
+const GROUPS_STALE_MS = 120_000;
 let _groupsLastFetched = 0;
 
 interface GroupsState {
