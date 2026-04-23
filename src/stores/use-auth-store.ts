@@ -391,6 +391,9 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     const { currentUser, outgoingRequests } = get();
     if (!currentUser) return;
 
+    // Idempotent: if a local pending row already exists, nothing to do.
+    if (outgoingRequests.some((r) => r.targetId === targetId)) return;
+
     await supabase
       .from('follow_requests')
       .delete()
@@ -414,28 +417,48 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       .single();
 
     if (error) {
+      // 23505 = unique_violation. A pending row already exists server-side
+      // (e.g. a prior attempt that failed locally). Recover the id instead
+      // of telling the user it failed.
+      if ((error as { code?: string }).code === '23505') {
+        const { data: existing } = await supabase
+          .from('follow_requests')
+          .select('id')
+          .eq('requester_id', currentUser.id)
+          .eq('target_id', targetId)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (existing) {
+          set({
+            outgoingRequests: get().outgoingRequests.map((r) =>
+              r.targetId === targetId ? { ...r, id: existing.id } : r
+            ),
+          });
+          return;
+        }
+      }
       console.error('Failed to send follow request:', error);
       set({ outgoingRequests: outgoingRequests.filter((r) => r.targetId !== targetId) });
       useUIStore.getState().addToast('Failed to send request', 'error');
-    } else if (data) {
+      return;
+    }
+
+    if (data) {
       set({
         outgoingRequests: get().outgoingRequests.map((r) =>
           r.targetId === targetId ? { ...r, id: data.id } : r
         ),
       });
       try {
-        const { currentUser: cu } = get();
-        if (cu) {
-          await supabase.functions.invoke('send-notification', {
-            body: {
-              recipientId: targetId,
-              type: 'follow_request',
-              title: 'Follow Request',
-              body: `@${cu.username} requested to follow you`,
-              data: { userId: cu.id },
-            },
-          });
-        }
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            recipientId: targetId,
+            type: 'follow_request',
+            title: 'Follow Request',
+            body: `@${currentUser.username} requested to follow you`,
+            data: { userId: currentUser.id },
+          },
+        });
       } catch { /* notification failure is non-critical */ }
     }
   },
