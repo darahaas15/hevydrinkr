@@ -15,7 +15,7 @@ import {
 // Drop the matching photoIds too so the parallel arrays stay aligned.
 const stripPhotos = (s: DrinkSession): DrinkSession => ({ ...s, photos: [], photoIds: [] });
 
-const SESSIONS_STALE_MS = 30_000;
+const SESSIONS_STALE_MS = 120_000;
 const _sessionsLastFetched = new Map<string, number>();
 
 interface SessionState {
@@ -185,7 +185,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     const { data: sessionRows, error: sessionsError } = await supabase
       .from('drink_sessions')
-      .select('*')
+      .select('id, user_id, status, started_at, ended_at, venue, total_standard_drinks, total_volume_ml, peak_bac_estimate, duration_minutes, is_party_mode, party_id, mood, notes')
       .eq('user_id', userId)
       .order('started_at', { ascending: false });
 
@@ -201,14 +201,14 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       sessionIds.length > 0
         ? supabase
             .from('drink_entries')
-            .select('*')
+            .select('id, session_id, drink_definition_id, drink_name, emoji, category, abv_percent, volume_ml, standard_drinks, timestamp, round_id, notes')
             .in('session_id', sessionIds)
             .order('timestamp', { ascending: true })
         : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
       sessionIds.length > 0
         ? supabase
             .from('session_photos')
-            .select('*')
+            .select('id, session_id, url, sort_order')
             .in('session_id', sessionIds)
             .order('sort_order', { ascending: true })
         : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),

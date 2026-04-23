@@ -19,7 +19,7 @@ import { buildSessionSummary } from '@/lib/session-utils';
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
 const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 
-const FEED_STALE_MS = 30_000;
+const FEED_STALE_MS = 120_000;
 const FEED_PAGE_SIZE = 15;
 let _feedLastFetched = 0;
 const _userPostsLastFetched = new Map<string, number>();
