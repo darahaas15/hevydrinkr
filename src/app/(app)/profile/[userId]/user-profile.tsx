@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2, X, Heart, Trophy as TrophyIcon, Timer, Flag, Ban, MoreHorizontal } from 'lucide-react';
+import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2, X, Heart, Trophy as TrophyIcon, Timer, Flag, Ban, MoreHorizontal, Lock } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -40,22 +40,30 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   const unblockUser = useModerationStore((s) => s.unblockUser);
   const isBlocked = useModerationStore((s) => s.isBlocked(resolvedUserId));
 
+  const outgoingRequests = useAuthStore((s) => s.outgoingRequests);
+  const sendFollowRequest = useAuthStore((s) => s.sendFollowRequest);
+  const cancelFollowRequest = useAuthStore((s) => s.cancelFollowRequest);
+  const fetchOutgoingRequests = useAuthStore((s) => s.fetchOutgoingRequests);
+
   useEffect(() => {
     fetchSessions(resolvedUserId);
     fetchUserPosts(resolvedUserId);
-    // Only force-fetch if this user isn't already in the store
+    fetchOutgoingRequests();
     const alreadyLoaded = useAuthStore.getState().allUsers.some((u) => u.id === resolvedUserId);
     if (alreadyLoaded) {
-      setLoadingUser(false);
-      fetchAllUsers(); // background refresh without forcing
+      fetchAllUsers();
+      void Promise.resolve().then(() => setLoadingUser(false));
     } else {
-      setLoadingUser(true);
+      void Promise.resolve().then(() => setLoadingUser(true));
       fetchAllUsers(true).finally(() => setLoadingUser(false));
     }
-  }, [resolvedUserId, fetchSessions, fetchUserPosts, fetchAllUsers]);
+  }, [resolvedUserId, fetchSessions, fetchUserPosts, fetchAllUsers, fetchOutgoingRequests]);
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
   const isFollowing = currentUser?.following.includes(resolvedUserId) ?? false;
+  const isPrivate = user?.isPrivate ?? false;
+  const hasPendingRequest = outgoingRequests.some((r) => r.targetId === resolvedUserId);
+  const isLockedProfile = isPrivate && !isFollowing;
 
   const userPosts = useMemo(
     () => userPostsMap[resolvedUserId] ?? [],
@@ -266,105 +274,142 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             <span className="text-xs text-zinc-500 ml-1">Followers</span>
           </button>
           <div className="flex-1" />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { hapticLight(); toggleFollow(resolvedUserId); }}
-            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-              isFollowing
-                ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                : 'bg-accent text-black'
-            }`}
-          >
-            {isFollowing ? 'Following' : 'Follow'}
-          </motion.button>
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {[
-            { icon: Calendar, label: 'Sessions', value: stats.totalSessions, color: 'text-violet-400' },
-            { icon: Wine, label: 'Total Drinks', value: stats.totalDrinks, color: 'text-accent' },
-            { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-cyan-400' },
-            { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinks.toFixed(1), color: 'text-green-400' },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4"
+          {isLockedProfile && hasPendingRequest ? (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { hapticLight(); cancelFollowRequest(resolvedUserId); }}
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-white/[0.06] border border-white/[0.08] text-zinc-400"
             >
-              <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
-              <p className="text-xl font-bold">{stat.value}</p>
-              <p className="text-[10px] text-zinc-500">{stat.label}</p>
-            </motion.div>
-          ))}
+              Requested
+            </motion.button>
+          ) : (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { hapticLight(); toggleFollow(resolvedUserId); }}
+              className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                isFollowing
+                  ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+                  : 'bg-accent text-black'
+              }`}
+            >
+              {isFollowing ? 'Following' : 'Follow'}
+            </motion.button>
+          )}
         </div>
 
-        {/* Achievements */}
-        {earnedMilestones.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Achievements</h3>
-            <div className="flex flex-wrap gap-2">
-              {earnedMilestones.map((m) => (
-                <span key={m.threshold} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-[11px] font-semibold text-accent">
-                  {m.label}
-                </span>
-              ))}
-            </div>
+        {isLockedProfile ? (
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-8 text-center">
+            <Lock className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+            <h3 className="text-base font-semibold mb-1">This account is private</h3>
+            <p className="text-sm text-zinc-500 mb-5">Follow this account to see their sessions and posts</p>
+            {hasPendingRequest ? (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { hapticLight(); cancelFollowRequest(resolvedUserId); }}
+                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.06] border border-white/[0.08] text-zinc-400"
+              >
+                Requested
+              </motion.button>
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { hapticLight(); toggleFollow(resolvedUserId); }}
+                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-black"
+              >
+                Follow
+              </motion.button>
+            )}
           </div>
-        )}
-
-        {/* Session Highlights */}
-        {highlights.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Highlights</h3>
-            <div className="flex gap-2.5 overflow-x-auto scrollbar-hide">
-              {highlights.map((h) => (
-                <div
-                  key={h.label}
-                  onClick={() => router.push(`/feed?post=${h.postId}`)}
-                  className="shrink-0 w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 cursor-pointer active:bg-white/[0.05] transition-colors"
+        ) : (
+          <>
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { icon: Calendar, label: 'Sessions', value: stats.totalSessions, color: 'text-violet-400' },
+                { icon: Wine, label: 'Total Drinks', value: stats.totalDrinks, color: 'text-accent' },
+                { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-cyan-400' },
+                { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinks.toFixed(1), color: 'text-green-400' },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4"
                 >
-                  <h.icon className="w-4 h-4 text-accent mb-2" />
-                  <p className="text-lg font-bold">{h.value}</p>
-                  <p className="text-[10px] text-zinc-500">{h.label}</p>
+                  <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
+                  <p className="text-xl font-bold">{stat.value}</p>
+                  <p className="text-[10px] text-zinc-500">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Achievements */}
+            {earnedMilestones.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Achievements</h3>
+                <div className="flex flex-wrap gap-2">
+                  {earnedMilestones.map((m) => (
+                    <span key={m.threshold} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-[11px] font-semibold text-accent">
+                      {m.label}
+                    </span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Signature Drink */}
-        {signatureDrink && (
-          <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Signature Drink</h3>
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 flex items-center gap-4">
-              <DrinkIcon category={signatureDrink.category} className="w-8 h-8" />
-              <div className="flex-1">
-                <p className="text-sm font-bold">{signatureDrink.name}</p>
-                <p className="text-[11px] text-zinc-500">{signatureDrink.count} times &middot; {signatureDrink.pct}% of drinks</p>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* User's posts */}
-        {userPosts.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
-            <div className="space-y-3">
-              {userPosts.map((post) => (
-                <FeedCard key={post.id} item={post} />
-              ))}
-            </div>
-          </div>
-        )}
+            {/* Session Highlights */}
+            {highlights.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Highlights</h3>
+                <div className="flex gap-2.5 overflow-x-auto scrollbar-hide">
+                  {highlights.map((h) => (
+                    <div
+                      key={h.label}
+                      onClick={() => router.push(`/feed?post=${h.postId}`)}
+                      className="shrink-0 w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 cursor-pointer active:bg-white/[0.05] transition-colors"
+                    >
+                      <h.icon className="w-4 h-4 text-accent mb-2" />
+                      <p className="text-lg font-bold">{h.value}</p>
+                      <p className="text-[10px] text-zinc-500">{h.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {userPosts.length === 0 && (
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
-            <p className="text-sm text-zinc-600">No posts yet</p>
-          </div>
+            {/* Signature Drink */}
+            {signatureDrink && (
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Signature Drink</h3>
+                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 flex items-center gap-4">
+                  <DrinkIcon category={signatureDrink.category} className="w-8 h-8" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">{signatureDrink.name}</p>
+                    <p className="text-[11px] text-zinc-500">{signatureDrink.count} times &middot; {signatureDrink.pct}% of drinks</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* User's posts */}
+            {userPosts.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
+                <div className="space-y-3">
+                  {userPosts.map((post) => (
+                    <FeedCard key={post.id} item={post} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {userPosts.length === 0 && (
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
+                <p className="text-sm text-zinc-600">No posts yet</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

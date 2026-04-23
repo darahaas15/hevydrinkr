@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, UserPlus } from 'lucide-react';
 import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -33,6 +33,9 @@ function ProfilePageOwn() {
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const toggleFollow = useAuthStore((s) => s.toggleFollow);
+  const followRequests = useAuthStore((s) => s.followRequests);
+  const isPrivate = useAuthStore((s) => s.currentUser?.isPrivate) ?? false;
+  const removeFollower = useAuthStore((s) => s.removeFollower);
   const addToast = useUIStore((s) => s.addToast);
   const userPostsMap = useFeedStore((s) => s.userPosts);
   const feedError = useFeedStore((s) => s.error);
@@ -167,6 +170,20 @@ function ProfilePageOwn() {
             >
               <Share2 className="w-5 h-5 text-zinc-500" />
             </button>
+              {isPrivate && (
+                <button
+                  onClick={() => router.push('/profile/requests')}
+                  aria-label="Follow requests"
+                  className="relative p-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
+                >
+                  <UserPlus className="w-5 h-5 text-zinc-500" />
+                  {followRequests.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-accent text-[10px] font-bold text-black flex items-center justify-center">
+                      {followRequests.length > 9 ? '9+' : followRequests.length}
+                    </span>
+                  )}
+                </button>
+              )}
             <button onClick={() => router.push('/profile/settings')} aria-label="Settings" className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]">
               <Settings className="w-5 h-5 text-zinc-500" />
             </button>
@@ -462,7 +479,8 @@ function ProfilePageOwn() {
                   return users.map((user) => {
                     if (!user) return null;
                     const isFollowing = currentUser.following.includes(user.id);
-                    return (
+                    const isMe = user.id === currentUser.id;
+                  return (
                       <div key={user.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
                         <div onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }} className="cursor-pointer">
                           <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
@@ -474,17 +492,30 @@ function ProfilePageOwn() {
                           <p className="text-sm font-semibold truncate">{user.displayName}</p>
                           <p className="text-[11px] text-zinc-500">@{user.username}</p>
                         </div>
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => { hapticLight(); toggleFollow(user.id); }}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                            isFollowing
-                              ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                              : 'bg-accent text-black'
-                          }`}
-                        >
-                          {isFollowing ? 'Following' : 'Follow'}
-                        </motion.button>
+                        {!isMe && (
+                          <>
+                            <motion.button
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => { hapticLight(); toggleFollow(user.id); }}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                isFollowing
+                                  ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+                                  : 'bg-accent text-black'
+                              }`}
+                            >
+                              {isFollowing ? 'Following' : 'Follow'}
+                            </motion.button>
+                            {isPrivate && showFollowList === 'followers' && (
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => { hapticLight(); removeFollower(user.id); }}
+                                className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center ml-1.5"
+                              >
+                                <X className="w-3.5 h-3.5 text-zinc-500" />
+                              </motion.button>
+                            )}
+                          </>
+                        )}
                       </div>
                     );
                   });
