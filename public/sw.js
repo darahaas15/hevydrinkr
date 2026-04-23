@@ -157,6 +157,10 @@ self.addEventListener('notificationclick', (event) => {
     }
   } else if (data.type === 'follow' && data.actorId) {
     path = `/profile/${data.actorId}`;
+  } else if (data.type === 'follow_request') {
+    path = '/profile/requests';
+  } else if (data.type === 'follow_request_accepted') {
+    path = data.userId ? `/profile/${data.userId}` : '/profile';
   } else if ((data.type === 'group_join' || data.type === 'challenge_created') && data.groupId) {
     path = `/groups?id=${data.groupId}`;
   } else if (data.type === 'still_drinking') {
