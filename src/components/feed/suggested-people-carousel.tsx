@@ -3,22 +3,20 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '@/components/ui/avatar';
+import { useFollowState } from '@/hooks/use-follow-state';
+import { hapticLight } from '@/lib/haptics';
 import type { UserProfile } from '@/types';
 import type { FeedItem } from '@/types/feed';
 
 interface SuggestedPeopleCarouselProps {
   users: UserProfile[];
   feedItems: FeedItem[];
-  followingIds: string[];
-  onFollow: (userId: string) => void;
   onViewProfile: (userId: string) => void;
 }
 
 export function SuggestedPeopleCarousel({
   users,
   feedItems,
-  followingIds,
-  onFollow,
   onViewProfile,
 }: SuggestedPeopleCarouselProps) {
   const userStats = useMemo(() => {
@@ -40,7 +38,6 @@ export function SuggestedPeopleCarousel({
       <AnimatePresence>
         {users.map((user, i) => {
           const stats = userStats.get(user.id);
-          const isFollowing = followingIds.includes(user.id);
           const statLabel = stats
             ? stats.sessions === 1
               ? '1 sesh'
@@ -48,37 +45,62 @@ export function SuggestedPeopleCarousel({
             : 'New member';
 
           return (
-            <motion.div
+            <SuggestedPersonCard
               key={user.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-              transition={{ delay: i < 6 ? i * 0.04 : 0 }}
-              className="shrink-0 snap-start w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 flex flex-col items-center"
-            >
-              <div onClick={() => onViewProfile(user.id)} className="cursor-pointer flex flex-col items-center">
-                <Avatar name={user.displayName} size="lg" src={user.avatarUrl} />
-                <p className="text-sm font-semibold truncate w-full text-center mt-2">{user.displayName}</p>
-                <p className="text-[11px] text-zinc-600 truncate w-full text-center">@{user.username}</p>
-                <span className="text-[10px] text-zinc-500 bg-white/[0.04] rounded-full px-2 py-0.5 mt-1.5">
-                  {statLabel}
-                </span>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onFollow(user.id)}
-                className={`mt-3 w-full py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  isFollowing
-                    ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                    : 'bg-accent text-black'
-                }`}
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </motion.button>
-            </motion.div>
+              user={user}
+              index={i}
+              statLabel={statLabel}
+              onViewProfile={onViewProfile}
+            />
           );
         })}
       </AnimatePresence>
     </div>
+  );
+}
+
+function SuggestedPersonCard({
+  user,
+  index,
+  statLabel,
+  onViewProfile,
+}: {
+  user: UserProfile;
+  index: number;
+  statLabel: string;
+  onViewProfile: (userId: string) => void;
+}) {
+  const { state, label, onClick } = useFollowState(user.id);
+  if (state === 'self') return null;
+  const isAccent = state === 'none';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+      transition={{ delay: index < 6 ? index * 0.04 : 0 }}
+      className="shrink-0 snap-start w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 flex flex-col items-center"
+    >
+      <div onClick={() => onViewProfile(user.id)} className="cursor-pointer flex flex-col items-center">
+        <Avatar name={user.displayName} size="lg" src={user.avatarUrl} />
+        <p className="text-sm font-semibold truncate w-full text-center mt-2">{user.displayName}</p>
+        <p className="text-[11px] text-zinc-600 truncate w-full text-center">@{user.username}</p>
+        <span className="text-[10px] text-zinc-500 bg-white/[0.04] rounded-full px-2 py-0.5 mt-1.5">
+          {statLabel}
+        </span>
+      </div>
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => { hapticLight(); onClick(); }}
+        className={`mt-3 w-full py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          isAccent
+            ? 'bg-accent text-black'
+            : 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+        }`}
+      >
+        {label}
+      </motion.button>
+    </motion.div>
   );
 }

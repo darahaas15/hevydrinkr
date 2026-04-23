@@ -103,7 +103,6 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
   const fetchMoreFeed = useFeedStore((s) => s.fetchMoreFeed);
-  const toggleFollow = useAuthStore((s) => s.toggleFollow);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -402,8 +401,6 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                 <SuggestedPeopleCarousel
                   users={discoverUsers}
                   feedItems={items}
-                  followingIds={followingIds}
-                  onFollow={toggleFollow}
                   onViewProfile={(id) => router.push(`/profile/${id}`)}
                 />
               </div>
