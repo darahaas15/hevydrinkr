@@ -36,6 +36,7 @@ const followInFlight = new Set<string>();
 const USERS_STALE_MS = 120_000;
 let _usersLastFetched = 0;
 let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
+let _outgoingRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -104,6 +105,43 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
             }
           )
           .subscribe();
+        _outgoingRequestsChannel = supabase
+          .channel('outgoing-follow-requests')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'follow_requests',
+              filter: `requester_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.new as { id: string; target_id: string; status: 'pending' | 'accepted' | 'rejected' };
+              const { currentUser, allUsers, outgoingRequests } = get();
+              if (!currentUser) return;
+
+              const nextOutgoing = outgoingRequests.filter((r) => r.id !== row.id && r.targetId !== row.target_id);
+
+              if (row.status === 'accepted') {
+                const alreadyFollowing = currentUser.following.includes(row.target_id);
+                const nextFollowing = alreadyFollowing
+                  ? currentUser.following
+                  : [...currentUser.following, row.target_id];
+                const nextCurrentUser = { ...currentUser, following: nextFollowing };
+                const nextAllUsers = allUsers.map((u) => {
+                  if (u.id === currentUser.id) return nextCurrentUser;
+                  if (u.id === row.target_id && !u.followers.includes(currentUser.id)) {
+                    return { ...u, followers: [...u.followers, currentUser.id] };
+                  }
+                  return u;
+                });
+                set({ currentUser: nextCurrentUser, allUsers: nextAllUsers, outgoingRequests: nextOutgoing });
+              } else if (row.status === 'rejected') {
+                set({ outgoingRequests: nextOutgoing });
+              }
+            }
+          )
+          .subscribe();
         return;
       }
     }
@@ -161,6 +199,10 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (_followRequestsChannel) {
       supabase.removeChannel(_followRequestsChannel);
       _followRequestsChannel = null;
+    }
+    if (_outgoingRequestsChannel) {
+      supabase.removeChannel(_outgoingRequestsChannel);
+      _outgoingRequestsChannel = null;
     }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
