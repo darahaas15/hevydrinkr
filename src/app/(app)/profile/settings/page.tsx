@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const preferences = useNotificationStore((s) => s.preferences);
   const updatePreferences = useNotificationStore((s) => s.updatePreferences);
+  const [showPublicConfirm, setShowPublicConfirm] = useState(false);
 
   const handleChangePhoto = async () => {
     const file = await pickImage();
@@ -72,6 +73,45 @@ export default function SettingsPage() {
     if (!currentUser) return;
     hapticSelection();
     updatePreferences(currentUser.id, { [key]: !preferences[key] });
+  };
+
+  const handleTogglePrivacy = () => {
+    if (!currentUser) return;
+    hapticSelection();
+    if (currentUser.isPrivate) {
+      setShowPublicConfirm(true);
+    } else {
+      updateProfile({ isPrivate: true });
+      addToast('Account is now private', 'success');
+    }
+  };
+
+  const handleConfirmPublic = async () => {
+    setShowPublicConfirm(false);
+
+    const { data: pendingRequests } = await supabase
+      .from('follow_requests')
+      .select('requester_id')
+      .eq('target_id', currentUser!.id)
+      .eq('status', 'pending');
+
+    updateProfile({ isPrivate: false });
+
+    if (pendingRequests && pendingRequests.length > 0) {
+      for (const req of pendingRequests) {
+        supabase.functions.invoke('send-notification', {
+          body: {
+            recipientId: req.requester_id,
+            type: 'follow_request_accepted',
+            title: 'Follow Request Accepted',
+            body: `@${currentUser!.username} accepted your follow request`,
+            data: { userId: currentUser!.id },
+          },
+        }).catch(() => {});
+      }
+    }
+
+    addToast('Account is now public', 'success');
   };
 
   const handleLogout = async () => {
@@ -242,6 +282,29 @@ export default function SettingsPage() {
           <p className="text-[10px] text-zinc-600 px-1 mt-2">BAC estimates are approximate and should not be used for legal or medical decisions.</p>
         </div>
 
+        {/* Privacy */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Privacy</h3>
+          <p className="text-[11px] text-zinc-600 mb-2.5">Control who can see your sessions and posts</p>
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+            <button
+              onClick={handleTogglePrivacy}
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Lock className="w-4 h-4 text-zinc-500" />
+                <div className="text-left">
+                  <span className="text-sm block">Private Account</span>
+                  <span className="text-[11px] text-zinc-600">Only approved followers can see your sessions and posts</span>
+                </div>
+              </div>
+              <div className={`w-10 h-6 rounded-full relative transition-colors ${currentUser?.isPrivate ? 'bg-teal-500' : 'bg-zinc-700'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${currentUser?.isPrivate ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Notifications */}
         <div>
           <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Notifications</h3>
@@ -356,6 +419,46 @@ export default function SettingsPage() {
           <p className="text-[10px] text-zinc-700 mt-2 text-center">This will permanently delete all your data</p>
         </div>
       </div>
+
+      {/* Public confirmation modal */}
+      <AnimatePresence>
+        {showPublicConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[55] flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowPublicConfirm(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
+              style={{ background: 'rgba(20,20,24,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <Lock className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
+              <h3 className="text-base font-bold mb-2">Switch to Public?</h3>
+              <p className="text-xs text-zinc-500 mb-5">All pending follow requests will be automatically accepted. Your posts and sessions will be visible to everyone.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPublicConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-sm font-semibold text-zinc-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmPublic}
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-sm font-semibold text-black"
+                >
+                  Switch
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
