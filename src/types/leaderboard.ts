@@ -4,7 +4,8 @@ export type LeaderboardMetric =
   | 'total_standard_drinks'
   | 'total_sessions'
   | 'longest_session'
-  | 'most_diverse';
+  | 'most_diverse'
+  | 'single_session';
 
 export interface LeaderboardEntry {
   rank: number;

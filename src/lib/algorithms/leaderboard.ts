@@ -30,6 +30,8 @@ function computeMetric(
       posts.forEach(p => (p.sessionSummary.drinks ?? []).forEach(d => allDrinks.add(d.name)));
       return allDrinks.size;
     }
+    case 'single_session':
+      return posts.reduce((max, p) => Math.max(max, p.sessionSummary.totalDrinks ?? 0), 0);
   }
 }
 
@@ -98,5 +100,7 @@ function formatMetricValue(metric: LeaderboardMetric, value: number): string {
     }
     case 'most_diverse':
       return `${value} types`;
+    case 'single_session':
+      return `${value} drinks`;
   }
 }

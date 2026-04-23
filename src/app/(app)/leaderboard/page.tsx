@@ -18,6 +18,7 @@ const METRICS: { value: LeaderboardMetric; label: string }[] = [
   { value: 'total_sessions', label: 'Sessions' },
   { value: 'longest_session', label: 'Longest' },
   { value: 'most_diverse', label: 'Variety' },
+  { value: 'single_session', label: 'Single Session' },
 ];
 
 const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
