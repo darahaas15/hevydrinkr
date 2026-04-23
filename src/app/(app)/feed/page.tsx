@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Bell, Lock } from 'lucide-react';
+import { Search, X, Bell, Lock, UserPlus } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -106,6 +106,8 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const isPrivateAccount = useAuthStore((s) => s.currentUser?.isPrivate ?? false);
+  const followRequestsCount = useAuthStore((s) => s.followRequests.length);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
@@ -271,6 +273,18 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
               <span className="gradient-text">Drinkr</span>
             </h1>
             <div className="flex items-center gap-0.5">
+              {(isPrivateAccount || followRequestsCount > 0) && (
+                <button
+                  onClick={() => router.push('/profile/requests')}
+                  aria-label="Follow requests"
+                  className="relative p-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
+                >
+                  <UserPlus className="w-5 h-5 text-zinc-500" />
+                  {followRequestsCount > 0 && (
+                    <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => router.push('/notifications')}
                 aria-label="Notifications"
