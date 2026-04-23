@@ -142,6 +142,23 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
               }
             }
           )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'follow_requests',
+              filter: `requester_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.old as { id?: string; target_id?: string };
+              const { outgoingRequests } = get();
+              const next = outgoingRequests.filter((r) => r.id !== row.id && r.targetId !== row.target_id);
+              if (next.length !== outgoingRequests.length) {
+                set({ outgoingRequests: next });
+              }
+            }
+          )
           .subscribe();
         _followsChannel = supabase
           .channel('follows-changes')
