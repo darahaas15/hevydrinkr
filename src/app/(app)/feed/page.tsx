@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Bell } from 'lucide-react';
+import { Search, X, Bell, Lock } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -101,7 +101,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
       const q = searchQuery.trim().toLowerCase();
       const { data } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, is_private')
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .neq('id', currentUser?.id ?? '')
         .limit(20);
@@ -119,6 +119,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
             heightCm: p.height_cm || null,
             joinedAt: p.created_at,
             isDemo: false,
+            isPrivate: p.is_private || false,
             followers: [],
             following: [],
           }))
@@ -345,7 +346,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                         onClick={() => router.push(`/profile/${user.id}`)}
                       >
                         <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                        <p className="text-[11px] text-zinc-500">@{user.username}</p>
+                        <p className="text-[11px] text-zinc-500">@{user.username}{user.isPrivate && <Lock className="w-3 h-3 text-zinc-600 inline ml-1" />}</p>
                       </div>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
