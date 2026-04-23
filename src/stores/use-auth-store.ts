@@ -37,6 +37,7 @@ const USERS_STALE_MS = 120_000;
 let _usersLastFetched = 0;
 let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 let _outgoingRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
+let _followsChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -141,6 +142,76 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
               }
             }
           )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'follow_requests',
+              filter: `requester_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.old as { id?: string; target_id?: string };
+              const { outgoingRequests } = get();
+              const next = outgoingRequests.filter((r) => r.id !== row.id && r.targetId !== row.target_id);
+              if (next.length !== outgoingRequests.length) {
+                set({ outgoingRequests: next });
+              }
+            }
+          )
+          .subscribe();
+        _followsChannel = supabase
+          .channel('follows-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'follows',
+              filter: `follower_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.old as { follower_id?: string; following_id?: string };
+              const targetId = row.following_id;
+              if (!targetId) return;
+              const { currentUser, allUsers } = get();
+              if (!currentUser) return;
+              if (!currentUser.following.includes(targetId)) return; // idempotent
+              set({
+                currentUser: { ...currentUser, following: currentUser.following.filter((id) => id !== targetId) },
+                allUsers: allUsers.map((u) => {
+                  if (u.id === currentUser.id) return { ...u, following: u.following.filter((id) => id !== targetId) };
+                  if (u.id === targetId) return { ...u, followers: u.followers.filter((id) => id !== currentUser.id) };
+                  return u;
+                }),
+              });
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'follows',
+              filter: `following_id=eq.${session.user.id}`,
+            },
+            (payload) => {
+              const row = payload.old as { follower_id?: string; following_id?: string };
+              const followerId = row.follower_id;
+              if (!followerId) return;
+              const { currentUser, allUsers } = get();
+              if (!currentUser) return;
+              if (!currentUser.followers.includes(followerId)) return; // idempotent
+              set({
+                currentUser: { ...currentUser, followers: currentUser.followers.filter((id) => id !== followerId) },
+                allUsers: allUsers.map((u) => {
+                  if (u.id === currentUser.id) return { ...u, followers: u.followers.filter((id) => id !== followerId) };
+                  if (u.id === followerId) return { ...u, following: u.following.filter((id) => id !== currentUser.id) };
+                  return u;
+                }),
+              });
+            }
+          )
           .subscribe();
         return;
       }
@@ -204,6 +275,10 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       supabase.removeChannel(_outgoingRequestsChannel);
       _outgoingRequestsChannel = null;
     }
+    if (_followsChannel) {
+      supabase.removeChannel(_followsChannel);
+      _followsChannel = null;
+    }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
   },
@@ -214,6 +289,20 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
 
     const prevUser = currentUser;
     const prevAllUsers = get().allUsers;
+
+    // Capture pending requesters BEFORE update — the private→public trigger
+    // will flip them to 'accepted' server-side, so we need this snapshot to
+    // send notifications after the update succeeds.
+    const isUnlocking = currentUser.isPrivate === true && updates.isPrivate === false;
+    let pendingRequesterIds: string[] = [];
+    if (isUnlocking) {
+      const { data: pending } = await supabase
+        .from('follow_requests')
+        .select('requester_id')
+        .eq('target_id', currentUser.id)
+        .eq('status', 'pending');
+      pendingRequesterIds = (pending ?? []).map((r: { requester_id: string }) => r.requester_id);
+    }
 
     // Optimistic update
     const updated = { ...currentUser, ...updates };
@@ -238,6 +327,25 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       console.error('Failed to update profile:', error);
       set({ currentUser: prevUser, allUsers: prevAllUsers });
       useUIStore.getState().addToast('Something went wrong', 'error');
+      return;
+    }
+
+    // Fire accepted notifications for everyone whose pending request was
+    // bulk-accepted by the DB trigger. Best-effort, non-blocking on failure.
+    if (isUnlocking && pendingRequesterIds.length > 0) {
+      await Promise.all(
+        pendingRequesterIds.map((requesterId) =>
+          supabase.functions.invoke('send-notification', {
+            body: {
+              recipientId: requesterId,
+              type: 'follow_request_accepted',
+              title: 'Follow Request Accepted',
+              body: `@${currentUser.username} accepted your follow request`,
+              data: { userId: currentUser.id },
+            },
+          }).catch(() => { /* non-critical */ })
+        )
+      );
     }
   },
 
