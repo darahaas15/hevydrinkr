@@ -133,8 +133,8 @@ function LandingContent() {
       setError('Username must be at least 3 characters');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     const wt = parseFloat(weightKg);
@@ -149,7 +149,7 @@ function LandingContent() {
     }
     setSubmitting(true);
     setError('');
-    const err = await authSignup(email.trim(), password, username.trim(), displayName.trim(), gender, wt, ht);
+    const err = await authSignup(email.trim(), password, username.trim(), displayName.trim(), dob, gender, wt, ht);
     setSubmitting(false);
     if (err) {
       setError(err);
@@ -282,7 +282,7 @@ function LandingContent() {
               <AuthInput icon={<User className="w-4 h-4" />} value={displayName} onChange={setDisplayName} placeholder="Display name" />
               <AuthInput icon={<AtSign className="w-4 h-4" />} value={username} onChange={(v) => setUsername(v.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="username" />
               <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={email} onChange={setEmail} placeholder="Email" />
-              <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (6+ chars)" onSubmit={handleSignup} />
+              <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (8+ chars)" onSubmit={handleSignup} />
 
               <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} placeholder="Date of birth" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
               <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Date of birth (must be 18+)</p>

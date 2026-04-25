@@ -88,29 +88,10 @@ export default function SettingsPage() {
 
   const handleConfirmPublic = async () => {
     setShowPublicConfirm(false);
-
-    const { data: pendingRequests } = await supabase
-      .from('follow_requests')
-      .select('requester_id')
-      .eq('target_id', currentUser!.id)
-      .eq('status', 'pending');
-
+    // The handle_privacy_change DB trigger auto-accepts pending requests, which
+    // creates follows rows, which triggers the follow notification path. No
+    // client-side invocation of send-notification needed.
     updateProfile({ isPrivate: false });
-
-    if (pendingRequests && pendingRequests.length > 0) {
-      for (const req of pendingRequests) {
-        supabase.functions.invoke('send-notification', {
-          body: {
-            recipientId: req.requester_id,
-            type: 'follow_request_accepted',
-            title: 'Follow Request Accepted',
-            body: `@${currentUser!.username} accepted your follow request`,
-            data: { userId: currentUser!.id },
-          },
-        }).catch(() => {});
-      }
-    }
-
     addToast('Account is now public', 'success');
   };
 
@@ -127,15 +108,10 @@ export default function SettingsPage() {
     }
     if (!currentUser) return;
     try {
-      // Delete user data from Supabase (cascading deletes handle related rows)
-      await supabase.from('follows').delete().or(`follower_id.eq.${currentUser.id},following_id.eq.${currentUser.id}`);
-      await supabase.from('feed_items').delete().eq('user_id', currentUser.id);
-      await supabase.from('drink_sessions').delete().eq('user_id', currentUser.id);
-      await supabase.from('personal_records').delete().eq('user_id', currentUser.id);
-      await supabase.from('device_tokens').delete().eq('user_id', currentUser.id);
-      await supabase.from('notifications').delete().eq('user_id', currentUser.id);
-      await supabase.from('notification_preferences').delete().eq('user_id', currentUser.id);
-      await supabase.from('profiles').delete().eq('id', currentUser.id);
+      // Edge function uses admin API to delete auth.users; cascade through
+      // profiles handles all owned content + sets nullable references to NULL.
+      const { error } = await supabase.functions.invoke('delete-account', { body: {} });
+      if (error) throw error;
       await logout();
       if (typeof window !== 'undefined') {
         window.location.href = '/';

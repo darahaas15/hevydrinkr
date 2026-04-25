@@ -24,12 +24,13 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-white mb-2">1. Information We Collect</h2>
           <p>When you use Drinkr, we collect:</p>
           <ul className="list-disc list-inside mt-2 space-y-1 text-zinc-500">
-            <li><strong className="text-zinc-400">Account information:</strong> email address, username, display name, date of birth</li>
-            <li><strong className="text-zinc-400">Profile data:</strong> avatar photo, bio, gender, weight (optional, used for informational estimates)</li>
+            <li><strong className="text-zinc-400">Account information:</strong> email address, username, display name, date of birth (used to verify you meet the minimum age)</li>
+            <li><strong className="text-zinc-400">Profile data:</strong> avatar photo, bio, gender, height, and weight (used only on your own device to estimate your BAC)</li>
             <li><strong className="text-zinc-400">Session data:</strong> drink entries, venues (user-entered text), session times, photos you choose to upload</li>
             <li><strong className="text-zinc-400">Social data:</strong> follows, likes, comments, group memberships</li>
             <li><strong className="text-zinc-400">Device data:</strong> push notification tokens for delivering notifications</li>
           </ul>
+          <p className="mt-2">Your gender, weight, height, and date of birth are visible only to you. They are never shown on your public profile.</p>
         </section>
 
         <section>
@@ -50,8 +51,9 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-base font-semibold text-white mb-2">4. Data Sharing</h2>
-          <p>Your session posts, profile, and social interactions are visible to other authenticated Drinkr users. We do not share your data with third-party advertisers or analytics services.</p>
+          <h2 className="text-base font-semibold text-white mb-2">4. Data Sharing & Visibility</h2>
+          <p>If your account is public, your sessions, posts, profile bio, and social interactions are visible to other authenticated Drinkr users. If your account is private, only approved followers can see your sessions and posts; non-followers see only your username, display name, and avatar.</p>
+          <p className="mt-2">We do not share your data with third-party advertisers or analytics services.</p>
         </section>
 
         <section>
@@ -71,12 +73,17 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-base font-semibold text-white mb-2">7. Children&apos;s Privacy</h2>
-          <p>Drinkr is not intended for anyone under 18 years of age. We do not knowingly collect data from minors. If we learn that a user is under 18, their account will be terminated.</p>
+          <h2 className="text-base font-semibold text-white mb-2">7. Age Requirement</h2>
+          <p>Drinkr is restricted to users who meet the legal drinking age in their jurisdiction (and at minimum 18 years of age). We verify your date of birth at signup and will terminate any account we discover does not meet this requirement.</p>
         </section>
 
         <section>
-          <h2 className="text-base font-semibold text-white mb-2">8. Contact</h2>
+          <h2 className="text-base font-semibold text-white mb-2">8. Reporting & Blocking</h2>
+          <p>You can report posts, comments, or users that violate our community standards through the in-app menu, and you can block users to prevent them from seeing or engaging with your content. Reports are reviewed by our team.</p>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-white mb-2">9. Contact</h2>
           <p>For privacy-related questions or data requests, contact us at <span className="text-accent">privacy@drinkr.app</span></p>
         </section>
       </div>

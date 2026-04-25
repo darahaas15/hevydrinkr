@@ -7,9 +7,16 @@
 // The notification row (title, body, type, data) is already written by the DB trigger.
 // This function handles delivery to all registered devices.
 //
+// AUTH: Requires the `x-webhook-secret` header to match WEBHOOK_SECRET env var.
+// Configure the matching custom header in the Supabase Dashboard:
+//   Database > Webhooks > <hook> > HTTP Headers > x-webhook-secret = <secret>
+// This prevents authenticated users from invoking the function directly to
+// spam push notifications to other users.
+//
 // Environment variables (set via `supabase secrets set`):
 //   SUPABASE_URL              — auto-injected
 //   SUPABASE_SERVICE_ROLE_KEY — auto-injected
+//   WEBHOOK_SECRET            — shared secret with the DB webhook config
 //   APNS_KEY_ID               — Apple Push Notification key ID
 //   APNS_TEAM_ID              — Apple Developer Team ID
 //   APNS_PRIVATE_KEY          — .p8 key contents (base64-encoded PEM)
@@ -354,9 +361,25 @@ async function hmacSHA256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array
 // Main handler
 // ═══════════════════════════════════════════════════════════════════════════
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
+  }
+
+  // Reject anything that isn't from the DB webhook.
+  const expected = Deno.env.get('WEBHOOK_SECRET');
+  const provided = req.headers.get('x-webhook-secret') ?? '';
+  if (!expected || !timingSafeEqual(provided, expected)) {
+    return new Response('Forbidden', { status: 403 });
   }
 
   const webhook = await req.json();

@@ -207,47 +207,34 @@ export const useGroupsStore = create<GroupsState>()(persist((set, get) => ({
   },
 
   joinGroup: async (inviteCode, member) => {
-    // Look up group by invite code
-    const { data, error: lookupError } = await supabase
+    // RLS hides groups from non-members; the RPC bypasses that to do the join
+    // atomically and returns the now-joinable group id.
+    const { data: groupId, error: rpcError } = await supabase
+      .rpc('join_group_by_invite', { p_invite_code: inviteCode });
+
+    if (rpcError || !groupId) {
+      console.error('join_group_by_invite failed:', rpcError);
+      return false;
+    }
+
+    // Re-fetch the full group via the standard read path now that we're a member.
+    const { data, error: readError } = await supabase
       .from('groups')
       .select(
         `*, group_members(*, profile:profiles!group_members_user_id_fkey(display_name, avatar_url))`
       )
-      .eq('invite_code', inviteCode)
-      .eq('is_active', true)
+      .eq('id', groupId)
       .single();
 
-    if (lookupError || !data) {
-      console.error('Group not found for invite code:', lookupError);
+    if (readError || !data) {
+      console.error('Failed to read joined group:', readError);
       return false;
     }
 
     const group = mapDbGroupToGroup(data);
-
-    // Already a member?
-    if (group.members.some((m) => m.userId === member.userId)) {
-      return false;
-    }
-
-    // Insert membership
-    const { error: joinError } = await supabase
-      .from('group_members')
-      .insert({
-        group_id: group.id,
-        user_id: member.userId,
-        role: member.role,
-      });
-
-    if (joinError) {
-      console.error('Failed to join group:', joinError);
-      return false;
-    }
-
-    // Update local state
-    const updatedGroup: Group = {
-      ...group,
-      members: [...group.members, member],
-    };
+    const updatedGroup: Group = group.members.some((m) => m.userId === member.userId)
+      ? group
+      : { ...group, members: [...group.members, member] };
 
     set((state) => {
       const exists = state.groups.some((g) => g.id === group.id);

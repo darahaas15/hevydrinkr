@@ -15,7 +15,7 @@ interface AuthState {
   outgoingRequests: FollowRequest[];
 
   initialize: () => Promise<void>;
-  signup: (email: string, password: string, username: string, displayName: string, gender?: Gender, weightKg?: number, heightCm?: number) => Promise<string | null>;
+  signup: (email: string, password: string, username: string, displayName: string, dateOfBirth: string, gender?: Gender, weightKg?: number, heightCm?: number) => Promise<string | null>;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<UserProfile, 'displayName' | 'bio' | 'gender' | 'weightKg' | 'heightCm' | 'avatarUrl' | 'isPrivate'>>) => Promise<void>;
@@ -68,11 +68,18 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, bio, gender, weight_kg, height_cm, is_private, created_at')
-        .eq('id', session.user.id)
-        .single();
+      // Public columns from profiles, sensitive metrics via self-only RPC.
+      const [
+        { data: profile },
+        { data: metrics },
+      ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, bio, is_private, created_at')
+          .eq('id', session.user.id)
+          .single(),
+        supabase.rpc('get_my_metrics').single(),
+      ]);
 
       if (profile) {
         // Fetch follow data
@@ -81,8 +88,12 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
           supabase.from('follows').select('following_id').eq('follower_id', session.user.id),
         ]);
 
+        const m = (metrics ?? {}) as { weight_kg?: number; height_cm?: number; gender?: string };
         const user = profileFromRow({
           ...profile,
+          gender: m.gender,
+          weight_kg: m.weight_kg,
+          height_cm: m.height_cm,
           followers: (followers || []).map((f: { follower_id: string }) => f.follower_id),
           following: (following || []).map((f: { following_id: string }) => f.following_id),
         });
@@ -219,7 +230,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     set({ currentUser: null, isAuthenticated: false, isLoading: false });
   },
 
-  signup: async (email, password, username, displayName, gender, weightKg, heightCm) => {
+  signup: async (email, password, username, displayName, dateOfBirth, gender, weightKg, heightCm) => {
     // Check username availability (uses RPC to bypass RLS for anon users)
     const sanitized = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
     const { data: taken } = await supabase.rpc('is_username_taken', { p_username: sanitized });
@@ -233,6 +244,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
         data: {
             username: sanitized,
             display_name: displayName,
+            date_of_birth: dateOfBirth,
             ...(gender && { gender }),
             ...(weightKg && { weight_kg: weightKg }),
             ...(heightCm && { height_cm: heightCm }),
@@ -330,23 +342,11 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       return;
     }
 
-    // Fire accepted notifications for everyone whose pending request was
-    // bulk-accepted by the DB trigger. Best-effort, non-blocking on failure.
-    if (isUnlocking && pendingRequesterIds.length > 0) {
-      await Promise.all(
-        pendingRequesterIds.map((requesterId) =>
-          supabase.functions.invoke('send-notification', {
-            body: {
-              recipientId: requesterId,
-              type: 'follow_request_accepted',
-              title: 'Follow Request Accepted',
-              body: `@${currentUser.username} accepted your follow request`,
-              data: { userId: currentUser.id },
-            },
-          }).catch(() => { /* non-critical */ })
-        )
-      );
-    }
+    // The DB trigger handle_privacy_change bulk-accepts pending requests,
+    // which fires trg_follow_request_accepted_notify for each. No client
+    // invocation needed.
+    void isUnlocking;
+    void pendingRequesterIds;
   },
 
   getUserById: (id) => get().allUsers.find((u) => u.id === id),
@@ -557,17 +557,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
           r.targetId === targetId ? { ...r, id: data.id } : r
         ),
       });
-      try {
-        await supabase.functions.invoke('send-notification', {
-          body: {
-            recipientId: targetId,
-            type: 'follow_request',
-            title: 'Follow Request',
-            body: `@${currentUser.username} requested to follow you`,
-            data: { userId: currentUser.id },
-          },
-        });
-      } catch { /* notification failure is non-critical */ }
+      // Push delivered server-side via trg_follow_request_notify.
     }
   },
 
@@ -612,22 +602,8 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
       console.error('Failed to accept follow request:', error);
       set({ followRequests, currentUser, allUsers });
       useUIStore.getState().addToast('Failed to accept request', 'error');
-    } else {
-      try {
-        const { currentUser: cu } = get();
-        if (cu && request.requesterId) {
-          await supabase.functions.invoke('send-notification', {
-            body: {
-              recipientId: request.requesterId,
-              type: 'follow_request_accepted',
-              title: 'Follow Request Accepted',
-              body: `@${cu.username} accepted your follow request`,
-              data: { userId: cu.id },
-            },
-          });
-        }
-      } catch { /* notification failure is non-critical */ }
     }
+    // Push delivered server-side via trg_follow_request_accepted_notify.
   },
 
   rejectFollowRequest: async (requestId) => {

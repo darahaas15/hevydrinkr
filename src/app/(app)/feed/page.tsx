@@ -133,7 +133,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
       const q = searchQuery.trim().toLowerCase();
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, bio, gender, weight_kg, height_cm, created_at, is_private')
+        .select('id, username, display_name, avatar_url, bio, created_at, is_private')
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .neq('id', currentUser?.id ?? '')
         .limit(20);
@@ -146,9 +146,10 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
             displayName: p.display_name,
             avatarUrl: p.avatar_url,
             bio: p.bio || '',
-            gender: p.gender || 'other',
-            weightKg: p.weight_kg || 70,
-            heightCm: p.height_cm || null,
+            // Body metrics are self-only; default for stranger view.
+            gender: 'other',
+            weightKg: 70,
+            heightCm: null,
             joinedAt: p.created_at,
             isDemo: false,
             isPrivate: p.is_private || false,
