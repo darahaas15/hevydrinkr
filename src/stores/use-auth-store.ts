@@ -33,7 +33,7 @@ interface AuthState {
 
 // Guard against rapid follow/unfollow taps causing conflicting DB operations
 const followInFlight = new Set<string>();
-const USERS_STALE_MS = 120_000;
+const USERS_STALE_MS = 600_000;
 let _usersLastFetched = 0;
 let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 

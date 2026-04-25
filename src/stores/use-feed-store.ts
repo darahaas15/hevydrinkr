@@ -19,7 +19,7 @@ import { buildSessionSummary } from '@/lib/session-utils';
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
 const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 
-const FEED_STALE_MS = 120_000;
+const FEED_STALE_MS = 300_000;
 const FEED_PAGE_SIZE = 15;
 let _feedLastFetched = 0;
 const _userPostsLastFetched = new Map<string, number>();
@@ -298,7 +298,8 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       .from('feed_items')
       .select(FEED_SELECT)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error || !data) return;
 
@@ -858,7 +859,55 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     // Skip self — optimistic update already applied
     const userId = payload.new?.user_id as string | undefined;
     if (userId === currentUserId) return;
-    await get().refreshFeedItem(id);
+
+    if (payload.eventType === 'UPDATE') {
+      // Caption/photos/session_summary edits — no joined data needed, patch directly.
+      const caption = (payload.new?.caption ?? '') as string;
+      const photos = (payload.new?.photos ?? []) as string[];
+      const sessionSummary = payload.new?.session_summary as FeedItem['sessionSummary'] | undefined;
+      set((state) => patchItemEverywhere(state, id, (item) => ({
+        ...item,
+        caption,
+        photos,
+        ...(sessionSummary ? { sessionSummary } : {}),
+      })));
+      return;
+    }
+
+    // INSERT — try to construct from cached profile; fall back to full refetch
+    // only if the author isn't in cache (rare — auth store hydrates 500 profiles).
+    if (!userId || !payload.new?.session_summary) {
+      await get().refreshFeedItem(id);
+      return;
+    }
+    const author = useAuthStore.getState().getUserById(userId);
+    if (!author) {
+      await get().refreshFeedItem(id);
+      return;
+    }
+    const newItem: FeedItem = {
+      id,
+      userId,
+      userName: author.displayName,
+      userAvatar: author.avatarUrl,
+      sessionId: payload.new.session_id as string,
+      sessionSummary: payload.new.session_summary as FeedItem['sessionSummary'],
+      photos: (payload.new.photos as string[]) ?? [],
+      caption: (payload.new.caption as string) ?? '',
+      likes: [],
+      comments: [],
+      createdAt: payload.new.created_at as string,
+      isBackfilled: (payload.new.is_backfilled as boolean) ?? false,
+    };
+    set((state) => {
+      if (state.items.some((i) => i.id === id)) return state;
+      const items = [newItem, ...state.items];
+      const existing = state.userPosts[userId];
+      const userPosts = existing && !existing.some((i) => i.id === id)
+        ? { ...state.userPosts, [userId]: [newItem, ...existing] }
+        : state.userPosts;
+      return { items, userPosts };
+    });
   },
 
   applyLikeChange: async (payload, currentUserId) => {
@@ -875,8 +924,24 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       })));
       return;
     }
-    // INSERT/UPDATE — payload lacks the joined liker profile, so refresh
-    await get().refreshFeedItem(feedItemId);
+    // INSERT/UPDATE — patch from payload + cached profile to avoid the heavy
+    // FEED_SELECT refetch. Only fall back to refetch if liker isn't cached.
+    if (!userId || !payload.new) return;
+    const liker = useAuthStore.getState().getUserById(userId);
+    if (!liker) {
+      await get().refreshFeedItem(feedItemId);
+      return;
+    }
+    const newLike: FeedLike = {
+      id: payload.new.id as string,
+      userId,
+      userName: liker.displayName,
+      createdAt: payload.new.created_at as string,
+    };
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => {
+      if (item.likes.some((l) => l.id === newLike.id)) return item;
+      return { ...item, likes: [...item.likes, newLike] };
+    }));
   },
 
   applyCommentChange: async (payload, currentUserId) => {
@@ -895,8 +960,52 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       })));
       return;
     }
-    // INSERT/UPDATE — payload lacks joined commenter profile, so refresh
-    await get().refreshFeedItem(feedItemId);
+    // INSERT/UPDATE — patch from payload + cached profile. Fall back to refetch
+    // only if commenter isn't cached.
+    if (!userId || !payload.new) return;
+    const commenter = useAuthStore.getState().getUserById(userId);
+    if (!commenter) {
+      await get().refreshFeedItem(feedItemId);
+      return;
+    }
+    const commentId = payload.new.id as string;
+    const text = payload.new.text as string;
+    const parentCommentId = (payload.new.parent_comment_id as string | null) ?? null;
+    const createdAt = payload.new.created_at as string;
+
+    if (payload.eventType === 'UPDATE') {
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+        ...item,
+        comments: mapComment(item.comments, commentId, (c) => ({ ...c, text })),
+      })));
+      return;
+    }
+
+    // INSERT
+    const newComment: FeedComment = {
+      id: commentId,
+      userId,
+      userName: commenter.displayName,
+      userAvatar: commenter.avatarUrl,
+      text,
+      parentCommentId,
+      likes: [],
+      replies: [],
+      createdAt,
+    };
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => {
+      if (findComment(item.comments, commentId)) return item;
+      if (parentCommentId) {
+        return {
+          ...item,
+          comments: mapComment(item.comments, parentCommentId, (parent) => ({
+            ...parent,
+            replies: [...parent.replies, newComment],
+          })),
+        };
+      }
+      return { ...item, comments: [...item.comments, newComment] };
+    }));
   },
 }), {
   name: 'hd-feed',

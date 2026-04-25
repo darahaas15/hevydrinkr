@@ -75,7 +75,8 @@ export default function LeaderboardPage() {
     let query = supabase
       .from('feed_items')
       .select('user_id, session_summary, created_at')
-      .in('user_id', circleIds);
+      .in('user_id', circleIds)
+      .limit(500);
 
     if (timeframe !== 'all-time') {
       const sinceMs = timeframe === 'week' ? 7 * 86400000 : 30 * 86400000;
