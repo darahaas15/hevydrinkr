@@ -305,6 +305,22 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
+-- Visibility helper for private accounts
+-- ============================================================
+CREATE OR REPLACE FUNCTION can_view_user_data(owner_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  IF auth.uid() = owner_id THEN RETURN true; END IF;
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = owner_id AND is_private = true) THEN
+    RETURN true;
+  END IF;
+  RETURN EXISTS (
+    SELECT 1 FROM follows WHERE follower_id = auth.uid() AND following_id = owner_id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -331,8 +347,10 @@ ALTER TABLE party_drink_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "profiles_select" ON profiles FOR SELECT TO authenticated USING (true);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- Follows: anyone can read, owner can insert/delete
-CREATE POLICY "follows_select" ON follows FOR SELECT TO authenticated USING (true);
+-- Follows: visible only when both endpoints are viewable under can_view_user_data
+-- (owner, public, or caller follows them). Owner can insert/delete.
+CREATE POLICY "follows_select" ON follows FOR SELECT TO authenticated
+  USING (can_view_user_data(follower_id) AND can_view_user_data(following_id));
 CREATE POLICY "follows_insert" ON follows FOR INSERT TO authenticated WITH CHECK (auth.uid() = follower_id);
 CREATE POLICY "follows_delete" ON follows FOR DELETE TO authenticated USING (auth.uid() = follower_id OR auth.uid() = following_id);
 
