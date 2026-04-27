@@ -19,15 +19,10 @@ import { buildSessionSummary } from '@/lib/session-utils';
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
 const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 
-// Reads currentUser id from auth-store at call time. Used by deriveCounts to
-// stamp `currentUserLikeId` so the heart fill can render before the network
-// refetch backfills `likes`.
-const getCurrentUserId = (): string | undefined => useAuthStore.getState().currentUser?.id;
-
 // Recompute the three persisted-but-derived count fields from the canonical
 // in-memory arrays. Called at every mutation site; cheaper than maintaining
 // hand-written +1/-1 arithmetic across optimistic + realtime + rollback paths.
-function deriveCounts(item: FeedItem, currentUserId = getCurrentUserId()): FeedItem {
+function deriveCounts(item: FeedItem, currentUserId: string | undefined): FeedItem {
   return {
     ...item,
     likeCount: item.likes.length,
@@ -401,7 +396,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       commentCount: 0,
       createdAt: inserted.created_at,
       isBackfilled,
-    });
+    }, user.id);
 
     set((state) => {
       const existing = state.userPosts[user.id];
@@ -419,7 +414,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       likes: [...item.likes, like],
-    })));
+    }, like.userId)));
 
     const { data: inserted, error } = await supabase
       .from('feed_likes')
@@ -436,7 +431,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
         ...patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
           ...item,
           likes: item.likes.filter((l) => l.id !== like.id),
-        })),
+        }, like.userId)),
         error: error.message,
       }));
       return;
@@ -446,17 +441,18 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       likes: item.likes.map((l) => (l.id === like.id ? { ...l, id: inserted.id } : l)),
-    })));
+    }, like.userId)));
   },
 
   removeLike: async (feedItemId, likeId) => {
     const prevItems = get().items;
     const prevUserPosts = get().userPosts;
+    const currentUserId = useAuthStore.getState().currentUser?.id;
     // Optimistic update
     set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       likes: item.likes.filter((l) => l.id !== likeId),
-    })));
+    }, currentUserId)));
 
     const { error } = await supabase
       .from('feed_likes')
@@ -478,9 +474,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
             ...parent,
             replies: [...parent.replies, comment],
           })),
-        });
+        }, comment.userId);
       }
-      return deriveCounts({ ...item, comments: [...item.comments, comment] });
+      return deriveCounts({ ...item, comments: [...item.comments, comment] }, comment.userId);
     };
     const removeComment = (item: FeedItem): FeedItem => {
       if (parentCommentId) {
@@ -490,9 +486,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
             ...parent,
             replies: parent.replies.filter((r) => r.id !== comment.id),
           })),
-        });
+        }, comment.userId);
       }
-      return deriveCounts({ ...item, comments: item.comments.filter((c) => c.id !== comment.id) });
+      return deriveCounts({ ...item, comments: item.comments.filter((c) => c.id !== comment.id) }, comment.userId);
     };
 
     // Optimistic update
@@ -523,7 +519,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       comments: mapComment(item.comments, comment.id, (c) => ({ ...c, id: inserted.id })),
-    })));
+    }, comment.userId)));
   },
 
   getFeedForUser: (userId) =>
@@ -774,7 +770,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       // Try removing from top-level first
       const filtered = item.comments.filter((c) => c.id !== commentId);
       if (filtered.length < item.comments.length) {
-        return deriveCounts({ ...item, comments: filtered });
+        return deriveCounts({ ...item, comments: filtered }, currentUserId);
       }
       // Otherwise remove from a parent's replies
       return deriveCounts({
@@ -783,7 +779,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
           ...c,
           replies: c.replies.filter((r) => r.id !== commentId),
         })),
-      });
+      }, currentUserId);
     }));
 
     const { error } = await supabase
@@ -932,7 +928,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       commentCount: 0,
       createdAt: payload.new.created_at as string,
       isBackfilled: (payload.new.is_backfilled as boolean) ?? false,
-    });
+    }, currentUserId);
     set((state) => {
       if (state.items.some((i) => i.id === id)) return state;
       const items = [newItem, ...state.items];
@@ -955,7 +951,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
         ...item,
         likes: item.likes.filter((l) => l.id !== likeId),
-      })));
+      }, currentUserId)));
       return;
     }
     // INSERT/UPDATE — patch from payload + cached profile to avoid the heavy
@@ -974,7 +970,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     };
     set((state) => patchItemEverywhere(state, feedItemId, (item) => {
       if (item.likes.some((l) => l.id === newLike.id)) return item;
-      return deriveCounts({ ...item, likes: [...item.likes, newLike] });
+      return deriveCounts({ ...item, likes: [...item.likes, newLike] }, currentUserId);
     }));
   },
 
@@ -991,7 +987,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
         comments: item.comments
           .filter((c) => c.id !== commentId)
           .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) })),
-      })));
+      }, currentUserId)));
       return;
     }
     // INSERT/UPDATE — patch from payload + cached profile. Fall back to refetch
@@ -1011,7 +1007,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
         ...item,
         comments: mapComment(item.comments, commentId, (c) => ({ ...c, text })),
-      })));
+      }, currentUserId)));
       return;
     }
 
@@ -1036,9 +1032,9 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
             ...parent,
             replies: [...parent.replies, newComment],
           })),
-        });
+        }, currentUserId);
       }
-      return deriveCounts({ ...item, comments: [...item.comments, newComment] });
+      return deriveCounts({ ...item, comments: [...item.comments, newComment] }, currentUserId);
     }));
   },
 }), {
