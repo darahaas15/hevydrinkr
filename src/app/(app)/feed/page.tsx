@@ -93,6 +93,7 @@ function DiscoverUserRow({ user, onOpenProfile }: { user: UserProfile; onOpenPro
 function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   const router = useRouter();
   const following = useAuthStore((s) => s.currentUser?.following || []);
+  const outgoingRequests = useAuthStore((s) => s.outgoingRequests);
   const items = useFeedStore((s) => s.items);
   const currentUser = useAuthStore((s) => s.currentUser);
   const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
@@ -213,13 +214,29 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
 
   const showSearchResults = tab === 'discover' && searchQuery.trim().length > 0;
 
-  // Non-followed users for discover carousel
+  // Non-followed users for discover carousel.
+  // Ordering: targets we have a pending outgoing request to come first, so
+  // a user we just requested (or just cancelled a request to) stays in the
+  // visible window of the horizontal carousel instead of getting pushed
+  // off-screen by other suggestions.
   const discoverUsers = useMemo(() => {
     if (!currentUser || tab !== 'discover') return [];
     const followSet = new Set(followingIds);
     const blockedSet = new Set(blockedUserIds);
-    return allUsers.filter((u) => u.id !== currentUser.id && !followSet.has(u.id) && !blockedSet.has(u.id));
-  }, [allUsers, currentUser, tab, followingIds, blockedUserIds]);
+    const pendingSet = new Set(outgoingRequests.map((r) => r.targetId));
+    const visible = allUsers.filter(
+      (u) => u.id !== currentUser.id && !followSet.has(u.id) && !blockedSet.has(u.id)
+    );
+    return visible.sort((a, b) => {
+      const aPending = pendingSet.has(a.id) ? 0 : 1;
+      const bPending = pendingSet.has(b.id) ? 0 : 1;
+      if (aPending !== bPending) return aPending - bPending;
+      // Newest first within each group; id as deterministic tiebreaker.
+      const dt = new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime();
+      if (dt !== 0) return dt;
+      return a.id.localeCompare(b.id);
+    });
+  }, [allUsers, currentUser, tab, followingIds, blockedUserIds, outgoingRequests]);
 
   // Infinite scroll observer. Use a callback ref so the observer attaches the
   // moment the sentinel mounts and detaches when it unmounts — a useEffect keyed
