@@ -944,6 +944,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   name: 'hd-sessions',
   version: 2,
   storage: safeJSONStorage(),
+  // If you add a new persisted field, update this migrate's empty-shape return too.
+  // The cache is purely a snappiness optimization — dropping it on version mismatch
+  // is safe; fetchSessions rebuilds on next mount.
   // Shape unchanged from v1 — the version bump just forces a one-time clean
   // hydrate so users don't sit on an oversized v1 cache between hydrate and
   // the next persist write.

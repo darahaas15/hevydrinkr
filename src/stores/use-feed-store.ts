@@ -19,9 +19,12 @@ import { buildSessionSummary } from '@/lib/session-utils';
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
 const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 
-// Recompute the three persisted-but-derived count fields from the canonical
-// in-memory arrays. Called at every mutation site; cheaper than maintaining
-// hand-written +1/-1 arithmetic across optimistic + realtime + rollback paths.
+// `deriveCounts` is for paths where the `likes`/`comments` arrays are the
+// canonical truth: initial fetch (`mapRow`) and brand-new FeedItem construction
+// (`createFeedItemFromSession`, `applyFeedItemChange` INSERT). Mutation paths
+// (optimistic + realtime) instead apply manual count deltas, because during the
+// cache-only window (arrays stripped from cache, counts populated) the arrays
+// are NOT authoritative — recomputing from them would collapse the count.
 function deriveCounts(item: FeedItem, currentUserId: string | undefined): FeedItem {
   return {
     ...item,
@@ -55,6 +58,10 @@ interface FeedState {
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
+  // Cache-writer id; only meaningful in the persisted snapshot. Used in
+  // onRehydrateStorage to detect cross-user cache and null out stale
+  // currentUserLikeId values before the network refetch arrives.
+  _persistedForUserId?: string | null;
 
   fetchFeed: (force?: boolean) => Promise<void>;
   fetchMoreFeed: () => Promise<void>;
@@ -254,6 +261,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   loadingMore: false,
   hasMore: true,
   error: null,
+  _persistedForUserId: null,
 
   fetchFeed: async (force) => {
     if (!force && Date.now() - _feedLastFetched < FEED_STALE_MS) return;
@@ -411,10 +419,12 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
   addLike: async (feedItemId, like) => {
     // Optimistic update
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
       ...item,
       likes: [...item.likes, like],
-    }, like.userId)));
+      likeCount: item.likeCount + 1,
+      currentUserLikeId: like.id,
+    })));
 
     const { data: inserted, error } = await supabase
       .from('feed_likes')
@@ -428,31 +438,35 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       // Roll back optimistic update
       set((state) => ({
-        ...patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+        ...patchItemEverywhere(state, feedItemId, (item) => ({
           ...item,
           likes: item.likes.filter((l) => l.id !== like.id),
-        }, like.userId)),
+          likeCount: Math.max(0, item.likeCount - 1),
+          currentUserLikeId: null,
+        })),
         error: error.message,
       }));
       return;
     }
 
-    // Replace the temp like id with the real DB id
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+    // Replace the temp like id with the real DB id (count unchanged)
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
       ...item,
       likes: item.likes.map((l) => (l.id === like.id ? { ...l, id: inserted.id } : l)),
-    }, like.userId)));
+      currentUserLikeId: item.currentUserLikeId === like.id ? inserted.id : item.currentUserLikeId,
+    })));
   },
 
   removeLike: async (feedItemId, likeId) => {
     const prevItems = get().items;
     const prevUserPosts = get().userPosts;
-    const currentUserId = useAuthStore.getState().currentUser?.id;
     // Optimistic update
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
       ...item,
       likes: item.likes.filter((l) => l.id !== likeId),
-    }, currentUserId)));
+      likeCount: Math.max(0, item.likeCount - 1),
+      currentUserLikeId: null,
+    })));
 
     const { error } = await supabase
       .from('feed_likes')
@@ -468,27 +482,33 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   addComment: async (feedItemId, comment, parentCommentId) => {
     const insertComment = (item: FeedItem): FeedItem => {
       if (parentCommentId) {
-        return deriveCounts({
+        return {
           ...item,
           comments: mapComment(item.comments, parentCommentId, (parent) => ({
             ...parent,
             replies: [...parent.replies, comment],
           })),
-        }, comment.userId);
+          commentCount: item.commentCount + 1,
+        };
       }
-      return deriveCounts({ ...item, comments: [...item.comments, comment] }, comment.userId);
+      return { ...item, comments: [...item.comments, comment], commentCount: item.commentCount + 1 };
     };
     const removeComment = (item: FeedItem): FeedItem => {
       if (parentCommentId) {
-        return deriveCounts({
+        return {
           ...item,
           comments: mapComment(item.comments, parentCommentId, (parent) => ({
             ...parent,
             replies: parent.replies.filter((r) => r.id !== comment.id),
           })),
-        }, comment.userId);
+          commentCount: Math.max(0, item.commentCount - 1),
+        };
       }
-      return deriveCounts({ ...item, comments: item.comments.filter((c) => c.id !== comment.id) }, comment.userId);
+      return {
+        ...item,
+        comments: item.comments.filter((c) => c.id !== comment.id),
+        commentCount: Math.max(0, item.commentCount - 1),
+      };
     };
 
     // Optimistic update
@@ -515,11 +535,11 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return;
     }
 
-    // Replace the temp comment id with the real DB id
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+    // Replace the temp comment id with the real DB id (count unchanged)
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
       ...item,
       comments: mapComment(item.comments, comment.id, (c) => ({ ...c, id: inserted.id })),
-    }, comment.userId)));
+    })));
   },
 
   getFeedForUser: (userId) =>
@@ -766,20 +786,26 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const comment = feedItem ? findComment(feedItem.comments, commentId) : undefined;
     if (!comment || comment.userId !== currentUserId) return;
 
+    // Top-level deletion cascades to replies; reply deletion is just 1.
+    const isTopLevel = comment.parentCommentId == null;
+    const deletedCount = isTopLevel ? 1 + comment.replies.length : 1;
+
     set((state) => patchItemEverywhere(state, feedItemId, (item) => {
-      // Try removing from top-level first
-      const filtered = item.comments.filter((c) => c.id !== commentId);
-      if (filtered.length < item.comments.length) {
-        return deriveCounts({ ...item, comments: filtered }, currentUserId);
+      if (isTopLevel) {
+        return {
+          ...item,
+          comments: item.comments.filter((c) => c.id !== commentId),
+          commentCount: Math.max(0, item.commentCount - deletedCount),
+        };
       }
-      // Otherwise remove from a parent's replies
-      return deriveCounts({
+      return {
         ...item,
         comments: item.comments.map((c) => ({
           ...c,
           replies: c.replies.filter((r) => r.id !== commentId),
         })),
-      }, currentUserId);
+        commentCount: Math.max(0, item.commentCount - 1),
+      };
     }));
 
     const { error } = await supabase
@@ -948,10 +974,17 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (payload.eventType === 'DELETE') {
       const likeId = payload.old?.id as string | undefined;
       if (!likeId) return;
-      set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
-        ...item,
-        likes: item.likes.filter((l) => l.id !== likeId),
-      }, currentUserId)));
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => {
+        // Only apply delta if the like was actually present (avoid double-decrement).
+        if (!item.likes.some((l) => l.id === likeId)) {
+          return { ...item, likeCount: Math.max(0, item.likeCount - 1) };
+        }
+        return {
+          ...item,
+          likes: item.likes.filter((l) => l.id !== likeId),
+          likeCount: Math.max(0, item.likeCount - 1),
+        };
+      }));
       return;
     }
     // INSERT/UPDATE — patch from payload + cached profile to avoid the heavy
@@ -970,7 +1003,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     };
     set((state) => patchItemEverywhere(state, feedItemId, (item) => {
       if (item.likes.some((l) => l.id === newLike.id)) return item;
-      return deriveCounts({ ...item, likes: [...item.likes, newLike] }, currentUserId);
+      return { ...item, likes: [...item.likes, newLike], likeCount: item.likeCount + 1 };
     }));
   },
 
@@ -982,12 +1015,14 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (payload.eventType === 'DELETE') {
       const commentId = payload.old?.id as string | undefined;
       if (!commentId) return;
-      set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+      // Realtime delete fires once per row (cascade-deleted replies emit their own events), so -1.
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
         ...item,
         comments: item.comments
           .filter((c) => c.id !== commentId)
           .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) })),
-      }, currentUserId)));
+        commentCount: Math.max(0, item.commentCount - 1),
+      })));
       return;
     }
     // INSERT/UPDATE — patch from payload + cached profile. Fall back to refetch
@@ -1004,10 +1039,11 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const createdAt = payload.new.created_at as string;
 
     if (payload.eventType === 'UPDATE') {
-      set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
+      // Text edit — no count change
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
         ...item,
         comments: mapComment(item.comments, commentId, (c) => ({ ...c, text })),
-      }, currentUserId)));
+      })));
       return;
     }
 
@@ -1026,28 +1062,28 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     set((state) => patchItemEverywhere(state, feedItemId, (item) => {
       if (findComment(item.comments, commentId)) return item;
       if (parentCommentId) {
-        return deriveCounts({
+        return {
           ...item,
           comments: mapComment(item.comments, parentCommentId, (parent) => ({
             ...parent,
             replies: [...parent.replies, newComment],
           })),
-        }, currentUserId);
+          commentCount: item.commentCount + 1,
+        };
       }
-      return deriveCounts({ ...item, comments: [...item.comments, newComment] }, currentUserId);
+      return { ...item, comments: [...item.comments, newComment], commentCount: item.commentCount + 1 };
     }));
   },
 }), {
   name: 'hd-feed',
   version: 2,
   storage: safeJSONStorage(),
-  // Persisted shape changed in v2: drop full likes/comments arrays (heaviest
-  // contributors to QuotaExceededError), keep only the three derived count
-  // fields. Pre-v2 caches don't have the count fields, so drop them — the
-  // cache is just a snappiness optimization, fetchFeed rebuilds it.
+  // If you add a new persisted field, update this migrate's empty-shape return too.
+  // The cache is purely a snappiness optimization — dropping it on version mismatch
+  // is safe; fetchFeed rebuilds on next mount.
   migrate: (_persisted, fromVersion) => {
-    if (fromVersion < 2) return { items: [] };
-    return _persisted as { items: FeedItem[] };
+    if (fromVersion < 2) return { items: [], _persistedForUserId: null };
+    return _persisted as { items: FeedItem[]; _persistedForUserId: string | null };
   },
   partialize: (s) => ({
     items: s.items.slice(0, 20).map((item) => ({
@@ -1055,8 +1091,23 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       likes: [],
       comments: [],
     })),
+    // Capture the user id who wrote this cache. On rehydrate, if the current
+    // user differs, currentUserLikeId fields are stale (they're row ids of
+    // *that* user's likes) — null them out so handleLike doesn't issue
+    // delete-row requests against another user's data.
+    _persistedForUserId: useAuthStore.getState().currentUser?.id ?? null,
   }),
   onRehydrateStorage: () => (state) => {
-    if (state && state.items.length > 0) state.loading = false;
+    if (!state) return;
+    if (state.items.length > 0) state.loading = false;
+    // Cross-user cache hygiene: if a different user is signed in than the
+    // one that wrote the cache, the persisted currentUserLikeId values
+    // belong to the previous user. Null them out so the heart fill falls
+    // back to "not liked" until fetchFeed populates real arrays.
+    const currentUserId = useAuthStore.getState().currentUser?.id;
+    const writerId = state._persistedForUserId;
+    if (currentUserId && writerId && writerId !== currentUserId) {
+      state.items = state.items.map((item) => ({ ...item, currentUserLikeId: null }));
+    }
   },
 }));

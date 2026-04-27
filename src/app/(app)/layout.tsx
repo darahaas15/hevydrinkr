@@ -37,8 +37,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useKeyboardHeight();
 
   useEffect(() => {
-    logStorageUsage();
-  }, []);
+    if (currentUser?.id) logStorageUsage();
+  }, [currentUser?.id]);
 
   useEffect(() => {
     initialize();

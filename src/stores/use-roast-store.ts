@@ -573,6 +573,9 @@ export const useRoastStore = create<RoastState>()(
       name: 'hd-roasts',
       version: 2,
       storage: safeJSONStorage(),
+      // If you add a new persisted field, update this migrate's empty-shape return too.
+      // The cache is purely a snappiness optimization — dropping it on version mismatch
+      // is safe; fetchRecaps rebuilds on next mount.
       migrate: (_persisted, fromVersion) => {
         if (fromVersion < 2) return { recaps: [], streaks: [], records: [] };
         return _persisted as { recaps: RoastRecap[]; streaks: RoastStreak[]; records: GroupRecord[] };

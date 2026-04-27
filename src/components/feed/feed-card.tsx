@@ -268,12 +268,14 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
               </div>
               <div className="max-h-[60dvh] overflow-y-auto">
                 {item.likes.length === 0 && item.likeCount > 0 ? (
-                  Array.from({ length: Math.min(5, item.likeCount) }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-5 py-3">
-                      <Skeleton variant="circle" className="w-8 h-8" />
-                      <Skeleton variant="text" className="h-4 w-32" />
-                    </div>
-                  ))
+                  <div aria-hidden="true">
+                    {Array.from({ length: Math.min(5, item.likeCount) }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-5 py-3">
+                        <Skeleton variant="circle" className="w-8 h-8" />
+                        <Skeleton variant="text" className="h-4 w-32" />
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   item.likes.map((like) => {
                     const user = getUserById(like.userId);
