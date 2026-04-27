@@ -942,15 +942,21 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   },
 }), {
   name: 'hd-sessions',
+  version: 2,
   storage: safeJSONStorage(),
+  // Shape unchanged from v1 — the version bump just forces a one-time clean
+  // hydrate so users don't sit on an oversized v1 cache between hydrate and
+  // the next persist write.
+  migrate: (_persisted, fromVersion) => {
+    if (fromVersion < 2) return { activeSession: null, sessionsByUser: {} };
+    return _persisted as { activeSession: DrinkSession | null; sessionsByUser: Record<string, DrinkSession[]> };
+  },
   partialize: (s) => ({
     activeSession: s.activeSession ? stripPhotos(s.activeSession) : null,
-    // Cap each user's persisted history at 100 sessions to keep localStorage
-    // small. Sessions are refetched on focus, so dropped tail is recoverable.
     sessionsByUser: Object.fromEntries(
       Object.entries(s.sessionsByUser).map(([uid, list]) => [
         uid,
-        list.slice(0, 100).map(stripPhotos),
+        list.slice(0, 30).map(stripPhotos),
       ]),
     ),
   }),
