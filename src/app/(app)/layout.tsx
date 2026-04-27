@@ -156,19 +156,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-          (payload) => {
+          () => {
             useNotificationStore.getState().fetchNotifications(userId, true);
-            // The on_follow_request_inserted trigger writes the notification
-            // and the follow_requests row in the same transaction. If we got
-            // a follow_request notification, the row exists — refetch so the
-            // UserPlus dot lights up even if the dedicated follow_requests
-            // realtime channel dropped.
-            const type = (payload?.new as { type?: string } | undefined)?.type;
-            if (type === 'follow_request') {
-              useAuthStore.getState().fetchFollowRequests();
-            } else if (type === 'follow_request_accepted') {
-              useAuthStore.getState().fetchOutgoingRequests();
-            }
           }
         )
         .subscribe((status) => {
@@ -200,11 +189,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       useFeedStore.getState().fetchFeed(true);
       useNotificationStore.getState().fetchNotifications(userId, true);
-      // Follow-request state has its own realtime channel in the auth store,
-      // but it has no auto-resubscribe. Mirror the notifications fallback so
-      // the UserPlus red dot stays in sync if the socket drops.
-      useAuthStore.getState().fetchFollowRequests();
-      useAuthStore.getState().fetchOutgoingRequests();
     };
     document.addEventListener('visibilitychange', refresh);
     window.addEventListener('focus', refresh);

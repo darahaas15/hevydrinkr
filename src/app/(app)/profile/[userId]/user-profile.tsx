@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Wine, Clock, Calendar, TrendingUp, Share2, X, Heart, Trophy as TrophyIcon, Timer, Flag, Ban, MoreHorizontal, Lock } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -17,7 +17,6 @@ import { useModerationStore } from '@/stores/use-moderation-store';
 import { ReportModal } from '@/components/moderation/report-modal';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { hapticLight } from '@/lib/haptics';
-import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 
 export default function UserProfilePage({ userId: userIdProp }: { userId?: string }) {
   const pathname = usePathname();
@@ -59,35 +58,6 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
       fetchAllUsers(true).finally(() => setLoadingUser(false));
     }
   }, [resolvedUserId, fetchSessions, fetchUserPosts, fetchAllUsers, fetchOutgoingRequests]);
-
-  // If the target accepts our request while we're sitting on their profile,
-  // the auth-store's outgoing-requests realtime channel should flip the
-  // button — but if the socket dropped, the UI sticks on "Requested". A
-  // focus/visibility refetch self-heals without requiring the user to leave.
-  useEffect(() => {
-    const refresh = () => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      fetchOutgoingRequests();
-      fetchAllUsers(true);
-    };
-    document.addEventListener('visibilitychange', refresh);
-    window.addEventListener('focus', refresh);
-    window.addEventListener('online', refresh);
-    return () => {
-      document.removeEventListener('visibilitychange', refresh);
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('online', refresh);
-    };
-  }, [fetchOutgoingRequests, fetchAllUsers]);
-
-  const handleRefresh = useCallback(async () => {
-    await Promise.all([
-      fetchOutgoingRequests(),
-      fetchAllUsers(true),
-      fetchSessions(resolvedUserId, true),
-      fetchUserPosts(resolvedUserId, true),
-    ]);
-  }, [fetchOutgoingRequests, fetchAllUsers, fetchSessions, fetchUserPosts, resolvedUserId]);
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
   const isFollowing = currentUser?.following.includes(resolvedUserId) ?? false;
@@ -285,7 +255,6 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
         </div>
       </div>
 
-      <PullToRefresh onRefresh={handleRefresh}>
       <div className="px-5 py-5 space-y-5">
         {/* User info */}
         <div className="flex items-center gap-4">
@@ -446,7 +415,6 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
           </>
         )}
       </div>
-      </PullToRefresh>
 
       <ReportModal
         open={showReport}
