@@ -13,6 +13,7 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { useUIStore } from '@/stores/use-ui-store';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { SplashScreen } from '@/components/ui/splash-screen';
+import { logStorageUsage } from '@/lib/storage/log-storage-usage';
 
 const CelebrationModal = dynamic(() => import('@/components/effects/celebration-modal').then((m) => m.CelebrationModal), { ssr: false });
 const ToastContainer = dynamic(() => import('@/components/ui/toast').then((m) => m.ToastContainer), { ssr: false });
@@ -34,6 +35,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Toggle a `keyboard-open` class on <html> when the soft keyboard is
   // visible, so fixed input bars can adjust safe-area padding.
   useKeyboardHeight();
+
+  useEffect(() => {
+    logStorageUsage();
+  }, []);
 
   useEffect(() => {
     initialize();
