@@ -571,9 +571,14 @@ export const useRoastStore = create<RoastState>()(
     }),
     {
       name: 'hd-roasts',
+      version: 2,
       storage: safeJSONStorage(),
+      migrate: (_persisted, fromVersion) => {
+        if (fromVersion < 2) return { recaps: [], streaks: [], records: [] };
+        return _persisted as { recaps: RoastRecap[]; streaks: RoastStreak[]; records: GroupRecord[] };
+      },
       partialize: (s) => ({
-        recaps: s.recaps.slice(0, 50),
+        recaps: s.recaps.slice(0, 8),
         streaks: s.streaks,
         records: s.records,
       }),
