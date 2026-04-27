@@ -19,6 +19,25 @@ import { buildSessionSummary } from '@/lib/session-utils';
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
 const stripFeedPhotos = (item: FeedItem): FeedItem => ({ ...item, photos: [] });
 
+// Reads currentUser id from auth-store at call time. Used by deriveCounts to
+// stamp `currentUserLikeId` so the heart fill can render before the network
+// refetch backfills `likes`.
+const getCurrentUserId = (): string | undefined => useAuthStore.getState().currentUser?.id;
+
+// Recompute the three persisted-but-derived count fields from the canonical
+// in-memory arrays. Called at every mutation site; cheaper than maintaining
+// hand-written +1/-1 arithmetic across optimistic + realtime + rollback paths.
+function deriveCounts(item: FeedItem, currentUserId = getCurrentUserId()): FeedItem {
+  return {
+    ...item,
+    likeCount: item.likes.length,
+    currentUserLikeId: currentUserId
+      ? item.likes.find((l) => l.userId === currentUserId)?.id ?? null
+      : null,
+    commentCount: item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0),
+  };
+}
+
 const FEED_STALE_MS = 300_000;
 const FEED_PAGE_SIZE = 15;
 let _feedLastFetched = 0;
@@ -170,12 +189,12 @@ function mapComment(comments: FeedComment[], commentId: string, fn: (c: FeedComm
   });
 }
 
-function mapRow(row: FeedItemRow): FeedItem | null {
+function mapRow(row: FeedItemRow, currentUserId?: string): FeedItem | null {
   // Defend against corrupt rows: if session_summary is missing, the item
   // is unrenderable (every consumer reads sessionSummary.totalDrinks etc.)
   // and would crash the page. Drop it instead.
   if (!row.session_summary) return null;
-  return {
+  const item: FeedItem = {
     id: row.id,
     userId: row.user_id,
     userName: row.profile.display_name,
@@ -190,14 +209,18 @@ function mapRow(row: FeedItemRow): FeedItem | null {
       userName: l.liker.display_name,
       createdAt: l.created_at,
     })),
+    likeCount: 0,           // filled by deriveCounts below
+    currentUserLikeId: null,
     comments: threadComments(row.feed_comments ?? []),
+    commentCount: 0,        // filled by deriveCounts below
     createdAt: row.created_at,
     isBackfilled: row.is_backfilled ?? false,
   };
+  return deriveCounts(item, currentUserId);
 }
 
-function mapRows(rows: FeedItemRow[]): FeedItem[] {
-  return rows.map(mapRow).filter((x): x is FeedItem => x !== null);
+function mapRows(rows: FeedItemRow[], currentUserId?: string): FeedItem[] {
+  return rows.map((r) => mapRow(r, currentUserId)).filter((x): x is FeedItem => x !== null);
 }
 
 // Apply a transform to a feed item across both `items` and any cached
@@ -243,6 +266,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     // Only show loading skeleton on initial load, not refetches
     if (get().items.length === 0) set({ loading: true });
     set({ error: null });
+    const currentUserId = useAuthStore.getState().currentUser?.id;
 
     const { data, error } = await supabase
       .from('feed_items')
@@ -256,7 +280,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }
 
     const rows = data as unknown as FeedItemRow[];
-    const items = mapRows(rows);
+    const items = mapRows(rows, currentUserId);
     set({ items, loading: false, hasMore: rows.length === FEED_PAGE_SIZE });
   },
 
@@ -265,6 +289,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (loadingMore || !hasMore || items.length === 0) return;
 
     set({ loadingMore: true });
+    const currentUserId = useAuthStore.getState().currentUser?.id;
     const lastItem = items[items.length - 1];
 
     const { data, error } = await supabase
@@ -280,7 +305,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }
 
     const rows = data as unknown as FeedItemRow[];
-    const newItems = mapRows(rows);
+    const newItems = mapRows(rows, currentUserId);
     set((state) => ({
       items: [...state.items, ...newItems],
       loadingMore: false,
@@ -293,6 +318,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const last = _userPostsLastFetched.get(userId) ?? 0;
     if (!force && Date.now() - last < FEED_STALE_MS) return;
     _userPostsLastFetched.set(userId, Date.now());
+    const currentUserId = useAuthStore.getState().currentUser?.id;
 
     const { data, error } = await supabase
       .from('feed_items')
@@ -303,7 +329,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error || !data) return;
 
-    const posts = mapRows(data as unknown as FeedItemRow[]);
+    const posts = mapRows(data as unknown as FeedItemRow[], currentUserId);
     set((state) => ({ userPosts: { ...state.userPosts, [userId]: posts } }));
   },
 
@@ -312,6 +338,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const cached = get().items.find((i) => i.id === postId);
     if (cached) return cached;
 
+    const currentUserId = useAuthStore.getState().currentUser?.id;
     const { data, error } = await supabase
       .from('feed_items')
       .select(FEED_SELECT)
@@ -320,7 +347,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
     if (error || !data) return null;
 
-    const item = mapRow(data as unknown as FeedItemRow);
+    const item = mapRow(data as unknown as FeedItemRow, currentUserId);
     if (!item) return null;
     // Merge into store so subsequent reads find it
     set((state) => {
@@ -358,7 +385,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return;
     }
 
-    const feedItem: FeedItem = {
+    const feedItem: FeedItem = deriveCounts({
       id: inserted.id,
       userId: user.id,
       userName: user.displayName,
@@ -368,10 +395,13 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       photos: session.photos ?? [],
       caption,
       likes: [],
+      likeCount: 0,
+      currentUserLikeId: null,
       comments: [],
+      commentCount: 0,
       createdAt: inserted.created_at,
       isBackfilled,
-    };
+    });
 
     set((state) => {
       const existing = state.userPosts[user.id];
@@ -386,7 +416,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
   addLike: async (feedItemId, like) => {
     // Optimistic update
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       likes: [...item.likes, like],
     })));
@@ -403,7 +433,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (error) {
       // Roll back optimistic update
       set((state) => ({
-        ...patchItemEverywhere(state, feedItemId, (item) => ({
+        ...patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
           ...item,
           likes: item.likes.filter((l) => l.id !== like.id),
         })),
@@ -413,7 +443,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }
 
     // Replace the temp like id with the real DB id
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       likes: item.likes.map((l) => (l.id === like.id ? { ...l, id: inserted.id } : l)),
     })));
@@ -423,7 +453,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const prevItems = get().items;
     const prevUserPosts = get().userPosts;
     // Optimistic update
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       likes: item.likes.filter((l) => l.id !== likeId),
     })));
@@ -442,27 +472,27 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   addComment: async (feedItemId, comment, parentCommentId) => {
     const insertComment = (item: FeedItem): FeedItem => {
       if (parentCommentId) {
-        return {
+        return deriveCounts({
           ...item,
           comments: mapComment(item.comments, parentCommentId, (parent) => ({
             ...parent,
             replies: [...parent.replies, comment],
           })),
-        };
+        });
       }
-      return { ...item, comments: [...item.comments, comment] };
+      return deriveCounts({ ...item, comments: [...item.comments, comment] });
     };
     const removeComment = (item: FeedItem): FeedItem => {
       if (parentCommentId) {
-        return {
+        return deriveCounts({
           ...item,
           comments: mapComment(item.comments, parentCommentId, (parent) => ({
             ...parent,
             replies: parent.replies.filter((r) => r.id !== comment.id),
           })),
-        };
+        });
       }
-      return { ...item, comments: item.comments.filter((c) => c.id !== comment.id) };
+      return deriveCounts({ ...item, comments: item.comments.filter((c) => c.id !== comment.id) });
     };
 
     // Optimistic update
@@ -490,7 +520,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     }
 
     // Replace the temp comment id with the real DB id
-    set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+    set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
       ...item,
       comments: mapComment(item.comments, comment.id, (c) => ({ ...c, id: inserted.id })),
     })));
@@ -744,16 +774,16 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       // Try removing from top-level first
       const filtered = item.comments.filter((c) => c.id !== commentId);
       if (filtered.length < item.comments.length) {
-        return { ...item, comments: filtered };
+        return deriveCounts({ ...item, comments: filtered });
       }
       // Otherwise remove from a parent's replies
-      return {
+      return deriveCounts({
         ...item,
         comments: item.comments.map((c) => ({
           ...c,
           replies: c.replies.filter((r) => r.id !== commentId),
         })),
-      };
+      });
     }));
 
     const { error } = await supabase
@@ -823,13 +853,14 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 
   refreshFeedItem: async (feedItemId) => {
+    const currentUserId = useAuthStore.getState().currentUser?.id;
     const { data, error } = await supabase
       .from('feed_items')
       .select(FEED_SELECT)
       .eq('id', feedItemId)
       .single();
     if (error || !data) return;
-    const fresh = mapRow(data as unknown as FeedItemRow);
+    const fresh = mapRow(data as unknown as FeedItemRow, currentUserId);
     if (!fresh) return;
     set((state) => {
       const items = state.items.some((i) => i.id === feedItemId)
@@ -885,7 +916,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       await get().refreshFeedItem(id);
       return;
     }
-    const newItem: FeedItem = {
+    const newItem: FeedItem = deriveCounts({
       id,
       userId,
       userName: author.displayName,
@@ -895,10 +926,13 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       photos: (payload.new.photos as string[]) ?? [],
       caption: (payload.new.caption as string) ?? '',
       likes: [],
+      likeCount: 0,
+      currentUserLikeId: null,
       comments: [],
+      commentCount: 0,
       createdAt: payload.new.created_at as string,
       isBackfilled: (payload.new.is_backfilled as boolean) ?? false,
-    };
+    });
     set((state) => {
       if (state.items.some((i) => i.id === id)) return state;
       const items = [newItem, ...state.items];
@@ -918,7 +952,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (payload.eventType === 'DELETE') {
       const likeId = payload.old?.id as string | undefined;
       if (!likeId) return;
-      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
         ...item,
         likes: item.likes.filter((l) => l.id !== likeId),
       })));
@@ -940,7 +974,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     };
     set((state) => patchItemEverywhere(state, feedItemId, (item) => {
       if (item.likes.some((l) => l.id === newLike.id)) return item;
-      return { ...item, likes: [...item.likes, newLike] };
+      return deriveCounts({ ...item, likes: [...item.likes, newLike] });
     }));
   },
 
@@ -952,7 +986,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (payload.eventType === 'DELETE') {
       const commentId = payload.old?.id as string | undefined;
       if (!commentId) return;
-      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
         ...item,
         comments: item.comments
           .filter((c) => c.id !== commentId)
@@ -974,7 +1008,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     const createdAt = payload.new.created_at as string;
 
     if (payload.eventType === 'UPDATE') {
-      set((state) => patchItemEverywhere(state, feedItemId, (item) => ({
+      set((state) => patchItemEverywhere(state, feedItemId, (item) => deriveCounts({
         ...item,
         comments: mapComment(item.comments, commentId, (c) => ({ ...c, text })),
       })));
@@ -996,15 +1030,15 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     set((state) => patchItemEverywhere(state, feedItemId, (item) => {
       if (findComment(item.comments, commentId)) return item;
       if (parentCommentId) {
-        return {
+        return deriveCounts({
           ...item,
           comments: mapComment(item.comments, parentCommentId, (parent) => ({
             ...parent,
             replies: [...parent.replies, newComment],
           })),
-        };
+        });
       }
-      return { ...item, comments: [...item.comments, newComment] };
+      return deriveCounts({ ...item, comments: [...item.comments, newComment] });
     }));
   },
 }), {
