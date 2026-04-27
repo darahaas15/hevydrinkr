@@ -91,8 +91,11 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
 
   const user = allUsers.find((u) => u.id === resolvedUserId);
   const isFollowing = currentUser?.following.includes(resolvedUserId) ?? false;
-  const isPrivate = user?.isPrivate ?? false;
   const hasPendingRequest = outgoingRequests.some((r) => r.targetId === resolvedUserId);
+  // A pending request can only exist against a private account, so it implies
+  // privacy even if the cached `isPrivate` is stale (e.g. the target flipped
+  // private after our last fetchAllUsers, or fell outside the 500-row window).
+  const isPrivate = (user?.isPrivate ?? false) || hasPendingRequest;
   const isLockedProfile = isPrivate && !isFollowing;
 
   const userPosts = useMemo(
@@ -305,7 +308,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             <span className="text-xs text-zinc-500 ml-1">Followers</span>
           </button>
           <div className="flex-1" />
-          {isLockedProfile && hasPendingRequest ? (
+          {hasPendingRequest ? (
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => { hapticLight(); cancelFollowRequest(resolvedUserId); }}
