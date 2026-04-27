@@ -1,4 +1,4 @@
-# drinkr
+# hevydrinkr
 
 A social drinking session tracker. Log drinks, estimate BAC in real-time, compete on leaderboards, and get roasted by your friends every week.
 
