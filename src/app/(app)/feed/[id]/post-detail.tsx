@@ -17,6 +17,7 @@ import { getMilestoneBadge } from '@/lib/milestones';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { MentionText } from '@/components/ui/mention-text';
 import { ReportModal } from '@/components/moderation/report-modal';
+import Skeleton from '@/components/ui/skeleton';
 
 const MAX_VISIBLE_REPLIES = 2;
 
@@ -30,6 +31,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const addComment = useFeedStore((s) => s.addComment);
   const deleteFeedItem = useFeedStore((s) => s.deleteFeedItem);
   const deleteComment = useFeedStore((s) => s.deleteComment);
+  const refreshFeedItem = useFeedStore((s) => s.refreshFeedItem);
   const likeComment = useFeedStore((s) => s.likeComment);
   const unlikeComment = useFeedStore((s) => s.unlikeComment);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -83,6 +85,21 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
       cancelled = true;
     };
   }, [item, resolvedId, fetchSinglePost, missingPostIds]);
+
+  // When the post hydrates from a cache that stripped likes/comments arrays
+  // (likes.length === 0 but likeCount > 0, etc.), kick a one-shot refresh so
+  // the comments section and "Liked by..." row backfill instead of staying
+  // permanently empty until the next focus refetch.
+  const needsRefresh = !!item && (
+    (item.likes.length === 0 && item.likeCount > 0) ||
+    (item.comments.length === 0 && item.commentCount > 0)
+  );
+  useEffect(() => {
+    if (needsRefresh && resolvedId) {
+      void refreshFeedItem(resolvedId);
+    }
+    // resolvedId is stable for this page; the effect runs once when needsRefresh flips true.
+  }, [needsRefresh, resolvedId, refreshFeedItem]);
 
   // Hide bottom nav for full-screen post experience
   useEffect(() => {
@@ -209,7 +226,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
 
   const milestone = getMilestoneBadge(item, items);
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
-  const isLiked = !!userLike;
+  const isLiked = userLike != null || (item.likes.length === 0 && item.currentUserLikeId != null);
   const s = item.sessionSummary;
   const highlightedThreadId = highlightCommentId
     ? item.comments.find((comment) => comment.replies.some((reply) => reply.id === highlightCommentId))?.id ?? null
@@ -218,7 +235,8 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const handleLike = () => {
     if (!currentUser) return;
     if (isLiked) {
-      removeLike(item.id, userLike!.id);
+      const likeId = userLike?.id ?? item.currentUserLikeId;
+      if (likeId) removeLike(item.id, likeId);
     } else {
       addLike(item.id, {
         id: crypto.randomUUID(),
@@ -244,7 +262,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
     if (result === 'copied') addToast('Link copied!', 'success');
   };
 
-  const totalCommentCount = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
+  const totalCommentCount = item.commentCount;
 
   const focusCommentInput = () => {
     window.requestAnimationFrame(() => {
@@ -414,8 +432,8 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
                   <motion.button whileTap={{ scale: 1.15 }} onClick={handleLike}>
                     <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
                   </motion.button>
-                  {item.likes.length > 0 && (
-                    <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
+                  {item.likeCount > 0 && (
+                    <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likeCount}</span>
                   )}
                 </div>
                 <button onClick={handleShare}><Share2 className="w-[18px] h-[18px] text-zinc-600" /></button>
@@ -424,7 +442,17 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
                 </span>
               </div>
 
-              {/* Liked by */}
+              {/* Liked by — see FeedCard for the same three-state pattern. */}
+              {item.likeCount > 0 && item.likes.length === 0 && (
+                <div className="flex items-center gap-2 mt-2" aria-hidden="true">
+                  <div className="flex -space-x-1.5">
+                    {Array.from({ length: Math.min(3, item.likeCount) }).map((_, i) => (
+                      <Skeleton key={i} variant="circle" className="w-4 h-4 ring-1 ring-black" />
+                    ))}
+                  </div>
+                  <Skeleton variant="text" className="h-3 w-32" />
+                </div>
+              )}
               {item.likes.length > 0 && (
                 <button
                   onClick={() => setShowLikesList(true)}
@@ -453,8 +481,20 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
             </div>
 
             {/* Comments */}
-            {item.comments.length === 0 ? (
+            {item.commentCount === 0 ? (
               <p className="text-sm text-zinc-700 text-center py-6">No comments yet — be the first</p>
+            ) : item.comments.length === 0 ? (
+              <div className="space-y-4" aria-hidden="true">
+                {Array.from({ length: Math.min(3, item.commentCount) }).map((_, i) => (
+                  <div key={i} className="flex gap-3">
+                    <Skeleton variant="circle" className="w-8 h-8 shrink-0" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <Skeleton variant="text" className="h-3 w-full max-w-[260px]" />
+                      <Skeleton variant="text" className="h-3 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="space-y-4">
                 {item.comments.map((comment, i) => {
@@ -776,7 +816,14 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
                 </button>
               </div>
               <div className="max-h-[60dvh] overflow-y-auto">
-                {item.likes.length === 0 ? (
+                {item.likes.length === 0 && item.likeCount > 0 ? (
+                  Array.from({ length: Math.min(5, item.likeCount) }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-5 py-3">
+                      <Skeleton variant="circle" className="w-8 h-8" />
+                      <Skeleton variant="text" className="h-4 w-32" />
+                    </div>
+                  ))
+                ) : item.likes.length === 0 ? (
                   <div className="py-12 text-center">
                     <p className="text-sm text-zinc-600">No likes yet</p>
                   </div>
