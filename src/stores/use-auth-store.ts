@@ -535,29 +535,51 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
         console.error('Failed to unfollow:', error);
         set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
       }
-    } else if (targetUser?.isPrivate) {
-      await get().sendFollowRequest(userId);
     } else {
-      const prevCurrentUser = currentUser;
-      const prevAllUsers = allUsers;
-      const updatedFollowing = [...currentUser.following, userId];
-      const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
-      const updatedAllUsers = allUsers.map((user) => {
-        if (user.id === currentUser.id) return updatedCurrentUser;
-        if (user.id === userId) {
-          return { ...user, followers: [...user.followers, currentUser.id] };
+      // Authoritatively re-check privacy from the DB before choosing a path.
+      // The local allUsers cache can be wrong if the target was just made
+      // private, was missing the column on an older fetch (defaulted to
+      // false), or was never loaded at all. Falling through to a direct
+      // INSERT for what's actually a private account would (a) silently
+      // bypass the request flow on the client, and (b) optimistically
+      // remove the target from the discover carousel. One column read keeps
+      // routing correct without trusting the cache.
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_private')
+        .eq('id', userId)
+        .maybeSingle();
+      const isPrivate = profile?.is_private ?? targetUser?.isPrivate ?? false;
+
+      if (isPrivate) {
+        await get().sendFollowRequest(userId);
+      } else {
+        const prevCurrentUser = currentUser;
+        const prevAllUsers = allUsers;
+        const updatedFollowing = [...currentUser.following, userId];
+        const updatedCurrentUser = { ...currentUser, following: updatedFollowing };
+        const updatedAllUsers = allUsers.map((user) => {
+          if (user.id === currentUser.id) return updatedCurrentUser;
+          if (user.id === userId) {
+            return { ...user, followers: [...user.followers, currentUser.id] };
+          }
+          return user;
+        });
+        set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
+
+        const { error } = await supabase
+          .from('follows')
+          .insert({ follower_id: currentUser.id, following_id: userId });
+
+        if (error) {
+          console.error('Failed to follow:', error);
+          set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
+          // RLS rejection (e.g. server-side privacy guard caught it) → route
+          // through the request flow instead of leaving the user stuck.
+          if ((error as { code?: string }).code === '42501') {
+            await get().sendFollowRequest(userId);
+          }
         }
-        return user;
-      });
-      set({ currentUser: updatedCurrentUser, allUsers: updatedAllUsers });
-
-      const { error } = await supabase
-        .from('follows')
-        .insert({ follower_id: currentUser.id, following_id: userId });
-
-      if (error) {
-        console.error('Failed to follow:', error);
-        set({ currentUser: prevCurrentUser, allUsers: prevAllUsers });
       }
     }
     followInFlight.delete(userId);
