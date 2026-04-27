@@ -1039,8 +1039,23 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
   },
 }), {
   name: 'hd-feed',
+  version: 2,
   storage: safeJSONStorage(),
-  partialize: (s) => ({ items: s.items.slice(0, 50).map(stripFeedPhotos) }),
+  // Persisted shape changed in v2: drop full likes/comments arrays (heaviest
+  // contributors to QuotaExceededError), keep only the three derived count
+  // fields. Pre-v2 caches don't have the count fields, so drop them — the
+  // cache is just a snappiness optimization, fetchFeed rebuilds it.
+  migrate: (_persisted, fromVersion) => {
+    if (fromVersion < 2) return { items: [] };
+    return _persisted as { items: FeedItem[] };
+  },
+  partialize: (s) => ({
+    items: s.items.slice(0, 20).map((item) => ({
+      ...stripFeedPhotos(item),
+      likes: [],
+      comments: [],
+    })),
+  }),
   onRehydrateStorage: () => (state) => {
     if (state && state.items.length > 0) state.loading = false;
   },
