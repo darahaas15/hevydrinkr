@@ -11,6 +11,7 @@ import { hapticLight } from '@/lib/haptics';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
+import Skeleton from '@/components/ui/skeleton';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem } from '@/types';
 
@@ -26,8 +27,12 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const addToast = useUIStore((s) => s.addToast);
   const [showLikesList, setShowLikesList] = useState(false);
 
+  // Prefer the populated likes array (richer — has all liker info). Fall back
+  // to currentUserLikeId during the cache-only window (likes: [] but counts
+  // present). The mere presence of currentUserLikeId means "current user
+  // liked this", because it was derived against currentUser.id at write time.
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
-  const isLiked = !!userLike;
+  const isLiked = userLike != null || (item.likes.length === 0 && item.currentUserLikeId != null);
   const handleCardClick = () => {
     hapticLight();
     // scroll:false so opening a post doesn't snap the feed to top — the feed
@@ -41,7 +46,10 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
     if (!currentUser) return;
     hapticLight();
     if (isLiked) {
-      removeLike(item.id, userLike!.id);
+      // userLike is set if the full array hydrated; otherwise use the cached
+      // id. Either way we have a row id to send to the server.
+      const likeId = userLike?.id ?? item.currentUserLikeId;
+      if (likeId) removeLike(item.id, likeId);
     } else {
       addLike(item.id, {
         id: crypto.randomUUID(),
@@ -174,17 +182,16 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
             >
               <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
             </motion.button>
-            {item.likes.length > 0 && (
-              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likes.length}</span>
+            {item.likeCount > 0 && (
+              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likeCount}</span>
             )}
           </div>
 
           <span className="flex items-center gap-1.5">
             <MessageCircle size={18} className="text-zinc-600" />
-            {(() => {
-              const total = item.comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
-              return total > 0 ? <span className="text-[11px] text-zinc-600">{total}</span> : null;
-            })()}
+            {item.commentCount > 0 && (
+              <span className="text-[11px] text-zinc-600">{item.commentCount}</span>
+            )}
           </span>
 
           <button onClick={handleShare} aria-label="Share">
@@ -192,7 +199,21 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           </button>
         </div>
 
-        {/* Liked by */}
+        {/* Liked by — three states:
+            1. likeCount === 0: render nothing.
+            2. likeCount > 0, likes empty (cache-only): render skeleton.
+            3. likes populated: render real row.
+            Heights match so layout doesn't shift between states 2 and 3. */}
+        {item.likeCount > 0 && item.likes.length === 0 && (
+          <div className="flex items-center gap-2 mt-2" aria-hidden="true">
+            <div className="flex -space-x-1.5">
+              {Array.from({ length: Math.min(3, item.likeCount) }).map((_, i) => (
+                <Skeleton key={i} variant="circle" className="w-4 h-4 ring-1 ring-black" />
+              ))}
+            </div>
+            <Skeleton variant="text" className="h-3 w-32" />
+          </div>
+        )}
         {item.likes.length > 0 && (
           <button
             onClick={(e) => { e.stopPropagation(); setShowLikesList(true); }}
@@ -246,25 +267,34 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
                 </button>
               </div>
               <div className="max-h-[60dvh] overflow-y-auto">
-                {item.likes.map((like) => {
-                  const user = getUserById(like.userId);
-                  return (
-                    <div
-                      key={like.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowLikesList(false);
-                        router.push(like.userId === currentUser?.id ? '/profile' : `/profile/${like.userId}`);
-                      }}
-                      className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03] cursor-pointer"
-                    >
-                      <Avatar name={like.userName} size="sm" src={user?.avatarUrl ?? null} />
-                      <p className="text-sm font-medium truncate flex-1">
-                        {like.userId === currentUser?.id ? 'You' : like.userName}
-                      </p>
+                {item.likes.length === 0 && item.likeCount > 0 ? (
+                  Array.from({ length: Math.min(5, item.likeCount) }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-5 py-3">
+                      <Skeleton variant="circle" className="w-8 h-8" />
+                      <Skeleton variant="text" className="h-4 w-32" />
                     </div>
-                  );
-                })}
+                  ))
+                ) : (
+                  item.likes.map((like) => {
+                    const user = getUserById(like.userId);
+                    return (
+                      <div
+                        key={like.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowLikesList(false);
+                          router.push(like.userId === currentUser?.id ? '/profile' : `/profile/${like.userId}`);
+                        }}
+                        className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03] cursor-pointer"
+                      >
+                        <Avatar name={like.userName} size="sm" src={user?.avatarUrl ?? null} />
+                        <p className="text-sm font-medium truncate flex-1">
+                          {like.userId === currentUser?.id ? 'You' : like.userName}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </motion.div>
           </motion.div>
