@@ -35,9 +35,61 @@ interface AuthState {
 const followInFlight = new Set<string>();
 const USERS_STALE_MS = 600_000;
 let _usersLastFetched = 0;
-let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
-let _outgoingRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
-let _followsChannel: ReturnType<typeof supabase.channel> | null = null;
+let _followRequestsCleanup: (() => void) | null = null;
+let _outgoingRequestsCleanup: (() => void) | null = null;
+let _followsCleanup: (() => void) | null = null;
+
+// Subscribe to a Supabase realtime channel with auto-resubscribe on drop.
+// Mirrors the pattern used by the notifications channel in (app)/layout.tsx
+// so the auth-store realtime stays alive across socket drops (network
+// transitions, server restarts, idle timeouts) without forcing the user to
+// reload. `build` returns a channel with `.on(...)` listeners attached but
+// has NOT been `.subscribe()`d yet — the helper calls subscribe and watches
+// the status. `onReconnect` runs after a successful re-subscribe (not the
+// initial one) so callers can refetch state that may have changed during
+// the outage.
+function subscribeWithResub(
+  build: () => ReturnType<typeof supabase.channel>,
+  onReconnect?: () => void
+): () => void {
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let cancelled = false;
+  let attempts = 0;
+
+  const start = () => {
+    if (cancelled) return;
+    attempts += 1;
+    channel = build();
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (attempts > 1) onReconnect?.();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        if (cancelled) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (channel) supabase.removeChannel(channel);
+          channel = null;
+          start();
+        }, 3000);
+      }
+    });
+  };
+
+  start();
+
+  return () => {
+    cancelled = true;
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (channel) {
+      supabase.removeChannel(channel);
+      channel = null;
+    }
+  };
+}
 
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
@@ -102,23 +154,71 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
         get().fetchAllUsers();
         get().fetchFollowRequests();
         get().fetchOutgoingRequests();
-        _followRequestsChannel = supabase
-          .channel('follow-requests')
-          .on(
+        const userId = session.user.id;
+        // Tear down any prior subscriptions in case initialize() runs twice
+        // (e.g. after re-auth) — without this we'd leak channels and double
+        // up event handlers on the same payload.
+        _followRequestsCleanup?.();
+        _outgoingRequestsCleanup?.();
+        _followsCleanup?.();
+        _followRequestsCleanup = subscribeWithResub(
+          () =>
+            supabase
+              .channel('follow-requests')
+              .on(
+                'postgres_changes',
+                {
+                  event: '*',
+                  schema: 'public',
+                  table: 'follow_requests',
+                  filter: `target_id=eq.${userId}`,
+                },
+                () => {
+                  get().fetchFollowRequests();
+                }
+              ),
+          () => {
+            get().fetchFollowRequests();
+          }
+        );
+        _outgoingRequestsCleanup = subscribeWithResub(() =>
+          supabase
+            .channel('outgoing-follow-requests')
+            .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'INSERT',
               schema: 'public',
               table: 'follow_requests',
-              filter: `target_id=eq.${session.user.id}`,
+              filter: `requester_id=eq.${session.user.id}`,
             },
-            () => {
-              get().fetchFollowRequests();
+            (payload) => {
+              const row = payload.new as {
+                id: string;
+                requester_id: string;
+                target_id: string;
+                status: 'pending' | 'accepted' | 'rejected';
+                created_at: string;
+              };
+              if (row.status !== 'pending') return;
+              const { outgoingRequests } = get();
+              // Dedupe: skip if optimistic local row already covers this target,
+              // or if the same id is somehow already present.
+              if (outgoingRequests.some((r) => r.id === row.id || r.targetId === row.target_id)) return;
+              set({
+                outgoingRequests: [
+                  ...outgoingRequests,
+                  {
+                    id: row.id,
+                    requesterId: row.requester_id,
+                    targetId: row.target_id,
+                    status: 'pending',
+                    createdAt: row.created_at,
+                  },
+                ],
+              });
             }
           )
-          .subscribe();
-        _outgoingRequestsChannel = supabase
-          .channel('outgoing-follow-requests')
           .on(
             'postgres_changes',
             {
@@ -170,16 +270,21 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
               }
             }
           )
-          .subscribe();
-        _followsChannel = supabase
-          .channel('follows-changes')
-          .on(
+        , () => {
+          // After a reconnect, refetch outgoing state so we don't miss
+          // accept/reject/insert/delete events that fired during the outage.
+          get().fetchOutgoingRequests();
+        });
+        _followsCleanup = subscribeWithResub(() =>
+          supabase
+            .channel('follows-changes')
+            .on(
             'postgres_changes',
             {
               event: 'DELETE',
               schema: 'public',
               table: 'follows',
-              filter: `follower_id=eq.${session.user.id}`,
+              filter: `follower_id=eq.${userId}`,
             },
             (payload) => {
               const row = payload.old as { follower_id?: string; following_id?: string };
@@ -204,7 +309,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
               event: 'DELETE',
               schema: 'public',
               table: 'follows',
-              filter: `following_id=eq.${session.user.id}`,
+              filter: `following_id=eq.${userId}`,
             },
             (payload) => {
               const row = payload.old as { follower_id?: string; following_id?: string };
@@ -223,7 +328,11 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
               });
             }
           )
-          .subscribe();
+        , () => {
+          // After a reconnect, refetch the social graph so missed unfollows
+          // (in either direction) are reconciled.
+          get().fetchAllUsers(true);
+        });
         return;
       }
     }
@@ -279,17 +388,17 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
   },
 
   logout: async () => {
-    if (_followRequestsChannel) {
-      supabase.removeChannel(_followRequestsChannel);
-      _followRequestsChannel = null;
+    if (_followRequestsCleanup) {
+      _followRequestsCleanup();
+      _followRequestsCleanup = null;
     }
-    if (_outgoingRequestsChannel) {
-      supabase.removeChannel(_outgoingRequestsChannel);
-      _outgoingRequestsChannel = null;
+    if (_outgoingRequestsCleanup) {
+      _outgoingRequestsCleanup();
+      _outgoingRequestsCleanup = null;
     }
-    if (_followsChannel) {
-      supabase.removeChannel(_followsChannel);
-      _followsChannel = null;
+    if (_followsCleanup) {
+      _followsCleanup();
+      _followsCleanup = null;
     }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
@@ -355,7 +464,16 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     if (!force && Date.now() - _usersLastFetched < USERS_STALE_MS) return;
     _usersLastFetched = Date.now();
     const [{ data: profiles }, { data: allFollows }] = await Promise.all([
-      supabase.from('profiles').select('id, username, display_name, avatar_url, bio, is_private, created_at').limit(500),
+      // ORDER BY makes the list stable across refetches. Without it, Postgres
+      // returns rows in physical/heap order which can shift after any UPDATE
+      // and silently push users in/out of the visible window of the discover
+      // carousel.
+      supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, bio, is_private, created_at')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .limit(500),
       supabase.from('follows').select('follower_id, following_id').limit(1000),
     ]);
     if (!profiles) return;
@@ -502,13 +620,6 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     // Idempotent: if a local pending row already exists, nothing to do.
     if (outgoingRequests.some((r) => r.targetId === targetId)) return;
 
-    await supabase
-      .from('follow_requests')
-      .delete()
-      .eq('requester_id', currentUser.id)
-      .eq('target_id', targetId)
-      .in('status', ['accepted', 'rejected']);
-
     const optimistic: FollowRequest = {
       id: crypto.randomUUID(),
       requesterId: currentUser.id,
@@ -518,45 +629,103 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     };
     set({ outgoingRequests: [...outgoingRequests, optimistic] });
 
-    const { data, error } = await supabase
+    const fail = (msg = 'Failed to send request') => {
+      set({ outgoingRequests: get().outgoingRequests.filter((r) => r.targetId !== targetId) });
+      useUIStore.getState().addToast(msg, 'error');
+    };
+
+    const syncId = (id: string) => {
+      set({
+        outgoingRequests: get().outgoingRequests.map((r) =>
+          r.targetId === targetId ? { ...r, id } : r
+        ),
+      });
+    };
+
+    // Look up existing row to handle every status case explicitly. The
+    // (requester_id, target_id) unique constraint guarantees at most one row.
+    const { data: existing, error: fetchErr } = await supabase
+      .from('follow_requests')
+      .select('id, status')
+      .eq('requester_id', currentUser.id)
+      .eq('target_id', targetId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.error('Failed to look up follow request:', fetchErr);
+      fail();
+      return;
+    }
+
+    if (existing?.status === 'pending') {
+      // Already pending server-side — adopt its id and stop.
+      syncId(existing.id);
+      return;
+    }
+
+    if (existing?.status === 'accepted') {
+      // Already an accepted follow — clear optimistic request and reconcile
+      // local follow state instead of firing a stale request notification.
+      set({ outgoingRequests: get().outgoingRequests.filter((r) => r.targetId !== targetId) });
+      if (!currentUser.following.includes(targetId)) {
+        const nextFollowing = [...currentUser.following, targetId];
+        set({
+          currentUser: { ...currentUser, following: nextFollowing },
+          allUsers: get().allUsers.map((u) => {
+            if (u.id === currentUser.id) return { ...u, following: nextFollowing };
+            if (u.id === targetId && !u.followers.includes(currentUser.id)) {
+              return { ...u, followers: [...u.followers, currentUser.id] };
+            }
+            return u;
+          }),
+        });
+      }
+      return;
+    }
+
+    if (existing?.status === 'rejected') {
+      // Re-request after a rejection: drop the rejected row so the unique
+      // constraint clears, then INSERT a fresh row. Going through INSERT
+      // (rather than UPDATE→pending) keeps the rate-limit trigger and the
+      // notification trigger on the same code path.
+      const { error: delErr } = await supabase
+        .from('follow_requests')
+        .delete()
+        .eq('id', existing.id);
+      if (delErr) {
+        console.error('Failed to clear rejected follow request:', delErr);
+        fail();
+        return;
+      }
+    }
+
+    const { data: inserted, error: insertErr } = await supabase
       .from('follow_requests')
       .insert({ requester_id: currentUser.id, target_id: targetId })
       .select('id')
       .single();
 
-    if (error) {
-      // 23505 = unique_violation. A pending row already exists server-side
-      // (e.g. a prior attempt that failed locally). Recover the id instead
-      // of telling the user it failed.
-      if ((error as { code?: string }).code === '23505') {
-        const { data: existing } = await supabase
+    if (insertErr) {
+      // 23505: another tab/device beat us to it between our SELECT and INSERT.
+      if ((insertErr as { code?: string }).code === '23505') {
+        const { data: race } = await supabase
           .from('follow_requests')
-          .select('id')
+          .select('id, status')
           .eq('requester_id', currentUser.id)
           .eq('target_id', targetId)
-          .eq('status', 'pending')
           .maybeSingle();
-        if (existing) {
-          set({
-            outgoingRequests: get().outgoingRequests.map((r) =>
-              r.targetId === targetId ? { ...r, id: existing.id } : r
-            ),
-          });
+        if (race?.status === 'pending') {
+          syncId(race.id);
           return;
         }
       }
-      console.error('Failed to send follow request:', error);
-      set({ outgoingRequests: outgoingRequests.filter((r) => r.targetId !== targetId) });
-      useUIStore.getState().addToast('Failed to send request', 'error');
+      console.error('Failed to send follow request:', insertErr);
+      fail();
       return;
     }
 
-    if (data) {
-      set({
-        outgoingRequests: get().outgoingRequests.map((r) =>
-          r.targetId === targetId ? { ...r, id: data.id } : r
-        ),
-      });
+    if (inserted) {
+      syncId(inserted.id);
       // Push delivered server-side via trg_follow_request_notify.
     }
   },
