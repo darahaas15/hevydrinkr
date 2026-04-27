@@ -33,11 +33,19 @@ export interface FeedItem {
   photos: string[];
   caption: string;
   likes: FeedLike[];
+  // Cached counts derived from `likes`/`comments`. Persisted in localStorage
+  // so the feed renders heart count, fill state, and comment count without
+  // waiting for the full arrays (which we strip from the cache to fit the
+  // localStorage quota). Recomputed via deriveCounts() at every mutation.
+  likeCount: number;
+  // Row id of the current user's like, or null. Used during the cache-only
+  // window (likes: []) to drive heart fill — its mere presence means
+  // "current user liked this", because it's set against currentUser.id at
+  // write time. Cross-user staleness is acceptable; see spec.
+  currentUserLikeId: string | null;
   comments: FeedComment[];
+  commentCount: number;
   createdAt: string;
-  // True when the post originated from the "log past session" flow. Drives
-  // the "Past session" badge on the feed card. Set at create time; never
-  // changed on edit.
   isBackfilled: boolean;
 }
 

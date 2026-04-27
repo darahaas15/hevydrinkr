@@ -256,7 +256,10 @@ export const useRoastStore = create<RoastState>()(
                 photos: [],
                 caption: '',
                 likes: [],
+                likeCount: 0,
+                currentUserLikeId: null,
                 comments: [],
+                commentCount: 0,
                 createdAt: p.created_at as string,
                 isBackfilled: false,
               })),
@@ -519,7 +522,10 @@ export const useRoastStore = create<RoastState>()(
               photos: [],
               caption: '',
               likes: [],
+              likeCount: 0,
+              currentUserLikeId: null,
               comments: [],
+              commentCount: 0,
               createdAt: p.created_at as string,
               isBackfilled: false,
             })),
@@ -565,9 +571,17 @@ export const useRoastStore = create<RoastState>()(
     }),
     {
       name: 'hd-roasts',
+      version: 2,
       storage: safeJSONStorage(),
+      // If you add a new persisted field, update this migrate's empty-shape return too.
+      // The cache is purely a snappiness optimization — dropping it on version mismatch
+      // is safe; fetchRecaps rebuilds on next mount.
+      migrate: (_persisted, fromVersion) => {
+        if (fromVersion < 2) return { recaps: [], streaks: [], records: [] };
+        return _persisted as { recaps: RoastRecap[]; streaks: RoastStreak[]; records: GroupRecord[] };
+      },
       partialize: (s) => ({
-        recaps: s.recaps.slice(0, 50),
+        recaps: s.recaps.slice(0, 8),
         streaks: s.streaks,
         records: s.records,
       }),

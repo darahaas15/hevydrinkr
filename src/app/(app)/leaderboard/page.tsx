@@ -102,7 +102,10 @@ export default function LeaderboardPage() {
       photos: [],
       caption: '',
       likes: [],
+      likeCount: 0,
+      currentUserLikeId: null,
       comments: [],
+      commentCount: 0,
       createdAt: r.created_at,
       isBackfilled: false,
     })));

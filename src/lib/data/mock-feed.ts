@@ -125,6 +125,8 @@ export const MOCK_FEED: FeedItem[] = feedSessions
     const caption = pick(CAPTIONS, i * 13).replace('{venue}', session.venue);
     const likeCount = (i * 3 + 2) % 6; // 0-5
     const commentCount = (i * 5 + 1) % 4; // 0-3
+    const likes = makeLikes(i * 17, likeCount);
+    const comments = makeComments(i * 23, commentCount, user.id);
 
     const item: FeedItem = {
       id: generateId(),
@@ -149,8 +151,11 @@ export const MOCK_FEED: FeedItem[] = feedSessions
       },
       photos: [],
       caption,
-      likes: makeLikes(i * 17, likeCount),
-      comments: makeComments(i * 23, commentCount, user.id),
+      likes,
+      likeCount: likes.length,
+      currentUserLikeId: null,
+      comments,
+      commentCount: comments.reduce((sum, c) => sum + 1 + c.replies.length, 0),
       createdAt: session.endedAt ?? session.startedAt,
       isBackfilled: false,
     };
