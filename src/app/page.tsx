@@ -9,6 +9,7 @@ import { AuthInput, ErrorMsg } from '@/components/ui/auth-input';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { SplashScreen } from '@/components/ui/splash-screen';
 import { migrateStorageKeys } from '@/lib/storage-migration';
+import { supabase } from '@/lib/supabase/client';
 
 type Screen = 'landing' | 'signup' | 'login';
 
@@ -52,6 +53,16 @@ function LandingContent() {
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [canInstallNative, setCanInstallNative] = useState(false);
 
+  // Password-recovery detection. Supabase's `detectSessionInUrl` may consume
+  // the URL hash before our useEffect runs, so we both (a) sniff the hash
+  // synchronously on first render and (b) listen for PASSWORD_RECOVERY as a
+  // fallback. While this is true we render the splash, never the install gate.
+  const [isRecovering, setIsRecovering] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const hash = window.location.hash;
+    return hash.includes('type=recovery') || hash.includes('access_token');
+  });
+
   useEffect(() => {
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -80,13 +91,25 @@ function LandingContent() {
     }
   };
 
-  // If the user lands here with a recovery hash (e.g. Supabase fell back to
-  // the Site URL instead of /reset-password), forward them immediately.
+  // If the user lands here mid password-recovery (e.g. Supabase fell back to
+  // the Site URL instead of /reset-password), forward them to /reset-password.
+  // The hash may already be consumed by detectSessionInUrl, so we also listen
+  // for the PASSWORD_RECOVERY auth event as a fallback.
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes('type=recovery')) {
       router.replace(`/reset-password${hash}`);
+      return;
     }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecovering(true);
+        router.replace('/reset-password');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [router]);
 
   useEffect(() => {
@@ -95,12 +118,12 @@ function LandingContent() {
   }, [initialize]);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && !isRecovering) {
       router.replace(inviteCode ? `/invite/${inviteCode}` : redirectPath || '/feed');
     }
-  }, [isLoading, isAuthenticated, router, inviteCode, redirectPath]);
+  }, [isLoading, isAuthenticated, router, inviteCode, redirectPath, isRecovering]);
 
-  if (isLoading || isAuthenticated) {
+  if (isLoading || isAuthenticated || isRecovering) {
     return <SplashScreen />;
   }
 
