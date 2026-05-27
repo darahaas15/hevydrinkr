@@ -10,7 +10,7 @@ import { useNotificationStore, type NotificationPreferences } from '@/stores/use
 import { unregisterPushNotifications } from '@/lib/push-notifications';
 import { hapticSelection } from '@/lib/haptics';
 import { supabase } from '@/lib/supabase/client';
-import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
+import { pickImage, uploadImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
 
 export default function SettingsPage() {
   const router = useAppRouter();
@@ -32,9 +32,13 @@ export default function SettingsPage() {
   const handleChangePhoto = async () => {
     const file = await pickImage();
     if (!file) return;
-    const dataUrl = await compressImage(file, MAX_AVATAR_SIZE, AVATAR_MAX_DIM);
-    updateProfile({ avatarUrl: dataUrl });
-    addToast('Photo updated', 'success');
+    try {
+      const url = await uploadImage(file, 'avatars', MAX_AVATAR_SIZE, AVATAR_MAX_DIM);
+      updateProfile({ avatarUrl: url });
+      addToast('Photo updated', 'success');
+    } catch {
+      addToast("Couldn't upload photo", 'error');
+    }
   };
 
   const handleSaveDisplayName = () => {

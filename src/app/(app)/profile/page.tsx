@@ -46,7 +46,7 @@ function ProfilePageOwn() {
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
 
-  // Fetch on mount (respects stale guard) and force-refetch when page regains focus
+  // Fetch on mount and refetch (stale-guarded) when page regains focus
   useEffect(() => {
     if (currentUser) {
       fetchSessions(currentUser.id);
@@ -56,10 +56,10 @@ function ProfilePageOwn() {
     }
     const refetch = () => {
       if (currentUser) {
-        fetchSessions(currentUser.id, true);
-        fetchPRs(currentUser.id, true);
-        fetchAllUsers(true);
-        fetchUserPosts(currentUser.id, true);
+        fetchSessions(currentUser.id);
+        fetchPRs(currentUser.id);
+        fetchAllUsers();
+        fetchUserPosts(currentUser.id);
       }
     };
     window.addEventListener('focus', refetch);

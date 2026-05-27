@@ -8,7 +8,7 @@ import { useGroupsStore } from '@/stores/use-groups-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
-import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
+import { pickImage, uploadImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { RoastSection } from './roast/roast-section';
 
@@ -89,10 +89,14 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
   const handleChangeIcon = async () => {
     const file = await pickImage();
     if (!file) return;
-    const dataUrl = await compressImage(file, MAX_AVATAR_SIZE, AVATAR_MAX_DIM);
-    updateGroup(resolvedId, { iconUrl: dataUrl });
-    setShowMenu(false);
-    addToast('Icon updated', 'success');
+    try {
+      const url = await uploadImage(file, 'groups', MAX_AVATAR_SIZE, AVATAR_MAX_DIM);
+      updateGroup(resolvedId, { iconUrl: url });
+      setShowMenu(false);
+      addToast('Icon updated', 'success');
+    } catch {
+      addToast("Couldn't upload icon", 'error');
+    }
   };
 
   return (

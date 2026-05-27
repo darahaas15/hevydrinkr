@@ -114,8 +114,8 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   const [searchFeedResults, setSearchFeedResults] = useState<FeedItem[]>([]);
   const [searching, setSearching] = useState(false);
   useEffect(() => {
-    fetchFeed(true);
-    fetchAllUsers(true);
+    fetchFeed();
+    fetchAllUsers();
     const refetch = () => { fetchFeed(); fetchAllUsers(); };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);

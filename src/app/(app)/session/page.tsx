@@ -20,7 +20,7 @@ import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkList } from '@/components/session/drink-list';
 import { SessionSummary } from '@/components/session/session-summary';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
-import { pickImage, compressImage } from '@/lib/image-utils';
+import { pickImage, uploadImage } from '@/lib/image-utils';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { hapticHeavy, hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 import SessionDetailPage from './[id]/session-detail';
@@ -157,8 +157,12 @@ function SessionPageInner() {
   const handleAddPhoto = async () => {
     const file = await pickImage();
     if (!file) return;
-    const dataUrl = await compressImage(file);
-    addPhoto(dataUrl);
+    try {
+      const url = await uploadImage(file, 'photos');
+      addPhoto(url);
+    } catch {
+      addToast("Couldn't upload photo", 'error');
+    }
   };
 
   const handleStart = () => {

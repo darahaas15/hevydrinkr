@@ -116,7 +116,7 @@ export default function LeaderboardPage() {
     // Defer to a microtask so any sync setState inside loadLeaderboard
     // doesn't fire during the effect body (avoids cascading renders).
     Promise.resolve().then(() => loadLeaderboard());
-    const refetch = () => { fetchAllUsers(true); loadLeaderboard(true); };
+    const refetch = () => { fetchAllUsers(); loadLeaderboard(); };
     window.addEventListener('focus', refetch);
     return () => window.removeEventListener('focus', refetch);
   }, [fetchAllUsers, loadLeaderboard]);

@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { Camera } from 'lucide-react';
-import { pickImage, compressImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM, MAX_PHOTO_SIZE, PHOTO_MAX_DIM } from '@/lib/image-utils';
+import { pickImage, uploadImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM, MAX_PHOTO_SIZE, PHOTO_MAX_DIM } from '@/lib/image-utils';
+import { useUIStore } from '@/stores/use-ui-store';
 
 interface ImagePickerProps {
   currentImage?: string | null;
-  onSelect: (dataUrl: string) => void;
+  onSelect: (url: string) => void;
   shape?: 'circle' | 'square';
   size?: number;
   placeholder?: string;
@@ -30,8 +31,10 @@ export function ImagePicker({
     if (!file) return;
     setLoading(true);
     try {
-      const dataUrl = await compressImage(file, maxSize, maxDim);
-      onSelect(dataUrl);
+      const url = await uploadImage(file, isAvatar ? 'avatars' : 'photos', maxSize, maxDim);
+      onSelect(url);
+    } catch {
+      useUIStore.getState().addToast("Couldn't upload image", 'error');
     } finally {
       setLoading(false);
     }

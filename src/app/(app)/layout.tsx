@@ -187,8 +187,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const userId = currentUser.id;
     const refresh = () => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      useFeedStore.getState().fetchFeed(true);
-      useNotificationStore.getState().fetchNotifications(userId, true);
+      useFeedStore.getState().fetchFeed();
+      useNotificationStore.getState().fetchNotifications(userId);
     };
     document.addEventListener('visibilitychange', refresh);
     window.addEventListener('focus', refresh);
@@ -206,7 +206,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!currentUser?.id) return;
     const id = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        useFeedStore.getState().fetchFeed(true);
+        useFeedStore.getState().fetchFeed();
       }
     }, 900_000);
     return () => clearInterval(id);

@@ -14,7 +14,7 @@ import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
 import { DateTimeField } from '@/components/ui/datetime-field';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
-import { pickImage, compressImage } from '@/lib/image-utils';
+import { pickImage, uploadImage } from '@/lib/image-utils';
 import { detectPRs } from '@/lib/algorithms/pr-detection';
 import {
   validateSessionForm,
@@ -186,8 +186,12 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const handleAddPhoto = async () => {
     const file = await pickImage();
     if (!file) return;
-    const dataUrl = await compressImage(file);
-    setPhotos((prev) => [...prev, dataUrl]);
+    try {
+      const url = await uploadImage(file, 'photos');
+      setPhotos((prev) => [...prev, url]);
+    } catch {
+      addToast("Couldn't upload photo", 'error');
+    }
   };
 
   const removePhoto = (i: number) =>
