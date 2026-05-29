@@ -32,6 +32,9 @@ export interface FeedItem {
   };
   photos: string[];
   caption: string;
+  // User IDs tagged in this post (a subset of the poster's following).
+  // Names/avatars resolve client-side via the auth store, like mentions.
+  taggedUserIds: string[];
   likes: FeedLike[];
   // Cached counts derived from `likes`/`comments`. Persisted in localStorage
   // so the feed renders heart count, fill state, and comment count without

@@ -151,6 +151,7 @@ export const MOCK_FEED: FeedItem[] = feedSessions
       },
       photos: [],
       caption,
+      taggedUserIds: [],
       likes,
       likeCount: likes.length,
       currentUserLikeId: null,

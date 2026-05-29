@@ -19,6 +19,7 @@ import { BacGauge } from '@/components/session/bac-gauge';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkList } from '@/components/session/drink-list';
 import { SessionSummary } from '@/components/session/session-summary';
+import { TagPeopleField } from '@/components/session/tag-people-picker';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, uploadImage } from '@/lib/image-utils';
 import { DrinkIcon } from '@/components/ui/drink-icon';
@@ -93,6 +94,7 @@ function SessionPageInner() {
   const [editingVenue, setEditingVenue] = useState(false);
   const [venueEdit, setVenueEdit] = useState('');
   const [caption, setCaption] = useState('');
+  const [taggedUserIds, setTaggedUserIds] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<'legendary' | 'great' | 'good' | 'meh' | 'rough'>('good');
   const [posting, setPosting] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -188,8 +190,9 @@ function SessionPageInner() {
       if (newPRs.length > 0) {
         setTimeout(() => triggerCelebration(newPRs[0]), 500);
       }
-      createFeedItemFromSession(completed, currentUser, caption);
+      createFeedItemFromSession(completed, currentUser, caption, taggedUserIds);
       setCaption('');
+      setTaggedUserIds([]);
       setShowSummary(true);
     }
   };
@@ -603,6 +606,9 @@ function SessionPageInner() {
                 rows={2}
                 className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors resize-none"
               />
+
+              {/* Tag people */}
+              <TagPeopleField value={taggedUserIds} onChange={setTaggedUserIds} />
 
               {/* Buttons */}
               <div className="flex gap-3">

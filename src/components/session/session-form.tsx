@@ -12,6 +12,7 @@ import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
+import { TagPeopleField } from '@/components/session/tag-people-picker';
 import { DateTimeField } from '@/components/ui/datetime-field';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, uploadImage } from '@/lib/image-utils';
@@ -107,6 +108,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   );
   const [mood, setMood] = useState<SessionMood>(existingSession?.mood ?? 'good');
   const [caption, setCaption] = useState(existingFeedItem?.caption ?? '');
+  const [taggedUserIds, setTaggedUserIds] = useState<string[]>(existingFeedItem?.taggedUserIds ?? []);
 
   // Cart — initialized from existing drinks in edit mode.
   const [cart, setCart] = useState<CartItem[]>(() =>
@@ -230,7 +232,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       // Backdated PR celebration would be confusing (user didn't just achieve it),
       // so we skip the celebration modal but still record the PR.
 
-      await createFeedItemFromSession(created, user, caption, /* isBackfilled */ true);
+      await createFeedItemFromSession(created, user, caption, taggedUserIds, /* isBackfilled */ true);
 
       hapticSuccess();
       addToast('Past session logged', 'success');
@@ -294,8 +296,13 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       photos.length !== originalPhotos.length ||
       photos.some((p, i) => p !== originalPhotos[i]);
     const captionChanged = !!existingFeedItem && caption !== existingFeedItem.caption;
+    const prevTags = existingFeedItem?.taggedUserIds ?? [];
+    const taggedChanged =
+      !!existingFeedItem &&
+      (taggedUserIds.length !== prevTags.length ||
+        taggedUserIds.some((id) => !prevTags.includes(id)));
 
-    if (existingFeedItem && (drinksChanged || photosChanged || captionChanged)) {
+    if (existingFeedItem && (drinksChanged || photosChanged || captionChanged || taggedChanged)) {
       // When drink count changes, re-spread timestamps across the (possibly
       // updated) session window so derived analytics stay honest.
       let drinksToPersist = drinksForSubmit;
@@ -325,6 +332,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       const feedUpdates: Parameters<typeof updateFeedItem>[1] = {};
       if (captionChanged) feedUpdates.caption = caption;
       if (photosChanged) feedUpdates.photos = photos;
+      if (taggedChanged) feedUpdates.taggedUserIds = taggedUserIds;
       if (drinksChanged) {
         // buildSessionSummary uses the session's current venue/duration/mood,
         // so we feed it the post-updateSession state.
@@ -509,6 +517,12 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             className="w-full px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors resize-none"
           />
         </label>
+
+        {/* Tag people */}
+        <div>
+          <span className="text-[11px] text-zinc-500 mb-1.5 block">Tag people</span>
+          <TagPeopleField value={taggedUserIds} onChange={setTaggedUserIds} />
+        </div>
 
         {/* Photos */}
         <div>

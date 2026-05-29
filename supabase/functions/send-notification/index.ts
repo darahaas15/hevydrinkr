@@ -41,6 +41,7 @@ const PREF_MAP: Record<string, string> = {
   reply: 'comments_enabled',
   mention: 'comments_enabled',
   follow: 'follows_enabled',
+  tag: 'tags_enabled',
   group_join: 'group_joins_enabled',
   challenge_created: 'challenges_enabled',
   challenge_ending: 'challenges_enabled',

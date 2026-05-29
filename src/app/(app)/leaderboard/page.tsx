@@ -101,6 +101,7 @@ export default function LeaderboardPage() {
       sessionSummary: r.session_summary,
       photos: [],
       caption: '',
+      taggedUserIds: [],
       likes: [],
       likeCount: 0,
       currentUserLikeId: null,
