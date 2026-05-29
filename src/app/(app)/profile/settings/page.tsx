@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock, Sparkles } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
@@ -11,6 +11,7 @@ import { unregisterPushNotifications } from '@/lib/push-notifications';
 import { hapticSelection } from '@/lib/haptics';
 import { supabase } from '@/lib/supabase/client';
 import { pickImage, uploadImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
+import { APP_VERSION } from '@/lib/changelog';
 
 export default function SettingsPage() {
   const router = useAppRouter();
@@ -349,9 +350,19 @@ export default function SettingsPage() {
         <div>
           <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">About</h3>
           <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+            <button
+              onClick={() => router.push('/changelog')}
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-4 h-4 text-zinc-500" />
+                <span className="text-sm">What&apos;s New</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </button>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <span className="text-sm text-zinc-400">Version</span>
-              <span className="text-sm text-zinc-600">1.12.0</span>
+              <span className="text-sm text-zinc-600">{APP_VERSION}</span>
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <span className="text-sm text-zinc-400">Contact</span>

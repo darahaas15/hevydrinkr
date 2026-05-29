@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { Sparkles } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
@@ -11,6 +12,8 @@ import { initPushNotifications, requestWebPushPermission } from '@/lib/push-noti
 import { supabase } from '@/lib/supabase/client';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { useUIStore } from '@/stores/use-ui-store';
+import { useChangelogStore } from '@/stores/use-changelog-store';
+import { LATEST_CHANGELOG } from '@/lib/changelog';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { SplashScreen } from '@/components/ui/splash-screen';
 import { logStorageUsage } from '@/lib/storage/log-storage-usage';
@@ -31,6 +34,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const hideBottomNav = useUIStore((s) => s.hideBottomNav);
   const lockMainScroll = useUIStore((s) => s.lockMainScroll);
   const [notifBannerDismissedUserId, setNotifBannerDismissedUserId] = useState<string | null>(null);
+  const lastSeenChangelogVersion = useChangelogStore((s) => s.lastSeenVersion);
+  const markChangelogSeen = useChangelogStore((s) => s.markSeen);
 
   // Toggle a `keyboard-open` class on <html> when the soft keyboard is
   // visible, so fixed input bars can adjust safe-area padding.
@@ -220,8 +225,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return null;
 
+  const latestChangelog = LATEST_CHANGELOG;
+  const showChangelogBanner = Boolean(
+    !hideBottomNav &&
+    currentUser?.id &&
+    latestChangelog &&
+    lastSeenChangelogVersion !== latestChangelog.version
+  );
+
+  // Only one top banner shows at a time: the changelog banner takes priority
+  // and suppresses the notifications banner, so the two can never overlap.
   const shouldShowNotifBanner = Boolean(
     !hideBottomNav &&
+    !showChangelogBanner &&
     currentUser?.id &&
     notifBannerDismissedUserId !== currentUser.id &&
     typeof window !== 'undefined' &&
@@ -240,6 +256,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+      {showChangelogBanner && latestChangelog && (
+        <div className="fixed top-0 left-0 right-0 z-[60] safe-top" style={{ background: 'linear-gradient(135deg, #3b82f6, #06b6d4)' }}>
+          <div className="px-4 py-3 flex items-center gap-3">
+            <button
+              onClick={() => {
+                markChangelogSeen(latestChangelog.version);
+                router.push('/changelog');
+              }}
+              className="flex items-center gap-2 flex-1 min-w-0 text-left"
+            >
+              <Sparkles className="w-4 h-4 text-white shrink-0" />
+              <span className="text-sm font-medium text-white truncate">New changes — tap to see what&apos;s new</span>
+            </button>
+            <button
+              onClick={() => {
+                markChangelogSeen(latestChangelog.version);
+                router.push('/changelog');
+              }}
+              className="px-4 py-1.5 rounded-full bg-white/20 text-xs font-semibold text-white shrink-0 active:bg-white/30"
+            >
+              View
+            </button>
+            <button
+              onClick={() => markChangelogSeen(latestChangelog.version)}
+              aria-label="Dismiss"
+              className="text-white/70 text-lg font-bold leading-none px-1"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
       {shouldShowNotifBanner && currentUser?.id && (
         <div className="fixed top-0 left-0 right-0 z-[60] safe-top" style={{ background: 'linear-gradient(135deg, #14b8a6, #06b6d4)' }}>
           <div className="px-4 py-3 flex items-center gap-3">
