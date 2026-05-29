@@ -11,6 +11,7 @@ import { hapticLight } from '@/lib/haptics';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
+import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import Skeleton from '@/components/ui/skeleton';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { FeedItem } from '@/types';
@@ -115,6 +116,9 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       {item.caption && (
         <p className="px-4 pb-2 text-[13px] text-zinc-300">{item.caption}</p>
       )}
+
+      {/* Tagged people */}
+      <TaggedUsersLine taggedUserIds={item.taggedUserIds ?? []} className="px-4 pb-2" />
 
       {/* Photos — Instagram style */}
       {item.photos && item.photos.length > 0 && (

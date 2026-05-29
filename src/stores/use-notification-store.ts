@@ -21,6 +21,7 @@ export interface NotificationPreferences {
   likesEnabled: boolean;
   commentsEnabled: boolean;
   followsEnabled: boolean;
+  tagsEnabled: boolean;
   groupJoinsEnabled: boolean;
   roastsEnabled: boolean;
   newPostsEnabled: boolean;
@@ -31,6 +32,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   likesEnabled: true,
   commentsEnabled: true,
   followsEnabled: true,
+  tagsEnabled: true,
   groupJoinsEnabled: true,
   roastsEnabled: true,
   newPostsEnabled: true,
@@ -208,6 +210,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
           likesEnabled: data.likes_enabled,
           commentsEnabled: data.comments_enabled,
           followsEnabled: data.follows_enabled,
+          tagsEnabled: data.tags_enabled ?? true,
           groupJoinsEnabled: data.group_joins_enabled,
           roastsEnabled: data.challenges_enabled,
           newPostsEnabled: data.new_posts_enabled ?? true,
@@ -226,6 +229,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
     if (updates.likesEnabled !== undefined) dbUpdates.likes_enabled = updates.likesEnabled;
     if (updates.commentsEnabled !== undefined) dbUpdates.comments_enabled = updates.commentsEnabled;
     if (updates.followsEnabled !== undefined) dbUpdates.follows_enabled = updates.followsEnabled;
+    if (updates.tagsEnabled !== undefined) dbUpdates.tags_enabled = updates.tagsEnabled;
     if (updates.groupJoinsEnabled !== undefined) dbUpdates.group_joins_enabled = updates.groupJoinsEnabled;
     if (updates.roastsEnabled !== undefined) dbUpdates.challenges_enabled = updates.roastsEnabled;
     if (updates.newPostsEnabled !== undefined) dbUpdates.new_posts_enabled = updates.newPostsEnabled;
@@ -254,6 +258,7 @@ export const useNotificationStore = create<NotificationState>()(persist((set, ge
           likes_enabled: merged.likesEnabled,
           comments_enabled: merged.commentsEnabled,
           follows_enabled: merged.followsEnabled,
+          tags_enabled: merged.tagsEnabled,
           group_joins_enabled: merged.groupJoinsEnabled,
           challenges_enabled: merged.roastsEnabled,
           new_posts_enabled: merged.newPostsEnabled,

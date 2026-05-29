@@ -77,6 +77,7 @@ interface FeedState {
     session: DrinkSession,
     user: UserProfile,
     caption: string,
+    taggedUserIds?: string[],
     isBackfilled?: boolean,
   ) => Promise<void>;
   deleteFeedItem: (feedItemId: string) => Promise<void>;
@@ -84,6 +85,7 @@ interface FeedState {
     caption?: string;
     photos?: string[];
     sessionSummary?: FeedItem['sessionSummary'];
+    taggedUserIds?: string[];
   }) => Promise<void>;
   deleteComment: (feedItemId: string, commentId: string) => Promise<void>;
 
@@ -109,6 +111,7 @@ interface FeedItemRow {
   session_summary: FeedItem['sessionSummary'];
   photos: string[];
   caption: string;
+  tagged_user_ids?: string[] | null;
   created_at: string;
   is_backfilled?: boolean;
   profile: { display_name: string; avatar_url: string | null };
@@ -205,6 +208,7 @@ function mapRow(row: FeedItemRow, currentUserId?: string): FeedItem | null {
     sessionSummary: row.session_summary,
     photos: row.photos ?? [],
     caption: row.caption,
+    taggedUserIds: row.tagged_user_ids ?? [],
     likes: (row.feed_likes ?? []).map((l) => ({
       id: l.id,
       userId: l.user_id,
@@ -366,7 +370,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     return item;
   },
 
-  createFeedItemFromSession: async (session, user, caption, isBackfilled = false) => {
+  createFeedItemFromSession: async (session, user, caption, taggedUserIds = [], isBackfilled = false) => {
     const sessionSummary = buildSessionSummary(session);
 
     const { data: inserted, error } = await supabase
@@ -377,6 +381,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
         session_summary: sessionSummary,
         photos: session.photos ?? [],
         caption,
+        tagged_user_ids: taggedUserIds,
         is_backfilled: isBackfilled,
       })
       .select()
@@ -397,6 +402,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       sessionSummary,
       photos: session.photos ?? [],
       caption,
+      taggedUserIds,
       likes: [],
       likeCount: 0,
       currentUserLikeId: null,
@@ -598,6 +604,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
     if (updates.caption !== undefined) dbUpdates.caption = updates.caption;
     if (updates.photos !== undefined) dbUpdates.photos = updates.photos;
     if (updates.sessionSummary !== undefined) dbUpdates.session_summary = updates.sessionSummary;
+    if (updates.taggedUserIds !== undefined) dbUpdates.tagged_user_ids = updates.taggedUserIds;
 
     const { data: updated, error } = await supabase
       .from('feed_items')
@@ -917,11 +924,13 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       // Caption/photos/session_summary edits — no joined data needed, patch directly.
       const caption = (payload.new?.caption ?? '') as string;
       const photos = (payload.new?.photos ?? []) as string[];
+      const taggedUserIds = (payload.new?.tagged_user_ids ?? []) as string[];
       const sessionSummary = payload.new?.session_summary as FeedItem['sessionSummary'] | undefined;
       set((state) => patchItemEverywhere(state, id, (item) => ({
         ...item,
         caption,
         photos,
+        taggedUserIds,
         ...(sessionSummary ? { sessionSummary } : {}),
       })));
       return;
@@ -947,6 +956,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       sessionSummary: payload.new.session_summary as FeedItem['sessionSummary'],
       photos: (payload.new.photos as string[]) ?? [],
       caption: (payload.new.caption as string) ?? '',
+      taggedUserIds: (payload.new.tagged_user_ids as string[]) ?? [],
       likes: [],
       likeCount: 0,
       currentUserLikeId: null,

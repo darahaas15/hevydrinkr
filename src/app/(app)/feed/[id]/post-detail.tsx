@@ -16,6 +16,7 @@ import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import { getMilestoneBadge } from '@/lib/milestones';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { MentionText } from '@/components/ui/mention-text';
+import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import { ReportModal } from '@/components/moderation/report-modal';
 import Skeleton from '@/components/ui/skeleton';
 
@@ -376,6 +377,9 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
             {item.caption && (
               <p className="text-[13px] text-zinc-300 mb-3">{item.caption}</p>
             )}
+
+            {/* Tagged people */}
+            <TaggedUsersLine taggedUserIds={item.taggedUserIds ?? []} className="mb-3" />
 
             {/* Photos */}
             {item.photos && item.photos.length > 0 && (
