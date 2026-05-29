@@ -26,6 +26,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.13.0',
+    title: 'Tag your crew',
+    date: 'May 2026',
+    changes: [
+      'Tag people you follow when you post a session — right from the post screen or when editing.',
+      'Tagged friends get a notification, and everyone can see who was there on the post.',
+      'New "Tags" toggle in notification settings to control these alerts.',
+    ],
+  },
+  {
     version: '1.12.0',
     title: 'Faster & lighter',
     date: 'May 2026',
