@@ -143,29 +143,35 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title || 'Drinkr', options));
 });
 
+// ── Notification deep-link routing ───────────────
+// Maps a notification's flattened { type, ...data } payload to the in-app path
+// it should open. KEEP IN SYNC with getNotificationPath() in
+// src/app/(app)/notifications/page.tsx — tapping a push and tapping the same
+// notification in the in-app list must land on the same screen for every type.
+function notificationPath(data) {
+  const type = data.type;
+
+  // Post-related → open the post, scrolling to the comment when there is one.
+  if (['like', 'comment', 'reply', 'comment_like', 'mention', 'new_post', 'tag'].includes(type)) {
+    if (!data.feedItemId) return '/feed';
+    const post = `/feed?post=${data.feedItemId}`;
+    return data.commentId ? `${post}&comment=${data.commentId}` : post;
+  }
+
+  if (type === 'follow') return data.actorId ? `/profile/${data.actorId}` : '/feed';
+  if (type === 'follow_request') return '/profile/requests';
+  if (type === 'follow_request_accepted') return data.actorId ? `/profile/${data.actorId}` : '/profile';
+  if (type === 'group_join' || type === 'challenge_created') return data.groupId ? `/groups?id=${data.groupId}` : '/feed';
+  if (type === 'still_drinking') return '/session';
+
+  return '/feed';
+}
+
 // ── Notification click → deep-link ───────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const data = event.notification.data || {};
-  let path = '/feed';
-
-  if (data.type === 'like' || data.type === 'comment' || data.type === 'reply' || data.type === 'comment_like' || data.type === 'mention' || data.type === 'new_post') {
-    if (data.feedItemId) {
-      path = `/feed?post=${data.feedItemId}`;
-      if (data.commentId) path += `&comment=${data.commentId}`;
-    }
-  } else if (data.type === 'follow' && data.actorId) {
-    path = `/profile/${data.actorId}`;
-  } else if (data.type === 'follow_request') {
-    path = '/profile/requests';
-  } else if (data.type === 'follow_request_accepted') {
-    path = data.userId ? `/profile/${data.userId}` : '/profile';
-  } else if ((data.type === 'group_join' || data.type === 'challenge_created') && data.groupId) {
-    path = `/groups?id=${data.groupId}`;
-  } else if (data.type === 'still_drinking') {
-    path = '/session';
-  }
+  const path = notificationPath(event.notification.data || {});
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {

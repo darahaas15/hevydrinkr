@@ -2,40 +2,50 @@
 
 import { useEffect, useRef } from 'react';
 import { useAppRouter } from '@/hooks/use-app-router';
-import { Heart, MessageCircle, AtSign, UserPlus, Users, Flame, Clock, Bell, CheckCheck, ChevronLeft, ImageIcon, Tag } from 'lucide-react';
+import { Heart, MessageCircle, AtSign, UserPlus, UserCheck, Users, Trophy, Clock, Bell, CheckCheck, ChevronLeft, ImageIcon, Tag } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { useNotificationStore, Notification } from '@/stores/use-notification-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { formatTimeAgo } from '@/lib/utils';
 
 const TYPE_ICON: Record<string, { icon: typeof Heart; color: string }> = {
-  like:              { icon: Heart,         color: 'text-red-400 bg-red-500/15' },
-  comment_like:      { icon: Heart,         color: 'text-red-400 bg-red-500/15' },
-  comment:           { icon: MessageCircle, color: 'text-blue-400 bg-blue-500/15' },
-  reply:             { icon: MessageCircle, color: 'text-blue-400 bg-blue-500/15' },
-  mention:           { icon: AtSign,        color: 'text-purple-400 bg-purple-500/15' },
-  tag:               { icon: Tag,           color: 'text-pink-400 bg-pink-500/15' },
-  follow:            { icon: UserPlus,      color: 'text-emerald-400 bg-emerald-500/15' },
-  group_join:        { icon: Users,         color: 'text-amber-400 bg-amber-500/15' },
-  new_post:          { icon: ImageIcon,      color: 'text-teal-400 bg-teal-500/15' },
-  weekly_roast:      { icon: Flame,         color: 'text-orange-400 bg-orange-500/15' },
-  still_drinking:    { icon: Clock,         color: 'text-amber-400 bg-amber-500/15' },
+  like:                     { icon: Heart,         color: 'text-red-400 bg-red-500/15' },
+  comment_like:             { icon: Heart,         color: 'text-red-400 bg-red-500/15' },
+  comment:                  { icon: MessageCircle, color: 'text-blue-400 bg-blue-500/15' },
+  reply:                    { icon: MessageCircle, color: 'text-blue-400 bg-blue-500/15' },
+  mention:                  { icon: AtSign,        color: 'text-purple-400 bg-purple-500/15' },
+  tag:                      { icon: Tag,           color: 'text-pink-400 bg-pink-500/15' },
+  follow:                   { icon: UserPlus,      color: 'text-emerald-400 bg-emerald-500/15' },
+  follow_request:           { icon: UserPlus,      color: 'text-emerald-400 bg-emerald-500/15' },
+  follow_request_accepted:  { icon: UserCheck,     color: 'text-emerald-400 bg-emerald-500/15' },
+  group_join:               { icon: Users,         color: 'text-amber-400 bg-amber-500/15' },
+  challenge_created:        { icon: Trophy,        color: 'text-amber-400 bg-amber-500/15' },
+  new_post:                 { icon: ImageIcon,     color: 'text-teal-400 bg-teal-500/15' },
+  still_drinking:           { icon: Clock,         color: 'text-amber-400 bg-amber-500/15' },
 };
 
+// Maps a notification to the in-app path it should open. KEEP IN SYNC with
+// notificationPath() in public/sw.js — tapping a push and tapping the same
+// notification here must land on the same screen for every type.
 function getNotificationPath(n: Notification): string {
   const d = n.data;
-  if (['like', 'comment_like', 'comment', 'reply', 'mention', 'tag', 'new_post'].includes(n.type) && d.feedItemId) {
-    return `/feed?post=${d.feedItemId}`;
+  const feedItemId = d.feedItemId as string | undefined;
+  const commentId = d.commentId as string | undefined;
+  const groupId = d.groupId as string | undefined;
+  const actorId = n.actorId ?? (d.actorId as string | undefined);
+
+  // Post-related → open the post, scrolling to the comment when there is one.
+  if (['like', 'comment', 'reply', 'comment_like', 'mention', 'new_post', 'tag'].includes(n.type)) {
+    if (!feedItemId) return '/feed';
+    return commentId ? `/feed?post=${feedItemId}&comment=${commentId}` : `/feed?post=${feedItemId}`;
   }
-  if (n.type === 'follow' && n.actorId) {
-    return `/profile/${n.actorId}`;
-  }
-  if (['group_join', 'weekly_roast'].includes(n.type) && d.groupId) {
-    return `/groups?id=${d.groupId}`;
-  }
-  if (n.type === 'still_drinking') {
-    return '/session';
-  }
+
+  if (n.type === 'follow') return actorId ? `/profile/${actorId}` : '/feed';
+  if (n.type === 'follow_request') return '/profile/requests';
+  if (n.type === 'follow_request_accepted') return actorId ? `/profile/${actorId}` : '/profile';
+  if (n.type === 'group_join' || n.type === 'challenge_created') return groupId ? `/groups?id=${groupId}` : '/feed';
+  if (n.type === 'still_drinking') return '/session';
+
   return '/feed';
 }
 
