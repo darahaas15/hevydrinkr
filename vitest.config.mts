@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 // Pin the timezone so date-sensitive logic (streaks, leaderboard windows,
@@ -13,6 +13,9 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'tests/**/*.{test,spec}.{ts,tsx}'],
+    // Layer 3 integration tests need a local Supabase; they run via
+    // vitest.integration.config.mts (`npm run test:rls`), never in the fast suite.
+    exclude: [...configDefaults.exclude, 'tests/integration/**'],
     coverage: {
       provider: 'v8',
       reportsDirectory: './coverage',

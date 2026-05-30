@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:rls": "vitest run --config vitest.integration.config.mts",
     "contract:update": "UPDATE_CONTRACT=1 vitest run db-contract",
+    "db:bootstrap": "bash scripts/test-db-bootstrap.sh",
     "ci": "npm run typecheck && npm run test"
   },
   "dependencies": {

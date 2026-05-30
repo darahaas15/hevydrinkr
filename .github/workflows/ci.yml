@@ -62,3 +62,46 @@ jobs:
       - name: Lint (non-blocking)
         continue-on-error: true
         run: npm run lint
+
+  # Layer 3 — local-Supabase contract + RLS. Non-blocking until the migration
+  # re-baseline makes `supabase db reset` reproduce the full schema; today it
+  # relies on the stopgap bootstrap. GitHub runners can pull Docker images, so
+  # this actually executes here even though some sandboxes can't.
+  contract-rls:
+    name: Contract & RLS (local Supabase)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - run: npm ci
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Bootstrap test schema (stopgap until re-baseline)
+        run: npm run db:bootstrap
+
+      - name: Write .env.test from the local stack
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_DB_URL=$DB_URL"
+          } > .env.test
+
+      - name: Contract + RLS tests
+        run: npm run test:rls
