@@ -1,0 +1,128 @@
+{
+  "tables": [
+    "blocked_users",
+    "comment_likes",
+    "custom_drinks",
+    "device_tokens",
+    "drink_entries",
+    "drink_sessions",
+    "feed_comments",
+    "feed_items",
+    "feed_likes",
+    "follow_requests",
+    "follows",
+    "group_members",
+    "group_records",
+    "groups",
+    "notification_preferences",
+    "notifications",
+    "party_drink_events",
+    "party_participants",
+    "party_sessions",
+    "personal_records",
+    "profiles",
+    "reports",
+    "roast_awards",
+    "roast_recaps",
+    "roast_streaks",
+    "session_photos"
+  ],
+  "rpcs": [
+    "get_my_metrics",
+    "is_username_taken",
+    "join_group_by_invite"
+  ],
+  "selectedColumns": {
+    "blocked_users": [
+      "blocked_id"
+    ],
+    "custom_drinks": [
+      "*"
+    ],
+    "drink_entries": [
+      "abv_percent",
+      "category",
+      "drink_definition_id",
+      "drink_name",
+      "emoji",
+      "id",
+      "notes",
+      "round_id",
+      "session_id",
+      "standard_drinks",
+      "timestamp",
+      "volume_ml"
+    ],
+    "drink_sessions": [
+      "duration_minutes",
+      "ended_at",
+      "id",
+      "is_party_mode",
+      "mood",
+      "notes",
+      "party_id",
+      "peak_bac_estimate",
+      "started_at",
+      "status",
+      "total_standard_drinks",
+      "total_volume_ml",
+      "user_id",
+      "venue"
+    ],
+    "feed_comments": [
+      "id",
+      "text"
+    ],
+    "feed_items": [
+      "created_at",
+      "id",
+      "session_summary",
+      "user_id"
+    ],
+    "follow_requests": [
+      "avatar_url",
+      "created_at",
+      "id",
+      "profiles!follow_requests_requester_id_fkey",
+      "requester_id",
+      "status",
+      "target_id",
+      "updated_at",
+      "username"
+    ],
+    "follows": [
+      "follower_id",
+      "following_id"
+    ],
+    "group_members": [
+      "group_id"
+    ],
+    "notification_preferences": [
+      "*"
+    ],
+    "notifications": [
+      "*"
+    ],
+    "personal_records": [
+      "*"
+    ],
+    "profiles": [
+      "avatar_url",
+      "bio",
+      "created_at",
+      "display_name",
+      "id",
+      "is_private",
+      "username"
+    ],
+    "roast_awards": [
+      "*"
+    ],
+    "session_photos": [
+      "id",
+      "session_id",
+      "sort_order",
+      "url"
+    ]
+  }
+}

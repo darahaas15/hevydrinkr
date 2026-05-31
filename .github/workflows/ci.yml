@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck, test & coverage
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs");
+            try {
+              const t = JSON.parse(fs.readFileSync("coverage/coverage-summary.json", "utf8")).total;
+              const row = (k) => `| ${k} | ${t[k].pct}% | ${t[k].covered}/${t[k].total} |`;
+              const md = [
+                "### Coverage — src/lib (domain layer)",
+                "",
+                "| Metric | % | Covered |",
+                "|---|---|---|",
+                row("lines"), row("statements"), row("functions"), row("branches"),
+              ].join("\n");
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n");
+            } catch (e) {
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "Coverage summary unavailable: " + e.message + "\n");
+            }
+          '
+
+      # Non-blocking: the repo currently has pre-existing lint errors (React 19
+      # hooks/purity rules) unrelated to the test suite. Surfaced here for
+      # visibility without failing the build; flip to a hard gate once cleaned.
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        run: npm run lint
+
+  # Layer 3 — local-Supabase contract + RLS. MANUAL-ONLY for now (gated on the
+  # migration re-baseline), so it never reports red on normal PRs/pushes.
+  # `supabase/migrations/` does not yet reproduce the schema — the baseline
+  # migration is empty, so `supabase start` fails applying the later ones
+  # ("relation \"follows\" does not exist"). Until the re-baseline lands we drop
+  # the migrations and build the schema from the stopgap bootstrap instead.
+  # Run on demand via the Actions "Run workflow" button (or locally:
+  # `npm run test:rls`). After the re-baseline: delete the `if:` and the
+  # "Drop incomplete migrations" step to turn this into a normal CI gate.
+  contract-rls:
+    name: Contract & RLS (local Supabase)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - run: npm ci
+
+      # Pre-re-baseline: the committed migrations are incomplete, so let the
+      # bootstrap build the schema rather than `supabase start` applying them.
+      - name: Drop incomplete migrations (use bootstrap schema)
+        run: rm -f supabase/migrations/*.sql
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Bootstrap test schema (stopgap until re-baseline)
+        run: npm run db:bootstrap
+
+      - name: Write .env.test from the local stack
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_DB_URL=$DB_URL"
+          } > .env.test
+
+      - name: Contract + RLS tests
+        run: npm run test:rls
