@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion, useDragControls } from 'framer-motion';
 import { Search, X, Plus, ChevronLeft } from 'lucide-react';
 import { DRINK_LIBRARY, getDrinksByCategory, searchDrinks } from '@/lib/data/drink-library';
-import { calculateStandardDrinks, splitOversizedDrink } from '@/lib/utils';
+import { calculateStandardDrinks } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { supabase } from '@/lib/supabase/client';
@@ -131,7 +131,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
       roundId: null,
       notes: '',
     };
-    for (const sub of splitOversizedDrink(entry)) onSelect(sub);
+    onSelect(entry);
   };
 
   const handleCustomDrink = async () => {
@@ -193,7 +193,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
       roundId: null,
       notes: '',
     };
-    for (const sub of splitOversizedDrink(entry)) onSelect(sub);
+    onSelect(entry);
   };
 
   return (

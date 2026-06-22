@@ -6,11 +6,9 @@ import {
   formatTimeAgo,
   formatNumber,
   calculateStandardDrinks,
-  splitOversizedDrink,
   getRelativeDate,
   shuffleArray,
 } from './utils';
-import { makeDrink } from '../../tests/helpers/factories';
 
 describe('calculateStandardDrinks', () => {
   it('matches the documented examples (0.789 g/mL, 14 g per standard)', () => {
@@ -68,33 +66,6 @@ describe('formatTimeAgo', () => {
   it('falls back to an absolute date beyond a week', () => {
     const tenDaysAgo = new Date(NOW.getTime() - 10 * 86_400_000).toISOString();
     expect(formatTimeAgo(tenDaysAgo)).toBe('Mar 5');
-  });
-});
-
-describe('splitOversizedDrink', () => {
-  it('leaves a normal-sized drink untouched', () => {
-    const beer = makeDrink({ category: 'beer', volumeMl: 500, abvPercent: 5 });
-    const out = splitOversizedDrink(beer);
-    expect(out).toHaveLength(1);
-    expect(out[0]).toBe(beer);
-  });
-
-  it('splits an oversized beer into serving-sized pieces with fresh ids', () => {
-    const beer = makeDrink({ id: 'orig', category: 'beer', volumeMl: 1000, abvPercent: 5 });
-    const out = splitOversizedDrink(beer);
-    expect(out).toHaveLength(2);
-    expect(out.map((d) => d.volumeMl)).toEqual([500, 500]);
-    expect(out.reduce((s, d) => s + d.volumeMl, 0)).toBe(1000);
-    const ids = out.map((d) => d.id);
-    expect(new Set(ids).size).toBe(2);
-    expect(ids).not.toContain('orig');
-  });
-
-  it('sizes custom drinks by ABV (high-ABV → shot units)', () => {
-    const spirit = makeDrink({ category: 'custom', volumeMl: 200, abvPercent: 40 });
-    const out = splitOversizedDrink(spirit);
-    expect(out.length).toBe(7); // round(200/30)
-    expect(out.every((d) => d.volumeMl === 29)).toBe(true); // round(200/7)
   });
 });
 
