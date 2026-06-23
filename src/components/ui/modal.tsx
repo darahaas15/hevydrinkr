@@ -42,7 +42,7 @@ export default function Modal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-overlay backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div
@@ -50,7 +50,7 @@ export default function Modal({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+            style={{ background: 'var(--sheet-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--sheet-border)' }}
             className={cn(
               'rounded-2xl p-6 w-[90vw] max-w-md relative z-10',
               className

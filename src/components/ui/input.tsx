@@ -18,7 +18,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={cn('w-full', className)}>
         {label && (
-          <label className="block text-sm text-zinc-400 mb-1.5">{label}</label>
+          <label className="block text-sm text-muted-foreground mb-1.5">{label}</label>
         )}
         <div className="relative">
           {icon && (
@@ -33,7 +33,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             onChange={onChange}
             placeholder={placeholder}
             className={cn(
-              'w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-white placeholder:text-zinc-600',
+              'w-full rounded-xl bg-surface-subtle border border-input-border px-4 py-2.5 text-foreground placeholder:text-muted',
               'focus:outline-none focus:border-accent/40',
               'transition-all',
               !!icon && 'pl-10'

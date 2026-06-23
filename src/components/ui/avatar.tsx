@@ -39,7 +39,7 @@ export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center font-bold text-white bg-zinc-800 shrink-0',
+        'rounded-full flex items-center justify-center font-bold bg-[var(--avatar-bg)] text-[color:var(--avatar-fg)] shrink-0',
         sizeStyles[size],
         className
       )}

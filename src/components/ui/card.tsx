@@ -37,10 +37,10 @@ export default function Card({
     <div
       onClick={onClick}
       className={cn(
-        'bg-white/[0.03] border border-white/[0.05] rounded-2xl',
+        'bg-card border border-hairline rounded-2xl',
         paddingStyles[padding],
         glow && glowStyles[glowColor],
-        onClick && 'cursor-pointer hover:bg-white/[0.07] transition-colors',
+        onClick && 'cursor-pointer hover:bg-card-hover transition-colors',
         className
       )}
     >

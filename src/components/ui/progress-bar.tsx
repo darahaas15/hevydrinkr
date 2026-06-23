@@ -39,12 +39,12 @@ export default function ProgressBar({
     <div className={cn('w-full', className)}>
       {showLabel && (
         <div className="flex justify-end mb-1">
-          <span className="text-xs text-zinc-400">{Math.round(clampedValue)}%</span>
+          <span className="text-xs text-muted-foreground">{Math.round(clampedValue)}%</span>
         </div>
       )}
       <div
         className={cn(
-          'w-full bg-white/5 rounded-full overflow-hidden',
+          'w-full bg-surface-subtle rounded-full overflow-hidden',
           heightStyles[height]
         )}
       >

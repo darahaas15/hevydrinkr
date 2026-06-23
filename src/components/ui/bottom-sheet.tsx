@@ -45,7 +45,7 @@ export default function BottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm modal-overlay"
+            className="absolute inset-0 bg-overlay backdrop-blur-sm modal-overlay"
             onClick={onClose}
           />
           <motion.div
@@ -59,7 +59,7 @@ export default function BottomSheet({
             dragConstraints={{ top: 0 }}
             dragElastic={0.2}
             onDragEnd={handleDragEnd}
-            style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+            style={{ background: 'var(--sheet-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--sheet-border)' }}
             className={cn(
               'absolute bottom-0 left-0 right-0 rounded-t-3xl max-h-[85dvh] overflow-y-auto safe-bottom',
               className
@@ -69,7 +69,7 @@ export default function BottomSheet({
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
               onPointerDown={(e) => dragControls.start(e)}
             >
-              <div className="w-10 h-1.5 rounded-full bg-white/20" />
+              <div className="w-10 h-1.5 rounded-full bg-foreground/20" />
             </div>
             {title && (
               <h2 className="text-accent font-extrabold text-lg px-6 pb-4">

@@ -26,7 +26,7 @@ Built as a mobile-first PWA with Next.js and Supabase.
 |---|---|
 | Framework | Next.js 16 (App Router, static export) |
 | UI | React 19, Tailwind CSS 4, Framer Motion |
-| State | Zustand (10 stores) |
+| State | Zustand (12 stores) |
 | Backend | Supabase (Postgres + Realtime + Auth) |
 | Icons | Tabler Icons + Lucide |
 | PWA | Service Worker + Web App Manifest |

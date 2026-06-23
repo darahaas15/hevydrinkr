@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeController } from "@/components/theme/theme-controller";
+import { themeInitScript } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +32,9 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#09090b",
+  // `theme-color` is intentionally NOT set here: it is rendered as a plain
+  // <meta> in <head> below (defaulting to dark) and updated at runtime by the
+  // anti-FOUC script + ThemeController so it tracks the active theme.
   // Make the layout viewport shrink when the soft keyboard opens, so
   // `position: fixed; bottom: 0` and `100dvh` follow the keyboard natively
   // and in sync with the system animation. iOS Safari 16.4+ / Chrome 108+.
@@ -43,8 +47,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        {/* Default (dark) theme-color; the anti-FOUC script and ThemeController
+            update its content to match the active theme. Declared before the
+            script so the script can find and update it. */}
+        <meta name="theme-color" content="#09090b" suppressHydrationWarning />
+        {/* Blocking: set data-theme before first paint to avoid a flash of the
+            wrong theme. Mirrors useThemeStore's persisted key/shape. */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript() }} />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -53,6 +68,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
       </head>
       <body className="bg-background text-foreground antialiased">
+        <ThemeController />
         {children}
         <ServiceWorkerRegistrar />
       </body>
