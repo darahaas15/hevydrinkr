@@ -25,6 +25,14 @@ export function ThemeController() {
     const apply = (animate: boolean) => {
       const root = document.documentElement;
       const effective = resolveEffectiveTheme(preference, mql.matches);
+
+      // Reconcile the status-bar tint on every call, including first mount where
+      // `data-theme` already matches — React 19 metadata hydration can restore
+      // the SSR (dark) value, so the controller must own it unconditionally.
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', THEME_COLORS[effective]);
+
       if (root.getAttribute('data-theme') === effective) return;
 
       if (animate) {
@@ -32,9 +40,6 @@ export function ThemeController() {
         window.setTimeout(() => root.classList.remove('theme-transition'), 320);
       }
       root.setAttribute('data-theme', effective);
-      document
-        .querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', THEME_COLORS[effective]);
     };
 
     // Animate only when this run is a preference change (already mounted) — the

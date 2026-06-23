@@ -19,9 +19,9 @@ const variantStyles: Record<string, string> = {
   primary:
     'bg-accent text-accent-foreground shadow-lg transition-shadow',
   secondary:
-    'bg-card border border-card-border text-foreground hover:bg-card-hover transition-colors',
+    'bg-surface-secondary border border-card-border text-foreground hover:bg-surface-hover-strong transition-colors',
   ghost:
-    'bg-transparent text-muted-foreground hover:text-foreground hover:bg-card-hover transition-colors',
+    'bg-transparent text-muted-foreground hover:text-foreground hover:bg-surface-subtle transition-colors',
   danger:
     'bg-red-500/80 text-white hover:bg-red-500 transition-colors',
 };

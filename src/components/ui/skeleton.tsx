@@ -7,9 +7,9 @@ interface SkeletonProps {
 }
 
 const variantStyles: Record<string, string> = {
-  text: 'h-4 w-full rounded bg-card-hover animate-pulse',
-  circle: 'rounded-full bg-card-hover animate-pulse',
-  card: 'h-40 w-full rounded-2xl bg-card-hover animate-pulse',
+  text: 'h-4 w-full rounded bg-surface-subtle animate-pulse',
+  circle: 'rounded-full bg-surface-subtle animate-pulse',
+  card: 'h-40 w-full rounded-2xl bg-surface-subtle animate-pulse',
 };
 
 export default function Skeleton({

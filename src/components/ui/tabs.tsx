@@ -26,7 +26,7 @@ export default function Tabs({
   return (
     <div
       className={cn(
-        'flex overflow-x-auto scrollbar-hide gap-1 border-b border-card-border',
+        'flex overflow-x-auto scrollbar-hide gap-1 border-b border-hairline',
         className
       )}
     >
@@ -39,7 +39,7 @@ export default function Tabs({
             onClick={() => onChange(tab.id)}
             className={cn(
               'relative flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors',
-              isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+              isActive ? 'text-foreground' : 'text-zinc-500 hover:text-foreground'
             )}
           >
             {tab.icon}

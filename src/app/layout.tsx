@@ -56,7 +56,7 @@ export default function RootLayout({
         {/* Default (dark) theme-color; the anti-FOUC script and ThemeController
             update its content to match the active theme. Declared before the
             script so the script can find and update it. */}
-        <meta name="theme-color" content="#09090b" />
+        <meta name="theme-color" content="#09090b" suppressHydrationWarning />
         {/* Blocking: set data-theme before first paint to avoid a flash of the
             wrong theme. Mirrors useThemeStore's persisted key/shape. */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript() }} />

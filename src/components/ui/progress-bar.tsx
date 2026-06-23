@@ -44,7 +44,7 @@ export default function ProgressBar({
       )}
       <div
         className={cn(
-          'w-full bg-card-hover rounded-full overflow-hidden',
+          'w-full bg-surface-subtle rounded-full overflow-hidden',
           heightStyles[height]
         )}
       >

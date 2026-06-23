@@ -30,8 +30,16 @@
   --green: #10b981;
   --red: #ef4444;
   --pink: #ec4899;
-  /* Scrim behind modals/sheets — a dark scrim works on both themes. */
-  --overlay: rgba(9, 9, 11, 0.45);
+  /* Scrim behind modals/sheets. Dark mirrors the original `bg-black/60`. */
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  /* Surface/border tints for the shared primitives. Dark values mirror the
+     original hardcoded `white/*` literals exactly so dark stays unchanged. */
+  --hairline: rgba(255, 255, 255, 0.05);
+  --surface-subtle: rgba(255, 255, 255, 0.05);
+  --surface-secondary: rgba(255, 255, 255, 0.04);
+  --surface-hover-strong: rgba(255, 255, 255, 0.10);
+  --input-border: rgba(255, 255, 255, 0.10);
 
   /* Internal effect/chrome tokens (consumed by the CSS rules below and by a
      few inline-styled primitives; not exposed as Tailwind utilities). */
@@ -106,6 +114,12 @@
   --pink: #db2777;
   --overlay: rgba(9, 9, 11, 0.45);
 
+  --hairline: rgba(9, 9, 11, 0.06);
+  --surface-subtle: rgba(9, 9, 11, 0.04);
+  --surface-secondary: rgba(9, 9, 11, 0.04);
+  --surface-hover-strong: rgba(9, 9, 11, 0.07);
+  --input-border: rgba(9, 9, 11, 0.12);
+
   --glass-strong-bg: rgba(255, 255, 255, 0.85);
   --sheet-bg: rgba(255, 255, 255, 0.92);
   --sheet-border: rgba(9, 9, 11, 0.08);
@@ -155,6 +169,11 @@
   --color-card: var(--card);
   --color-card-border: var(--card-border);
   --color-card-hover: var(--card-hover);
+  --color-hairline: var(--hairline);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-hover-strong: var(--surface-hover-strong);
+  --color-input-border: var(--input-border);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
