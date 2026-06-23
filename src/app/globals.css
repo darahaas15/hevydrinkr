@@ -1,14 +1,28 @@
 @import "tailwindcss";
 
+/*
+ * ── Theming ─────────────────────────────────────────────────────────────────
+ * The app is themed by a `data-theme` attribute on <html> driving CSS custom
+ * properties; `@theme inline` surfaces those vars to Tailwind color utilities.
+ * `:root` is the DARK default (kept byte-for-byte identical to the original
+ * single-theme look). `:root[data-theme="light"]` overrides the same vars with
+ * light values. See AGENTS.md › Theming for the token contract and the
+ * accent-text (labels/icons) vs accent-foreground (text on accent fills) rule.
+ */
 :root {
   --background: #09090b;
   --foreground: #fafafa;
   --card: rgba(255, 255, 255, 0.03);
   --card-border: rgba(255, 255, 255, 0.06);
-  --card-hover: rgba(255, 255, 255, 0.06);
+  /* Matches the literal `bg-white/[0.07]` card hover so dark stays unchanged. */
+  --card-hover: rgba(255, 255, 255, 0.07);
   --muted: #52525b;
   --muted-foreground: #a1a1aa;
   --accent: #14b8a6;
+  /* Teal for text/icons (the `text-teal-400`/`text-accent` recipe). */
+  --accent-text: #2dd4bf;
+  /* Text/icon color on top of an accent-filled surface (was hardcoded black). */
+  --accent-foreground: #000000;
   --accent-muted: rgba(20, 184, 166, 0.15);
   --accent-glow: rgba(20, 184, 166, 0.08);
   --violet: #8b5cf6;
@@ -16,9 +30,123 @@
   --green: #10b981;
   --red: #ef4444;
   --pink: #ec4899;
+  /* Scrim behind modals/sheets — a dark scrim works on both themes. */
+  --overlay: rgba(9, 9, 11, 0.45);
+
+  /* Internal effect/chrome tokens (consumed by the CSS rules below and by a
+     few inline-styled primitives; not exposed as Tailwind utilities). */
+  --glass-strong-bg: rgba(18, 18, 22, 0.95);
+  --sheet-bg: rgba(9, 9, 11, 0.92);
+  --sheet-border: rgba(255, 255, 255, 0.04);
+  --gradient-text-from: #14b8a6;
+  --gradient-text-to: #06b6d4;
+  --gradient-cyan-from: #06b6d4;
+  --gradient-cyan-to: #8b5cf6;
+  --shadow-glow-purple: 0 0 24px rgba(139, 92, 246, 0.2);
+  --shadow-glow-amber: 0 0 24px rgba(20, 184, 166, 0.15);
+
+  /* Toast — per-type surface/border/text. Dark values mirror the original
+     translucent tints + bright `-400` text exactly. */
+  --toast-success-bg: rgba(16, 185, 129, 0.08);
+  --toast-success-border: rgba(16, 185, 129, 0.15);
+  --toast-success-text: #34d399;
+  --toast-error-bg: rgba(239, 68, 68, 0.08);
+  --toast-error-border: rgba(239, 68, 68, 0.15);
+  --toast-error-text: #f87171;
+  --toast-info-bg: rgba(20, 184, 166, 0.08);
+  --toast-info-border: rgba(20, 184, 166, 0.15);
+  --toast-info-text: #2dd4bf;
+  --toast-fg: #e4e4e7;
+
+  /* Badge — the `bg-X-500/20 text-X-400` recipe, per variant. Dark mirrors the
+     original translucent tint + bright `-400` text exactly. */
+  --badge-default-bg: rgba(255, 255, 255, 0.10);
+  --badge-default-text: #ffffff;
+  --badge-success-bg: rgba(34, 197, 94, 0.20);
+  --badge-success-text: #4ade80;
+  --badge-warning-bg: rgba(245, 158, 11, 0.20);
+  --badge-warning-text: #fbbf24;
+  --badge-danger-bg: rgba(239, 68, 68, 0.20);
+  --badge-danger-text: #f87171;
+  --badge-purple-bg: rgba(168, 85, 247, 0.20);
+  --badge-purple-text: #c084fc;
+  --badge-pink-bg: rgba(236, 72, 153, 0.20);
+  --badge-pink-text: #f472b6;
+  --badge-cyan-bg: rgba(6, 182, 212, 0.20);
+  --badge-cyan-text: #22d3ee;
+
+  /* Avatar fallback (initials on a neutral bubble). Dark = zinc-800 + white. */
+  --avatar-bg: #27272a;
+  --avatar-fg: #ffffff;
+
   --visual-viewport-top-offset: 0px;
   --visual-viewport-height: 100dvh;
   --visual-viewport-bottom-offset: 0px;
+}
+
+:root[data-theme="light"] {
+  --background: #f6f7f9;
+  --foreground: #18181b;
+  /* Opaque white — a translucent-white film is invisible on a light base.
+     White card on the soft-gray background is the elevation cue. */
+  --card: #ffffff;
+  --card-border: rgba(9, 9, 11, 0.08);
+  --card-hover: rgba(9, 9, 11, 0.04);
+  --muted: #a1a1aa;
+  --muted-foreground: #52525b;
+  --accent: #0d9488;
+  --accent-text: #0f766e;
+  --accent-foreground: #ffffff;
+  --accent-muted: rgba(13, 148, 136, 0.12);
+  --accent-glow: rgba(13, 148, 136, 0.10);
+  --violet: #7c3aed;
+  --cyan: #0e7490;
+  --green: #15803d;
+  --red: #dc2626;
+  --pink: #db2777;
+  --overlay: rgba(9, 9, 11, 0.45);
+
+  --glass-strong-bg: rgba(255, 255, 255, 0.85);
+  --sheet-bg: rgba(255, 255, 255, 0.92);
+  --sheet-border: rgba(9, 9, 11, 0.08);
+  --gradient-text-from: #0f766e;
+  --gradient-text-to: #0e7490;
+  --gradient-cyan-from: #0e7490;
+  --gradient-cyan-to: #7c3aed;
+  /* Glows read cheap on light — swap for a soft neutral elevation shadow. */
+  --shadow-glow-purple: 0 4px 16px rgba(9, 9, 11, 0.06);
+  --shadow-glow-amber: 0 4px 16px rgba(9, 9, 11, 0.06);
+
+  /* Toast — light pastel surfaces with darker borders/text for AA contrast. */
+  --toast-success-bg: rgba(236, 253, 245, 0.96);
+  --toast-success-border: rgba(21, 128, 61, 0.25);
+  --toast-success-text: #15803d;
+  --toast-error-bg: rgba(254, 242, 242, 0.96);
+  --toast-error-border: rgba(220, 38, 38, 0.25);
+  --toast-error-text: #dc2626;
+  --toast-info-bg: rgba(240, 253, 250, 0.96);
+  --toast-info-border: rgba(15, 118, 110, 0.25);
+  --toast-info-text: #0f766e;
+  --toast-fg: #18181b;
+
+  /* Badge — lighter tint + darker (`-700`) text so it stays legible on white. */
+  --badge-default-bg: rgba(9, 9, 11, 0.06);
+  --badge-default-text: #18181b;
+  --badge-success-bg: rgba(34, 197, 94, 0.15);
+  --badge-success-text: #15803d;
+  --badge-warning-bg: rgba(245, 158, 11, 0.15);
+  --badge-warning-text: #b45309;
+  --badge-danger-bg: rgba(239, 68, 68, 0.15);
+  --badge-danger-text: #b91c1c;
+  --badge-purple-bg: rgba(168, 85, 247, 0.15);
+  --badge-purple-text: #7c3aed;
+  --badge-pink-bg: rgba(236, 72, 153, 0.15);
+  --badge-pink-text: #be185d;
+  --badge-cyan-bg: rgba(6, 182, 212, 0.15);
+  --badge-cyan-text: #0e7490;
+
+  --avatar-bg: #e4e4e7;
+  --avatar-fg: #3f3f46;
 }
 
 @theme inline {
@@ -26,10 +154,14 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-border: var(--card-border);
+  --color-card-hover: var(--card-hover);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-muted: var(--accent-muted);
+  --color-overlay: var(--overlay);
   --color-neon-purple: var(--violet);
   --color-neon-pink: var(--pink);
   --color-neon-cyan: var(--cyan);
@@ -67,7 +199,7 @@ html {
      the status bar, which otherwise leaves an equal gap at the bottom. */
   min-height: calc(100% + env(safe-area-inset-top));
   touch-action: manipulation; /* eliminate 300ms tap delay */
-  background: #09090b;
+  background: var(--background);
   overscroll-behavior: none;
 }
 
@@ -105,33 +237,33 @@ body {
 /* ── Cards ──────────────────────────────────── */
 
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card);
+  border: 1px solid var(--card-border);
 }
 
 .glass-strong {
-  background: rgba(18, 18, 22, 0.95);
+  background: var(--glass-strong-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card);
+  border: 1px solid var(--card-border);
 }
 
 /* ── Text ───────────────────────────────────── */
 
 .gradient-text {
-  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  background: linear-gradient(135deg, var(--gradient-text-from), var(--gradient-text-to));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-text-cyan {
-  background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+  background: linear-gradient(135deg, var(--gradient-cyan-from), var(--gradient-cyan-to));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -140,11 +272,11 @@ body {
 /* ── Glows (used sparingly) ─────────────────── */
 
 .glow-purple {
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.2);
+  box-shadow: var(--shadow-glow-purple);
 }
 
 .glow-amber {
-  box-shadow: 0 0 24px rgba(20, 184, 166, 0.15);
+  box-shadow: var(--shadow-glow-amber);
 }
 
 /* ── Neon border (used on CTA only) ─────────── */
@@ -159,7 +291,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  background: linear-gradient(135deg, var(--gradient-text-from), var(--gradient-text-to));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
@@ -297,6 +429,17 @@ nav.fixed {
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none !important;
+  }
+}
+
+/* ── Theme switch cross-fade ─────────────────── */
+/* `.theme-transition` is added to <html> by ThemeController only for a
+   user-initiated theme switch (never on first paint), then removed after the
+   fade. Gated on reduced-motion so the swap is instant for those users. */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transition,
+  html.theme-transition * {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   }
 }
 

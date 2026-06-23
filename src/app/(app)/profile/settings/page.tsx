@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock, Sparkles } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
+import { useThemeStore } from '@/stores/use-theme-store';
+import type { ThemePreference } from '@/lib/theme';
 import { useNotificationStore, type NotificationPreferences } from '@/stores/use-notification-store';
 import { unregisterPushNotifications } from '@/lib/push-notifications';
 import { hapticSelection } from '@/lib/haptics';
@@ -28,6 +30,8 @@ export default function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const preferences = useNotificationStore((s) => s.preferences);
   const updatePreferences = useNotificationStore((s) => s.updatePreferences);
+  const themePreference = useThemeStore((s) => s.preference);
+  const setThemePreference = useThemeStore((s) => s.setPreference);
   const [showPublicConfirm, setShowPublicConfirm] = useState(false);
 
   const handleChangePhoto = async () => {
@@ -78,6 +82,12 @@ export default function SettingsPage() {
     if (!currentUser) return;
     hapticSelection();
     updatePreferences(currentUser.id, { [key]: !preferences[key] });
+  };
+
+  const handleSelectTheme = (value: ThemePreference) => {
+    if (value === themePreference) return;
+    hapticSelection();
+    setThemePreference(value);
   };
 
   const handleTogglePrivacy = () => {
@@ -317,6 +327,42 @@ export default function SettingsPage() {
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Appearance</h3>
+          <div className="rounded-2xl bg-card border border-card-border p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <Sun className="w-4 h-4 text-zinc-500" />
+              <span className="text-sm">Theme</span>
+            </div>
+            <div className="flex gap-2">
+              {([
+                ['system', 'System', Monitor],
+                ['light', 'Light', Sun],
+                ['dark', 'Dark', Moon],
+              ] as const).map(([value, label, Icon]) => {
+                const isActive = themePreference === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => handleSelectTheme(value)}
+                    aria-pressed={isActive}
+                    className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-accent-muted ring-1 ring-accent/40 text-accent-text'
+                        : 'bg-card-hover border border-card-border text-muted-foreground'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-zinc-600 mt-3">System follows your device&apos;s appearance setting.</p>
           </div>
         </div>
 

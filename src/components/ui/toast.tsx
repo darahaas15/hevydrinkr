@@ -8,24 +8,27 @@ import { useUIStore } from '@/stores/use-ui-store';
 import { cn } from '@/lib/utils';
 import { hapticLight } from '@/lib/haptics';
 
+// Surface/border/text are driven by CSS vars (see globals.css › Toast) so the
+// toast stays legible per theme: translucent tints + bright text in dark, light
+// pastel surfaces + darker text in light.
 const styles: Record<string, { bg: string; border: string; icon: typeof AlertCircle; iconColor: string }> = {
   success: {
-    bg: 'rgba(16, 185, 129, 0.08)',
-    border: '1px solid rgba(16, 185, 129, 0.15)',
+    bg: 'var(--toast-success-bg)',
+    border: '1px solid var(--toast-success-border)',
     icon: CheckCircle,
-    iconColor: 'text-emerald-400',
+    iconColor: 'text-[color:var(--toast-success-text)]',
   },
   error: {
-    bg: 'rgba(239, 68, 68, 0.08)',
-    border: '1px solid rgba(239, 68, 68, 0.15)',
+    bg: 'var(--toast-error-bg)',
+    border: '1px solid var(--toast-error-border)',
     icon: AlertCircle,
-    iconColor: 'text-red-400',
+    iconColor: 'text-[color:var(--toast-error-text)]',
   },
   info: {
-    bg: 'rgba(20, 184, 166, 0.08)',
-    border: '1px solid rgba(20, 184, 166, 0.15)',
+    bg: 'var(--toast-info-bg)',
+    border: '1px solid var(--toast-info-border)',
     icon: Info,
-    iconColor: 'text-teal-400',
+    iconColor: 'text-[color:var(--toast-info-text)]',
   },
 };
 
@@ -70,7 +73,7 @@ export function ToastContainer() {
                 }}
               >
                 <Icon className={cn('w-4 h-4 shrink-0', s.iconColor)} />
-                <p className="text-[13px] text-zinc-200 flex-1">{toast.message}</p>
+                <p className="text-[13px] text-[color:var(--toast-fg)] flex-1">{toast.message}</p>
                 {toast.action && (
                   <button
                     onClick={(e) => {
@@ -91,7 +94,7 @@ export function ToastContainer() {
                     removeToast(toast.id);
                   }}
                   aria-label="Dismiss"
-                  className="p-1 -mr-1 text-zinc-500 active:text-zinc-300"
+                  className="p-1 -mr-1 text-muted-foreground active:text-foreground"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

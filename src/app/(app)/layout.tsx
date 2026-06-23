@@ -246,7 +246,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="h-dvh flex flex-col" style={{ background: '#09090b' }}>
+    <div className="h-dvh flex flex-col" style={{ background: 'var(--background)' }}>
       <main
         className={`relative flex-1 overflow-x-hidden ${
           lockMainScroll ? 'overflow-hidden overscroll-none' : 'overflow-y-auto overscroll-contain'

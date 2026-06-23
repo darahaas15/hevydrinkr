@@ -17,11 +17,11 @@ interface ButtonProps {
 
 const variantStyles: Record<string, string> = {
   primary:
-    'bg-accent text-black shadow-lg transition-shadow',
+    'bg-accent text-accent-foreground shadow-lg transition-shadow',
   secondary:
-    'bg-white/[0.04] border border-white/[0.06] text-white hover:bg-white/10 transition-colors',
+    'bg-card border border-card-border text-foreground hover:bg-card-hover transition-colors',
   ghost:
-    'bg-transparent text-zinc-400 hover:text-white hover:bg-white/5 transition-colors',
+    'bg-transparent text-muted-foreground hover:text-foreground hover:bg-card-hover transition-colors',
   danger:
     'bg-red-500/80 text-white hover:bg-red-500 transition-colors',
 };
