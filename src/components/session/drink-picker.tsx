@@ -219,13 +219,13 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
           if (info.offset.y > 120 || info.velocity.y > 500) onClose();
         }}
         className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl flex flex-col safe-bottom"
-        style={{ background: 'var(--popover-strong-bg)', height: '92dvh', maxHeight: '92dvh' }}
+        style={{ background: 'var(--sheet-solid-bg)', height: '92dvh', maxHeight: '92dvh' }}
       >
         <div
           onPointerDown={(e) => dragControls.start(e)}
           className="flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none"
         >
-          <div className="w-10 h-1.5 rounded-full bg-muted-foreground/40" />
+          <div className="w-10 h-1.5 rounded-full bg-[var(--grabber-bg)]" />
         </div>
 
         {showCustom ? (

@@ -35,6 +35,10 @@ When adding or converting UI, drive colors from tokens so they respond to the th
 | sticky-header / bottom-nav inline `rgba(9,9,11,0.82)` glass | `style={{ background: 'var(--chrome-bg)', borderColor: 'var(--chrome-border)' }}` (`--chrome-strong-bg` for composer/footer bars) |
 | floating-menu / popover inline `rgba(20,20,24,0.85/0.95)` glass | `var(--popover-bg)` / `var(--popover-strong-bg)` |
 | full-screen `#09090b` / `bg-[#09090b]` / `ring-[#09090b]` | `var(--background)` / `bg-background` / `ring-background` |
+| full-screen near-black landing/auth `#06060a` base | `style={{ background: 'var(--background-deep)' }}` (deeper than `--background`; dark = `#06060a`) |
+| fully OPAQUE bottom-sheet panel `#111114` (no own backdrop-filter) | `style={{ background: 'var(--sheet-solid-bg)' }}` (stays opaque in dark, unlike the translucent `--popover-strong-bg`) |
+| sheet drag-handle pip `bg-white/20` / `bg-white/15` | `bg-[var(--grabber-bg)]` |
+| unselected selection-circle outline `border-white/20` | `border-[var(--selection-border)]` |
 
 Semantic **text** colors (the bright `-400` shades that fail AA on white) have AA-safe `*-fg` tokens, vivid in dark and deepened in light: `text-danger-fg` (red-400), `text-warning-fg` (amber-400), `text-success-fg` (emerald/green-400), `text-info-fg` (cyan-400), `text-violet-fg` (violet/purple-400), `text-pink-fg` (pink-400), `text-blue-fg` (blue-400).
 Brand-color **tints** (`bg-X-500/15`, etc.) are theme-neutral and stay as-is - only their text/icon color needs an `*-fg` token.

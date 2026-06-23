@@ -210,10 +210,10 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
               exit={{ y: 100, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl p-5 space-y-1"
-              style={{ background: 'var(--popover-strong-bg)' }}
+              style={{ background: 'var(--sheet-solid-bg)' }}
             >
               <div className="flex justify-center mb-3">
-                <div className="w-9 h-1 rounded-full bg-muted-foreground/40" />
+                <div className="w-9 h-1 rounded-full bg-[var(--grabber-bg)]" />
               </div>
 
               {isAdmin && (

@@ -198,7 +198,7 @@ function LandingContent() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background)' }}>
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background-deep)' }}>
       {/* Ambient blurs */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />
@@ -457,7 +457,7 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background)' }}>
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background-deep)' }}>
       {/* Ambient blurs */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />

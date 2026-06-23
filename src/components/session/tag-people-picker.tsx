@@ -146,7 +146,7 @@ export function TagPeopleField({ value, onChange }: TagPeopleFieldProps) {
                         </div>
                         <div
                           className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
-                            selected ? 'bg-accent border-accent' : 'border-input-border'
+                            selected ? 'bg-accent border-accent' : 'border-[var(--selection-border)]'
                           }`}
                         >
                           {selected && <Check className="w-3.5 h-3.5 text-accent-foreground" strokeWidth={3} />}
