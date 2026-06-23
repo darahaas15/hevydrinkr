@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /*
- * Advisory guardrail for the staged light-mode migration. Reports hardcoded,
- * dark-only color usage that should become theme tokens (see AGENTS.md ›
- * Theming). It is NON-BLOCKING by design: most per-screen code is intentionally
- * un-migrated, so this prints a summary and always exits 0. It exists to make
- * the remaining surface visible and to discourage *new* hardcoded colors.
+ * Advisory guardrail for the (now complete) light-mode migration. Reports
+ * hardcoded, dark-only color usage that should become theme tokens (see
+ * AGENTS.md › Theming). It is NON-BLOCKING by design: the remaining hits are
+ * intentional keepers (modal/sheet scrims, fixed brand-gradient banners, the
+ * always-dark photo viewer, toggle knobs, the DRINK_CATEGORY_COLORS palette,
+ * manifest install colors), so this prints a summary and always exits 0. It
+ * exists to keep that surface visible and to discourage *new* hardcoded colors.
  *
  * Usage:
  *   node scripts/check-hardcoded-colors.mjs           # whole tree summary

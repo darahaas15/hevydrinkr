@@ -21,10 +21,10 @@ export default function FollowRequestsPage() {
 
   return (
     <div className="min-h-full">
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-white">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
+          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-foreground">
+            <ChevronLeft className="w-6 h-6 text-muted-foreground" />
           </button>
           <h1 className="text-lg font-bold">Follow Requests</h1>
         </div>
@@ -33,10 +33,10 @@ export default function FollowRequestsPage() {
       <div className="px-5 py-3">
         {followRequests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <UserPlus className="w-8 h-8 text-zinc-700" />
+            <div className="w-16 h-16 rounded-full bg-surface-subtle flex items-center justify-center mb-4">
+              <UserPlus className="w-8 h-8 text-fg-faint" />
             </div>
-            <p className="text-sm text-zinc-600">No pending requests</p>
+            <p className="text-sm text-muted">No pending requests</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -66,7 +66,7 @@ export default function FollowRequestsPage() {
                   <p className="text-sm font-semibold truncate">
                     {request.requesterProfile?.displayName || 'Unknown'}
                   </p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-fg-secondary">
                     @{request.requesterProfile?.username || ''}
                   </p>
                 </div>
@@ -76,14 +76,14 @@ export default function FollowRequestsPage() {
                     onClick={() => { hapticLight(); acceptFollowRequest(request.id); }}
                     className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center"
                   >
-                    <Check className="w-4 h-4 text-black" />
+                    <Check className="w-4 h-4 text-accent-foreground" />
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => { hapticLight(); rejectFollowRequest(request.id); }}
-                    className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center"
+                    className="w-9 h-9 rounded-xl bg-surface-raised border border-border-strong flex items-center justify-center"
                   >
-                    <X className="w-4 h-4 text-zinc-400" />
+                    <X className="w-4 h-4 text-muted-foreground" />
                   </motion.button>
                 </div>
               </motion.div>

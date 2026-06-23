@@ -130,7 +130,7 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 pt-3 pb-0">
           <h1 className="text-xl font-extrabold flex items-center gap-2 mb-3">
             <Trophy className="w-5 h-5 text-accent" />
@@ -145,8 +145,8 @@ export default function LeaderboardPage() {
                 onClick={() => { hapticSelection(); setMetric(m.value); }}
                 className={`px-3 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap active:scale-[0.97] ${
                   metric === m.value
-                    ? 'bg-accent text-black'
-                    : 'bg-white/[0.04] text-zinc-500'
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-surface-secondary text-fg-secondary'
                 }`}
               >
                 {m.label}
@@ -161,7 +161,7 @@ export default function LeaderboardPage() {
                 key={t.value}
                 onClick={() => { hapticSelection(); setTimeframe(t.value); }}
                 className={`flex-1 py-2.5 text-center text-[11px] font-medium rounded-lg transition-all active:scale-[0.97] ${
-                  timeframe === t.value ? 'text-white bg-white/[0.06]' : 'text-zinc-600'
+                  timeframe === t.value ? 'text-foreground bg-surface-raised' : 'text-muted'
                 }`}
               >
                 {t.label}
@@ -178,18 +178,18 @@ export default function LeaderboardPage() {
         {posts === null && !postsError ? (
           <div className="space-y-1.5">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 flex items-center gap-3 animate-pulse">
-                <div className="w-8 h-4 rounded bg-white/5" />
-                <div className="w-8 h-8 rounded-full bg-white/5" />
-                <div className="flex-1 h-3.5 rounded bg-white/5 max-w-[120px]" />
-                <div className="w-12 h-3.5 rounded bg-white/5 ml-auto" />
+              <div key={i} className="rounded-xl bg-surface-faint border border-border-faint p-3 flex items-center gap-3 animate-pulse">
+                <div className="w-8 h-4 rounded bg-surface-subtle" />
+                <div className="w-8 h-8 rounded-full bg-surface-subtle" />
+                <div className="flex-1 h-3.5 rounded bg-surface-subtle max-w-[120px]" />
+                <div className="w-12 h-3.5 rounded bg-surface-subtle ml-auto" />
               </div>
             ))}
           </div>
         ) : leaderboard.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <Trophy className="w-10 h-10 text-zinc-700 mb-3" />
-            <p className="text-zinc-600 text-sm">No data for this timeframe</p>
+            <Trophy className="w-10 h-10 text-fg-faint mb-3" />
+            <p className="text-muted text-sm">No data for this timeframe</p>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -203,14 +203,14 @@ export default function LeaderboardPage() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.2 }}
-                  className={`leaderboard-entry rounded-xl p-3 flex items-center gap-3 cursor-pointer active:bg-white/[0.05] transition-colors ${
+                  className={`leaderboard-entry rounded-xl p-3 flex items-center gap-3 cursor-pointer active:bg-surface-subtle transition-colors ${
                     isMe
                       ? 'bg-accent/[0.06] border border-accent/10'
-                      : 'bg-white/[0.02] border border-white/[0.04]'
+                      : 'bg-surface-faint border border-border-faint'
                   }`}
                 >
                   <span className={`text-sm font-bold w-8 text-center ${
-                    i < 3 ? 'text-base' : 'text-zinc-600'
+                    i < 3 ? 'text-base' : 'text-muted'
                   }`}>
                     {rankDisplay}
                   </span>
@@ -220,10 +220,10 @@ export default function LeaderboardPage() {
                       {isMe ? 'You' : entry.userName}
                     </p>
                   </div>
-                  <span className="text-sm font-mono text-zinc-400">{entry.formattedValue}</span>
+                  <span className="text-sm font-mono text-muted-foreground">{entry.formattedValue}</span>
                   {entry.trend === 'up' && <TrendingUp className="w-3.5 h-3.5 text-green-500" />}
                   {entry.trend === 'down' && <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
-                  {entry.trend === 'same' && <Minus className="w-3 h-3 text-zinc-700" />}
+                  {entry.trend === 'same' && <Minus className="w-3 h-3 text-fg-faint" />}
                 </motion.div>
                 </div>
               );

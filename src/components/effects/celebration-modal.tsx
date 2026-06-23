@@ -61,7 +61,7 @@ export function CelebrationModal() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="text-lg font-bold text-zinc-300 mb-4"
+                className="text-lg font-bold text-fg-strong mb-4"
               >
                 {PR_LABELS[celebrationPR.category]}
               </motion.p>
@@ -74,11 +74,11 @@ export function CelebrationModal() {
               >
                 {celebrationPR.previousValue !== null && (
                   <>
-                    <span className="text-xl text-zinc-600 line-through">{celebrationPR.previousValue}</span>
-                    <span className="text-zinc-700">&rarr;</span>
+                    <span className="text-xl text-muted line-through">{celebrationPR.previousValue}</span>
+                    <span className="text-fg-faint">&rarr;</span>
                   </>
                 )}
-                <span className="text-2xl font-bold text-white">{celebrationPR.formattedValue}</span>
+                <span className="text-2xl font-bold text-foreground">{celebrationPR.formattedValue}</span>
               </motion.div>
 
               <motion.button
@@ -87,7 +87,7 @@ export function CelebrationModal() {
                 transition={{ delay: 0.45 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={dismissCelebration}
-                className="px-8 py-3 rounded-2xl bg-accent text-black font-bold"
+                className="px-8 py-3 rounded-2xl bg-accent text-accent-foreground font-bold"
               >
                 Nice!
               </motion.button>

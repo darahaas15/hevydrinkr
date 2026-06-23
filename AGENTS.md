@@ -20,14 +20,29 @@ When adding or converting UI, drive colors from tokens so they respond to the th
 
 | Instead of | Use |
 |---|---|
-| `bg-white/[0.03]`, `.glass`, surfaces | `bg-card` |
-| `border-white/[0.05]` hairlines | `border-card-border` |
-| `hover:bg-white/[0.07]`, faint fills, inputs, tracks | `bg-card-hover` |
+| `bg-white/[0.02]` / `[0.03]` / `[0.04]` / `[0.05]` (`bg-white/5`) | `bg-surface-faint` / `bg-card` / `bg-surface-secondary` / `bg-surface-subtle` |
+| `bg-white/[0.06]` / `[0.07]` / `[0.08]` / `[0.1]` | `bg-surface-raised` / `bg-card-hover` / `bg-surface-strong` / `bg-surface-hover-strong` |
+| `border-white/[0.04]` / `[0.05]` / `[0.06]` / `[0.08]` hairlines | `border-border-faint` / `border-hairline` / `border-card-border` / `border-border-strong` |
+| `text-zinc-200` / `300` (bright secondary) | `text-fg-bright` / `text-fg-strong` |
 | `text-zinc-400` (secondary text) | `text-muted-foreground` |
+| `text-zinc-500` (dominant secondary text) | `text-fg-secondary` |
 | `text-zinc-600` / faint placeholders | `text-muted` |
+| `text-zinc-700` (very faint / disabled) | `text-fg-faint` |
 | `text-white` body text | `text-foreground` |
+| opaque `bg-zinc-800` chips / `bg-zinc-700` toggle tracks | `bg-chip` / `bg-track` |
 | `bg-black/50`/`/60` scrims | `bg-overlay` |
 | modal/sheet inline `rgba(9,9,11,0.92)` panels | `style={{ background: 'var(--sheet-bg)', borderColor: 'var(--sheet-border)' }}` |
+| sticky-header / bottom-nav inline `rgba(9,9,11,0.82)` glass | `style={{ background: 'var(--chrome-bg)', borderColor: 'var(--chrome-border)' }}` (`--chrome-strong-bg` for composer/footer bars) |
+| floating-menu / popover inline `rgba(20,20,24,0.85/0.95)` glass | `var(--popover-bg)` / `var(--popover-strong-bg)` |
+| full-screen `#09090b` / `bg-[#09090b]` / `ring-[#09090b]` | `var(--background)` / `bg-background` / `ring-background` |
+| full-screen near-black landing/auth `#06060a` base | `style={{ background: 'var(--background-deep)' }}` (deeper than `--background`; dark = `#06060a`) |
+| fully OPAQUE bottom-sheet panel `#111114` (no own backdrop-filter) | `style={{ background: 'var(--sheet-solid-bg)' }}` (stays opaque in dark, unlike the translucent `--popover-strong-bg`) |
+| sheet drag-handle pip `bg-white/20` / `bg-white/15` | `bg-[var(--grabber-bg)]` |
+| unselected selection-circle outline `border-white/20` | `border-[var(--selection-border)]` |
+
+Semantic **text** colors (the bright `-400` shades that fail AA on white) have AA-safe `*-fg` tokens, vivid in dark and deepened in light: `text-danger-fg` (red-400), `text-warning-fg` (amber-400), `text-success-fg` (emerald/green-400), `text-info-fg` (cyan-400), `text-violet-fg` (violet/purple-400), `text-pink-fg` (pink-400), `text-blue-fg` (blue-400), `text-sky-fg` (sky-400), `text-yellow-fg` (yellow-400), `text-indigo-fg` (indigo-400), `text-orange-fg` (orange-400).
+Brand-color **tints** (`bg-X-500/15`, etc.) are theme-neutral and stay as-is - only their text/icon color needs an `*-fg` token.
+The BAC/drink gauge uses `var(--gauge-1..5)` (intoxication levels) and `var(--violet)` for its SVG arc strokes + status label; SVG `stroke`/`fill` can't take `var()` as an *attribute*, so set them via `style={{ stroke: ... }}` / a `fill-*` class (`fill-foreground`).
 
 **Accent has two roles - pick the right one:**
 
@@ -37,11 +52,14 @@ When adding or converting UI, drive colors from tokens so they respond to the th
 
 Semantic colors (`--green/red/violet/cyan/pink`, `text-success`/`text-danger`) keep the bright `-500` value as **fills** but darken to `-700`-ish for **text** in light. The `bg-X-500/20 text-X-400` badge recipe is unreadable on white - use the `Badge` component (driven by per-variant `--badge-*` vars) instead of re-rolling it.
 
-### Staged migration convention
+### Migration status - complete
 
-Light mode ships screen-by-screen. The shared primitives in `src/components/ui/*` (card, button, badge, input, tabs, toast, modal, bottom-sheet, skeleton, progress-bar, avatar) and the token foundation are converted. **Most per-screen code is still dark-hardcoded and not yet themed for light - that is expected and intentional.** When you touch a screen, tokenize the colors you encounter per the table above rather than adding new hardcoded `bg-white/`, `text-zinc-`, `text-black`, or inline `rgba(...)` colors. `npm run lint:colors` is an advisory report of remaining hardcoded color usage (non-blocking).
-
-Out of scope for the foundation PR (follow-ups): app-frame glass chrome (sticky headers, bottom nav), the full per-screen sweep, and SVG gauge fills (`bac-gauge.tsx`) / glow softening.
+Light mode is fully themed app-wide: the token foundation, the shared primitives in `src/components/ui/*`, the app-frame glass chrome (sticky headers, bottom nav, composers, popovers), every per-screen surface, and the SVG gauges (`bac-gauge.tsx`).
+When adding new UI, drive colors from the tokens above rather than reintroducing hardcoded `bg-white/`, `text-zinc-`, `text-black`, or inline `rgba(...)` colors.
+`npm run lint:colors` is an advisory (non-blocking) report; the ~56 remaining hits are intentional keepers - modal/sheet `bg-black/*` scrims (a dark scrim over light content is correct), `text-white`/`text-black` on fixed brand-gradient banners, the always-dark immersive photo viewer, white toggle knobs, the `DRINK_CATEGORY_COLORS` data-viz palette, and `manifest.ts` install colors.
+Dark mode is preserved byte-for-byte: every new token's dark value equals the literal it replaced (a few imperceptible consolidations - e.g. `green-400`/`purple-400` text folded into the emerald/violet `*-fg`, and composer glass opacities 0.92/0.94/0.95 unified to `--chrome-strong-bg`).
+`color-scheme` is set on `:root`/`:root[data-theme="light"]` so native controls (date pickers) follow the theme - don't reintroduce per-input `[color-scheme:dark]`.
+`public/offline.html` is intentionally left dark (standalone, outside React, lowest traffic).
 
 ## Conventions
 

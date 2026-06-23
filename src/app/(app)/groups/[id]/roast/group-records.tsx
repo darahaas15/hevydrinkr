@@ -22,7 +22,7 @@ export function GroupRecords({ records }: GroupRecordsProps) {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+      <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
         <Trophy className="w-3.5 h-3.5" />
         Group Records
       </h3>
@@ -33,11 +33,11 @@ export function GroupRecords({ records }: GroupRecordsProps) {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-surface-faint border border-border-faint"
           >
             <Avatar name={record.userName} size="sm" src={record.userAvatar} />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-zinc-500 truncate">
+              <p className="text-xs text-fg-secondary truncate">
                 {RECORD_LABELS[record.recordType] ?? record.recordType}
               </p>
               <p className="text-sm font-medium truncate">{record.userName}</p>

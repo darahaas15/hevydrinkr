@@ -121,7 +121,7 @@ function GroupsPageList() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className="text-xl font-extrabold">Groups</h1>
           <div className="flex gap-2">
@@ -129,9 +129,9 @@ function GroupsPageList() {
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowJoin(true)}
               aria-label="Join group"
-              className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]"
+              className="p-2.5 rounded-xl bg-surface-secondary border border-card-border"
             >
-              <Link2 className="w-5 h-5 text-zinc-400" />
+              <Link2 className="w-5 h-5 text-muted-foreground" />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -139,7 +139,7 @@ function GroupsPageList() {
               aria-label="Create group"
               className="p-2.5 rounded-xl bg-accent"
             >
-              <Plus className="w-5 h-5 text-black" />
+              <Plus className="w-5 h-5 text-accent-foreground" />
             </motion.button>
           </div>
         </div>
@@ -151,28 +151,28 @@ function GroupsPageList() {
           /* Skeleton placeholders while loading */
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 animate-pulse">
+              <div key={i} className="rounded-2xl bg-card border border-hairline p-4 animate-pulse">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5" />
+                  <div className="w-12 h-12 rounded-2xl bg-surface-subtle" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 w-32 rounded bg-white/5" />
-                    <div className="h-3 w-48 rounded bg-white/5" />
+                    <div className="h-4 w-32 rounded bg-surface-subtle" />
+                    <div className="h-3 w-48 rounded bg-surface-subtle" />
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="h-3 w-20 rounded bg-white/5" />
-                  <div className="h-3 w-24 rounded bg-white/5" />
+                  <div className="h-3 w-20 rounded bg-surface-subtle" />
+                  <div className="h-3 w-24 rounded bg-surface-subtle" />
                 </div>
               </div>
             ))}
           </div>
         ) : myGroups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <Users className="w-10 h-10 text-zinc-600" />
+            <div className="w-20 h-20 rounded-full bg-surface-subtle flex items-center justify-center mb-4">
+              <Users className="w-10 h-10 text-muted" />
             </div>
-            <h3 className="text-lg font-semibold text-zinc-300 mb-2">No groups yet</h3>
-            <p className="text-sm text-zinc-500 max-w-xs">
+            <h3 className="text-lg font-semibold text-fg-strong mb-2">No groups yet</h3>
+            <p className="text-sm text-fg-secondary max-w-xs">
               Create a group for your crew or join one with an invite code
             </p>
           </div>
@@ -207,7 +207,7 @@ function GroupsPageList() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background: 'var(--popover-strong-bg)'}}
             >
               <h2 className="text-lg font-bold">Create Group</h2>
 
@@ -215,20 +215,20 @@ function GroupsPageList() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Group name"
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-surface-secondary border border-card-border text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
               />
 
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Description (optional)"
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-surface-secondary border border-card-border text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
               />
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCreate(false)}
-                  className="flex-1 py-3 rounded-xl glass text-zinc-400 font-medium"
+                  className="flex-1 py-3 rounded-xl glass text-muted-foreground font-medium"
                 >
                   Cancel
                 </button>
@@ -236,7 +236,7 @@ function GroupsPageList() {
                   whileTap={{ scale: 0.97 }}
                   onClick={handleCreate}
                   disabled={!name.trim()}
-                  className="flex-1 py-3 rounded-xl bg-accent text-black font-medium disabled:opacity-20"
+                  className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-medium disabled:opacity-20"
                 >
                   Create
                 </motion.button>
@@ -260,24 +260,24 @@ function GroupsPageList() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background:'#141418'}}
+              className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-5" style={{background: 'var(--popover-strong-bg)'}}
             >
               <h2 className="text-lg font-bold">Join Group</h2>
 
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-secondary" />
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
                   placeholder="Enter invite code"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors uppercase font-mono tracking-wider"
+                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-surface-secondary border border-card-border text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors uppercase font-mono tracking-wider"
                 />
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowJoin(false)}
-                  className="flex-1 py-3 rounded-xl glass text-zinc-400 font-medium"
+                  className="flex-1 py-3 rounded-xl glass text-muted-foreground font-medium"
                 >
                   Cancel
                 </button>
@@ -285,7 +285,7 @@ function GroupsPageList() {
                   whileTap={{ scale: 0.97 }}
                   onClick={handleJoin}
                   disabled={!inviteCode.trim()}
-                  className="flex-1 py-3 rounded-xl bg-accent text-black font-medium disabled:opacity-20"
+                  className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-medium disabled:opacity-20"
                 >
                   Join
                 </motion.button>

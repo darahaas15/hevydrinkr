@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: '#06060a' }}>
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background-deep)' }}>
       {/* Ambient blurs */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
       >
         <button
           onClick={() => router.push('/')}
-          className="flex items-center gap-1 text-zinc-500 text-sm mb-5 self-start active:text-zinc-300 transition-colors -ml-1"
+          className="flex items-center gap-1 text-fg-secondary text-sm mb-5 self-start active:text-fg-strong transition-colors -ml-1"
         >
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
         {!sent ? (
           <>
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Reset Password</h2>
-            <p className="text-sm text-zinc-500 mb-8">Enter your email and we&apos;ll send you a reset link</p>
+            <p className="text-sm text-fg-secondary mb-8">Enter your email and we&apos;ll send you a reset link</p>
 
             <div className="space-y-3 mb-4">
               <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={email} onChange={setEmail} placeholder="Email" onSubmit={handleSubmit} />
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-black transition-opacity"
+                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
                 style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
               >
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send Reset Link'}
@@ -85,11 +85,11 @@ export default function ForgotPasswordPage() {
           >
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <h2 className="text-[22px] font-extrabold tracking-tight mb-2">Check your email</h2>
-            <p className="text-sm text-zinc-500 leading-relaxed mb-8">
+            <p className="text-sm text-fg-secondary leading-relaxed mb-8">
               We sent a password reset link to<br />
-              <span className="text-zinc-300">{email}</span>
+              <span className="text-fg-strong">{email}</span>
             </p>
-            <p className="text-xs text-zinc-600 mb-8">
+            <p className="text-xs text-muted mb-8">
               Didn&apos;t get it? Check your spam folder.
             </p>
             <button

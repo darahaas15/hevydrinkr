@@ -373,10 +373,10 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
     return (
       <div className="min-h-full flex flex-col items-center justify-center px-8 text-center">
         <p className="text-lg font-bold mb-2">Active session in progress</p>
-        <p className="text-sm text-zinc-500 mb-6">End your current session before logging a past one.</p>
+        <p className="text-sm text-fg-secondary mb-6">End your current session before logging a past one.</p>
         <button
           onClick={() => router.push('/session')}
-          className="px-5 py-3 rounded-xl bg-accent text-black font-bold text-sm"
+          className="px-5 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm"
         >
           Go to active session
         </button>
@@ -393,15 +393,15 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       <div
         className="sticky top-0 z-20 safe-top"
         style={{
-          background: 'rgba(9,9,11,0.82)',
+          background: 'var(--chrome-bg)',
           backdropFilter: 'blur(28px) saturate(180%)',
           WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--chrome-border)',
         }}
       >
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-white">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
+          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-foreground">
+            <ChevronLeft className="w-6 h-6 text-muted-foreground" />
           </button>
           <h1 className="text-lg font-bold">{title}</h1>
         </div>
@@ -410,16 +410,16 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       <div className="px-5 py-4 space-y-5">
         {/* Venue */}
         <label className="block">
-          <span className="text-[11px] text-zinc-500 mb-1.5 block">Venue</span>
+          <span className="text-[11px] text-fg-secondary mb-1.5 block">Venue</span>
           <div className="relative">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
+            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
             <input
               type="text"
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
               placeholder="Where were you drinking?"
               autoCapitalize="words"
-              className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+              className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-surface-secondary border border-card-border text-[13px] text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
             />
           </div>
         </label>
@@ -440,8 +440,8 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
             min={startedAt}
           />
           {durationMin > 0 && (
-            <p className="text-[11px] text-zinc-500 -mt-1">
-              Duration: <span className="text-zinc-300 font-medium">{formatDuration(durationMin)}</span>
+            <p className="text-[11px] text-fg-secondary -mt-1">
+              Duration: <span className="text-fg-strong font-medium">{formatDuration(durationMin)}</span>
             </p>
           )}
         </div>
@@ -449,7 +449,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
         {/* Drinks */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] text-zinc-500">
+            <span className="text-[11px] text-fg-secondary">
               Drinks {totalDrinks > 0 && `(${totalDrinks})`}
             </span>
             <button
@@ -464,7 +464,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
           {cart.length === 0 && (
             <button
               onClick={() => { hapticLight(); setShowPicker(true); }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-6 rounded-2xl border border-dashed border-white/[0.08] active:bg-white/[0.03] text-zinc-500 text-sm"
+              className="w-full flex items-center justify-center gap-2 px-3 py-6 rounded-2xl border border-dashed border-border-strong active:bg-card text-fg-secondary text-sm"
             >
               <Plus className="w-4 h-4" />
               Add a drink
@@ -489,7 +489,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
         {/* Mood */}
         <div>
-          <span className="text-[11px] text-zinc-500 mb-2 block">How was it?</span>
+          <span className="text-[11px] text-fg-secondary mb-2 block">How was it?</span>
           <div className="flex justify-between">
             {MOODS.map((m) => (
               <button
@@ -508,31 +508,31 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
         {/* Caption */}
         <label className="block">
-          <span className="text-[11px] text-zinc-500 mb-1.5 block">Caption</span>
+          <span className="text-[11px] text-fg-secondary mb-1.5 block">Caption</span>
           <textarea
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="Add a caption (optional)"
             rows={2}
-            className="w-full px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors resize-none"
+            className="w-full px-4 py-3 rounded-2xl bg-surface-secondary border border-card-border text-[13px] text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors resize-none"
           />
         </label>
 
         {/* Tag people */}
         <div>
-          <span className="text-[11px] text-zinc-500 mb-1.5 block">Tag people</span>
+          <span className="text-[11px] text-fg-secondary mb-1.5 block">Tag people</span>
           <TagPeopleField value={taggedUserIds} onChange={setTaggedUserIds} />
         </div>
 
         {/* Photos */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] text-zinc-500">
+            <span className="text-[11px] text-fg-secondary">
               Photos {photos.length > 0 && `(${photos.length})`}
             </span>
             <button
               onClick={handleAddPhoto}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] text-zinc-400 text-[11px] font-semibold active:bg-white/[0.08]"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-subtle text-muted-foreground text-[11px] font-semibold active:bg-surface-strong"
             >
               <Camera className="w-3.5 h-3.5" />
               Add
@@ -543,7 +543,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
         {/* Inline validation hint */}
         {validationError && (
-          <p className="text-[11px] text-red-400/80 text-center">{validationError}</p>
+          <p className="text-[11px] text-danger-fg/80 text-center">{validationError}</p>
         )}
       </div>
 
@@ -551,17 +551,17 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       <div
         className="fixed bottom-0 left-0 right-0 z-40 px-5 py-4 safe-bottom"
         style={{
-          background: 'rgba(9,9,11,0.92)',
+          background: 'var(--chrome-strong-bg)',
           backdropFilter: 'blur(28px) saturate(180%)',
           WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid var(--chrome-border)',
         }}
       >
         <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={handleSubmit}
           disabled={!!validationError || submitting}
-          className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-base disabled:opacity-30 transition-all"
+          className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base disabled:opacity-30 transition-all"
         >
           {submitting ? 'Saving…' : submitLabel}
         </motion.button>

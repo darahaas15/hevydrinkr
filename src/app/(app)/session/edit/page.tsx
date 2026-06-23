@@ -41,7 +41,7 @@ function EditSessionInner() {
   if (!sessionId) {
     return (
       <div className="min-h-full flex items-center justify-center">
-        <p className="text-sm text-zinc-500">No session specified</p>
+        <p className="text-sm text-fg-secondary">No session specified</p>
       </div>
     );
   }
@@ -49,7 +49,7 @@ function EditSessionInner() {
   if (!session) {
     return (
       <div className="min-h-full flex items-center justify-center">
-        <p className="text-sm text-zinc-500">Loading…</p>
+        <p className="text-sm text-fg-secondary">Loading…</p>
       </div>
     );
   }

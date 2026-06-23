@@ -31,7 +31,7 @@ export function TaggedUsersLine({ taggedUserIds, className = '' }: TaggedUsersLi
   const extra = users.length - shown.length;
 
   return (
-    <p className={`flex flex-wrap items-center gap-x-1 text-[12px] text-zinc-500 ${className}`}>
+    <p className={`flex flex-wrap items-center gap-x-1 text-[12px] text-fg-secondary ${className}`}>
       <Tag className="w-3 h-3 shrink-0" />
       <span>with</span>
       {shown.map((u, i) => (

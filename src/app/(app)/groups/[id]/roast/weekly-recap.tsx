@@ -26,7 +26,7 @@ export function WeeklyRecap({ recap, streaks }: WeeklyRecapProps) {
     <div className="space-y-3">
       {/* Week header */}
       <div className="text-center">
-        <p className="text-[10px] text-zinc-600 uppercase tracking-wider">
+        <p className="text-[10px] text-muted uppercase tracking-wider">
           {formatWeekRange(recap.weekStart, recap.weekEnd)}
         </p>
       </div>
@@ -35,26 +35,26 @@ export function WeeklyRecap({ recap, streaks }: WeeklyRecapProps) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4"
+        className="rounded-2xl bg-card border border-hairline p-4"
       >
         <div className="flex items-center justify-between mb-2">
-          <p className="text-2xl font-black text-white">
+          <p className="text-2xl font-black text-foreground">
             {Math.round(summary.totalGroupStandardDrinks * 10) / 10}
           </p>
           {wow !== null && wow !== 0 && (
             <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
-              wow > 0 ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'
+              wow > 0 ? 'bg-red-500/10 text-danger-fg' : 'bg-emerald-500/10 text-success-fg'
             }`}>
               {wow > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
               {wow > 0 ? '+' : ''}{wow}%
             </div>
           )}
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-fg-secondary">
           standard drinks across {summary.totalGroupSessions} session{summary.totalGroupSessions !== 1 ? 's' : ''}
           {summary.mostActiveDay && ` \u00B7 peak day: ${summary.mostActiveDay}`}
         </p>
-        <p className="text-[10px] text-zinc-700 mt-1">
+        <p className="text-[10px] text-fg-faint mt-1">
           {summary.participatingMemberCount} of {summary.memberCount} members active
         </p>
       </motion.div>
@@ -78,8 +78,8 @@ export function WeeklyRecap({ recap, streaks }: WeeklyRecapProps) {
         </div>
       ) : (
         <div className="text-center py-6">
-          <p className="text-sm text-zinc-600">No awards this week</p>
-          <p className="text-[10px] text-zinc-700 mt-1">Everyone was a ghost</p>
+          <p className="text-sm text-muted">No awards this week</p>
+          <p className="text-[10px] text-fg-faint mt-1">Everyone was a ghost</p>
         </div>
       )}
     </div>

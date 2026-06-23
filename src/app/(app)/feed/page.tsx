@@ -64,7 +64,7 @@ function DiscoverUserRow({ user, onOpenProfile }: { user: UserProfile; onOpenPro
   if (state === 'self') return null;
   const isAccent = state === 'none';
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] active:bg-white/[0.05] transition-colors">
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface-faint border border-border-faint active:bg-surface-subtle transition-colors">
       <div onClick={() => onOpenProfile(user.id)} className="cursor-pointer">
         <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
       </div>
@@ -73,15 +73,15 @@ function DiscoverUserRow({ user, onOpenProfile }: { user: UserProfile; onOpenPro
         onClick={() => onOpenProfile(user.id)}
       >
         <p className="text-sm font-semibold truncate">{user.displayName}</p>
-        <p className="text-[11px] text-zinc-500">@{user.username}{user.isPrivate && <Lock className="w-3 h-3 text-zinc-600 inline ml-1" />}</p>
+        <p className="text-[11px] text-fg-secondary">@{user.username}{user.isPrivate && <Lock className="w-3 h-3 text-muted inline ml-1" />}</p>
       </div>
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => { hapticLight(); onClick(); }}
         className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
           isAccent
-            ? 'bg-accent text-black'
-            : 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+            ? 'bg-accent text-accent-foreground'
+            : 'bg-surface-raised border border-border-strong text-muted-foreground'
         }`}
       >
         {label}
@@ -267,7 +267,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   return (
     <div className="min-h-full" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 pt-1 pb-0">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-2">
@@ -278,9 +278,9 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                 <button
                   onClick={() => router.push('/profile/requests')}
                   aria-label="Follow requests"
-                  className="relative p-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
+                  className="relative p-2 rounded-xl hover:bg-surface-subtle active:bg-surface-strong"
                 >
-                  <UserPlus className="w-5 h-5 text-zinc-500" />
+                  <UserPlus className="w-5 h-5 text-fg-secondary" />
                   {followRequestsCount > 0 && (
                     <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
                   )}
@@ -289,9 +289,9 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
               <button
                 onClick={() => router.push('/notifications')}
                 aria-label="Notifications"
-                className="relative p-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
+                className="relative p-2 rounded-xl hover:bg-surface-subtle active:bg-surface-strong"
               >
-                <Bell className="w-5 h-5 text-zinc-500" />
+                <Bell className="w-5 h-5 text-fg-secondary" />
                 {unreadCount > 0 && (
                   <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
                 )}
@@ -300,9 +300,9 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                 <button
                   onClick={() => setTab('discover')}
                   aria-label="Search"
-                  className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
+                  className="p-2 -mr-2 rounded-xl hover:bg-surface-subtle active:bg-surface-strong"
                 >
-                  <Search className="w-5 h-5 text-zinc-500" />
+                  <Search className="w-5 h-5 text-fg-secondary" />
                 </button>
               )}
             </div>
@@ -315,7 +315,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                 onClick={() => { hapticSelection(); setTab(t); if (t === 'home') setSearchQuery(''); }}
                 className="relative flex-1 py-2.5 text-center text-sm font-medium capitalize"
               >
-                <span className={tab === t ? 'text-white' : 'text-zinc-600'}>{t}</span>
+                <span className={tab === t ? 'text-foreground' : 'text-muted'}>{t}</span>
                 {tab === t && (
                   <motion.div
                     layoutId="feed-tab"
@@ -337,20 +337,20 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
             className="px-5 pb-3 pt-2"
           >
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search people & posts..."
                 autoFocus
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface-secondary border border-card-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                 >
-                  <X className="w-4 h-4 text-zinc-600" />
+                  <X className="w-4 h-4 text-muted" />
                 </button>
               )}
             </div>
@@ -365,16 +365,16 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
       {showSearchResults && (
         <div className="px-4 py-3">
           {searching && (
-            <p className="text-sm text-zinc-600 text-center py-4">Searching...</p>
+            <p className="text-sm text-muted text-center py-4">Searching...</p>
           )}
           {!searching && searchResults.length === 0 && searchFeedResults.length === 0 && searchQuery.trim().length > 0 && (
             <div className="text-center py-8">
-              <p className="text-sm text-zinc-600">No results found</p>
+              <p className="text-sm text-muted">No results found</p>
             </div>
           )}
           {!searching && searchResults.length > 0 && (
             <>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">People</p>
+              <p className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2">People</p>
               <div className="space-y-1.5">
                 {searchResults.map((user) => (
                   <DiscoverUserRow
@@ -388,7 +388,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
           )}
           {!searching && searchFeedResults.length > 0 && (
             <>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-4">Posts</p>
+              <p className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2 mt-4">Posts</p>
               <div className="space-y-3">
                 {searchFeedResults.slice(0, 10).map((item) => (
                   <FeedCard key={item.id} item={item} showFollowButton />
@@ -412,7 +412,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
               className="overflow-hidden"
             >
               <div className="pt-3 pb-1">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-4">Suggested People</p>
+                <p className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2 px-4">Suggested People</p>
                 <SuggestedPeopleCarousel
                   users={discoverUsers}
                   feedItems={items}
@@ -427,7 +427,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
       {/* Discover Posts header */}
       {tab === 'discover' && !showSearchResults && sorted.length > 0 && (
         <div className="px-4 pt-3">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Discover Posts</p>
+          <p className="text-xs font-semibold text-fg-secondary uppercase tracking-wider">Discover Posts</p>
         </div>
       )}
 
@@ -444,41 +444,41 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
           >
             {loading && sorted.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden animate-pulse">
+                <div key={i} className="rounded-2xl bg-card border border-hairline overflow-hidden animate-pulse">
                   <div className="px-4 pt-4 pb-2 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-white/5" />
+                    <div className="w-10 h-10 rounded-full bg-surface-subtle" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-3.5 w-28 rounded bg-white/5" />
-                      <div className="h-2.5 w-16 rounded bg-white/5" />
+                      <div className="h-3.5 w-28 rounded bg-surface-subtle" />
+                      <div className="h-2.5 w-16 rounded bg-surface-subtle" />
                     </div>
                   </div>
                   <div className="px-4 pb-3 space-y-2">
-                    <div className="h-3 w-full rounded bg-white/5" />
-                    <div className="h-3 w-3/4 rounded bg-white/5" />
+                    <div className="h-3 w-full rounded bg-surface-subtle" />
+                    <div className="h-3 w-3/4 rounded bg-surface-subtle" />
                   </div>
-                  <div className="mx-4 mb-3 rounded-xl bg-white/[0.02] p-3 space-y-2">
-                    <div className="h-2.5 w-24 rounded bg-white/5" />
+                  <div className="mx-4 mb-3 rounded-xl bg-surface-faint p-3 space-y-2">
+                    <div className="h-2.5 w-24 rounded bg-surface-subtle" />
                     <div className="flex gap-1">
                       {Array.from({ length: 5 }).map((_, j) => (
-                        <div key={j} className="w-6 h-6 rounded bg-white/5" />
+                        <div key={j} className="w-6 h-6 rounded bg-surface-subtle" />
                       ))}
                     </div>
-                    <div className="h-2.5 w-40 rounded bg-white/5" />
+                    <div className="h-2.5 w-40 rounded bg-surface-subtle" />
                   </div>
                   <div className="px-4 pb-3 flex gap-4">
-                    <div className="h-4 w-10 rounded bg-white/5" />
-                    <div className="h-4 w-10 rounded bg-white/5" />
-                    <div className="h-4 w-10 rounded bg-white/5" />
+                    <div className="h-4 w-10 rounded bg-surface-subtle" />
+                    <div className="h-4 w-10 rounded bg-surface-subtle" />
+                    <div className="h-4 w-10 rounded bg-surface-subtle" />
                   </div>
                 </div>
               ))
             ) : sorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <DrinkIcon category="beer" className="w-10 h-10 mb-4" />
-                <h3 className="text-base font-semibold text-zinc-400 mb-1">
+                <h3 className="text-base font-semibold text-muted-foreground mb-1">
                   {tab === 'home' ? 'No posts yet' : 'Nothing to discover'}
                 </h3>
-                <p className="text-sm text-zinc-600 max-w-[240px] mb-4">
+                <p className="text-sm text-muted max-w-[240px] mb-4">
                   {tab === 'home'
                     ? 'Start a session to see your first post'
                     : 'No new posts to discover'}
@@ -486,7 +486,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                 {tab === 'home' && (
                   <button
                     onClick={() => router.push('/session')}
-                    className="px-5 py-2.5 rounded-xl bg-accent text-black text-sm font-bold"
+                    className="px-5 py-2.5 rounded-xl bg-accent text-accent-foreground text-sm font-bold"
                   >
                     Start Your First Sesh
                   </button>
@@ -507,11 +507,11 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
                 <div ref={setSentinelRef} className="h-1" />
                 {loadingMore && (
                   <div className="flex justify-center py-4">
-                    <div className="w-5 h-5 border-2 border-zinc-700 border-t-accent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-track border-t-accent rounded-full animate-spin" />
                   </div>
                 )}
                 {!hasMore && sorted.length > 0 && (
-                  <p className="text-center text-xs text-zinc-700 py-4">You&apos;re all caught up</p>
+                  <p className="text-center text-xs text-fg-faint py-4">You&apos;re all caught up</p>
                 )}
               </>
             )}

@@ -10,7 +10,13 @@
  * accent-text (labels/icons) vs accent-foreground (text on accent fills) rule.
  */
 :root {
+  /* Drives native controls (date pickers, scrollbars, autofill) to match the
+     theme, so per-input `[color-scheme:dark]` forcers are no longer needed. */
+  color-scheme: dark;
   --background: #09090b;
+  /* Deeper near-black base for the full-screen landing/auth screens. Dark = the
+     exact `#06060a` those screens hardcoded; light = the off-white app base. */
+  --background-deep: #06060a;
   --foreground: #fafafa;
   --card: rgba(255, 255, 255, 0.03);
   --card-border: rgba(255, 255, 255, 0.06);
@@ -18,6 +24,14 @@
   --card-hover: rgba(255, 255, 255, 0.07);
   --muted: #52525b;
   --muted-foreground: #a1a1aa;
+  /* Neutral-text ladder beyond the muted/muted-foreground pair. Dark values are
+     the exact zinc shades the screens hardcoded, so dark stays byte-for-byte;
+     light values collapse them onto an AA-legible set (see AGENTS.md › Theming).
+     fg-bright=zinc-200, fg-strong=zinc-300, fg-secondary=zinc-500, fg-faint=zinc-700. */
+  --fg-bright: #e4e4e7;
+  --fg-strong: #d4d4d8;
+  --fg-secondary: #71717a;
+  --fg-faint: #3f3f46;
   --accent: #14b8a6;
   /* Teal for text/icons (the `text-teal-400`/`text-accent` recipe). */
   --accent-text: #2dd4bf;
@@ -40,12 +54,68 @@
   --surface-secondary: rgba(255, 255, 255, 0.04);
   --surface-hover-strong: rgba(255, 255, 255, 0.10);
   --input-border: rgba(255, 255, 255, 0.10);
+  /* Unselected selection-circle outline (the `border-white/20` checkbox ring).
+     Dark = the original white/20; light = a legible dark hairline. */
+  --selection-border: rgba(255, 255, 255, 0.20);
+  /* Elevation ladder for the per-screen `bg-white/[0.0x]` fills. Dark = the
+     exact white film opacity; light = an opaque/translucent-dark fill that
+     reads as a defined surface on the off-white base. */
+  --surface-faint: rgba(255, 255, 255, 0.02);
+  --surface-raised: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  /* Hairlines for the `border-white/[0.0x]` / `divide-white/[0.0x]` recipes
+     beyond the card-border (0.06) and hairline (0.05) pair. */
+  --border-faint: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.08);
+  /* Opaque neutral chips/bubbles (`bg-zinc-800`) and toggle-off tracks
+     (`bg-zinc-700`). */
+  --chip: #27272a;
+  --track: #3f3f46;
+
+  /* Semantic text colors. Dark mirrors the bright `-400` shades the screens
+     used so dark stays unchanged; light deepens to the AA-safe `-600/700`. */
+  --danger-fg: #f87171;
+  --warning-fg: #fbbf24;
+  --success-fg: #34d399;
+  --info-fg: #22d3ee;
+  --violet-fg: #a78bfa;
+  --pink-fg: #f472b6;
+  --blue-fg: #60a5fa;
+  --sky-fg: #38bdf8;
+  --yellow-fg: #facc15;
+  --indigo-fg: #818cf8;
+  --orange-fg: #fb923c;
+
+  /* App-frame glass chrome (sticky headers, bottom nav, composers, popovers).
+     These feed inline `style={{ background: 'var(--…)' }}` bars, not Tailwind
+     utilities, so they live here but not in @theme inline. Dark = the exact
+     `rgba(9,9,11,…)` / `rgba(20,20,24,…)` values the chrome hardcoded. */
+  --chrome-bg: rgba(9, 9, 11, 0.82);
+  --chrome-strong-bg: rgba(9, 9, 11, 0.92);
+  --chrome-border: rgba(255, 255, 255, 0.08);
+  --popover-bg: rgba(20, 20, 24, 0.85);
+  --popover-strong-bg: rgba(20, 20, 24, 0.95);
+
+  /* BAC/drink-gauge intoxication levels. Used as both the SVG arc stroke and
+     the status label text, so light deepens to AA-safe shades (the neon arcs
+     fail as small text on a white card). Dark = the original vivid hex. */
+  --gauge-1: #10b981;
+  --gauge-2: #14b8a6;
+  --gauge-3: #f59e0b;
+  --gauge-4: #f97316;
+  --gauge-5: #ef4444;
 
   /* Internal effect/chrome tokens (consumed by the CSS rules below and by a
      few inline-styled primitives; not exposed as Tailwind utilities). */
   --glass-strong-bg: rgba(18, 18, 22, 0.95);
   --sheet-bg: rgba(9, 9, 11, 0.92);
   --sheet-border: rgba(255, 255, 255, 0.04);
+  /* Fully OPAQUE bottom-sheet panels (drink picker, group menu). They carry no
+     own backdrop-filter, so they must stay opaque in dark — translucency would
+     bleed the dimmed page through. Dark = the original `#111114`. */
+  --sheet-solid-bg: #111114;
+  /* Sheet drag-handle pip. Dark = the original `bg-white/20`. */
+  --grabber-bg: rgba(255, 255, 255, 0.20);
   --gradient-text-from: #14b8a6;
   --gradient-text-to: #06b6d4;
   --gradient-cyan-from: #06b6d4;
@@ -93,15 +163,26 @@
 }
 
 :root[data-theme="light"] {
+  color-scheme: light;
   --background: #f6f7f9;
+  --background-deep: #f6f7f9;
   --foreground: #18181b;
   /* Opaque white — a translucent-white film is invisible on a light base.
      White card on the soft-gray background is the elevation cue. */
   --card: #ffffff;
   --card-border: rgba(9, 9, 11, 0.08);
   --card-hover: rgba(9, 9, 11, 0.04);
-  --muted: #a1a1aa;
+  /* Darkened from zinc-400 so the many `text-zinc-600` section labels/captions
+     this maps to clear WCAG AA on the off-white base instead of washing out. */
+  --muted: #64646c;
   --muted-foreground: #52525b;
+  /* Light end of the neutral-text ladder: the bright dark shades collapse onto
+     a legible dark set. fg-secondary == muted-foreground (zinc-500 has no
+     distinct light tier); fg-faint stays the decorative/disabled gray. */
+  --fg-bright: #27272a;
+  --fg-strong: #3f3f46;
+  --fg-secondary: #52525b;
+  --fg-faint: #a1a1aa;
   --accent: #0d9488;
   --accent-text: #0f766e;
   --accent-foreground: #ffffff;
@@ -119,10 +200,47 @@
   --surface-secondary: rgba(9, 9, 11, 0.04);
   --surface-hover-strong: rgba(9, 9, 11, 0.07);
   --input-border: rgba(9, 9, 11, 0.12);
+  --selection-border: rgba(9, 9, 11, 0.20);
+  /* Translucent-dark fills darken the surface they sit on (a white film would
+     be invisible on light). */
+  --surface-faint: rgba(9, 9, 11, 0.03);
+  --surface-raised: rgba(9, 9, 11, 0.05);
+  --surface-strong: rgba(9, 9, 11, 0.06);
+  --border-faint: rgba(9, 9, 11, 0.05);
+  --border-strong: rgba(9, 9, 11, 0.10);
+  --chip: #e4e4e7;
+  --track: #d4d4d8;
+
+  --danger-fg: #dc2626;
+  --warning-fg: #b45309;
+  --success-fg: #15803d;
+  --info-fg: #0e7490;
+  --violet-fg: #7c3aed;
+  --pink-fg: #be185d;
+  --blue-fg: #2563eb;
+  --sky-fg: #0284c7;
+  --yellow-fg: #a16207;
+  --indigo-fg: #4f46e5;
+  --orange-fg: #c2410c;
+
+  /* Frosted light glass + dark hairline; opaque-ish white popovers. */
+  --chrome-bg: rgba(246, 247, 249, 0.80);
+  --chrome-strong-bg: rgba(246, 247, 249, 0.92);
+  --chrome-border: rgba(9, 9, 11, 0.08);
+  --popover-bg: rgba(255, 255, 255, 0.88);
+  --popover-strong-bg: rgba(255, 255, 255, 0.96);
+
+  --gauge-1: #15803d;
+  --gauge-2: #0d9488;
+  --gauge-3: #b45309;
+  --gauge-4: #c2410c;
+  --gauge-5: #dc2626;
 
   --glass-strong-bg: rgba(255, 255, 255, 0.85);
   --sheet-bg: rgba(255, 255, 255, 0.92);
   --sheet-border: rgba(9, 9, 11, 0.08);
+  --sheet-solid-bg: #ffffff;
+  --grabber-bg: rgba(9, 9, 11, 0.25);
   --gradient-text-from: #0f766e;
   --gradient-text-to: #0e7490;
   --gradient-cyan-from: #0e7490;
@@ -173,9 +291,31 @@
   --color-surface-subtle: var(--surface-subtle);
   --color-surface-secondary: var(--surface-secondary);
   --color-surface-hover-strong: var(--surface-hover-strong);
+  --color-surface-faint: var(--surface-faint);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-strong: var(--surface-strong);
+  --color-border-faint: var(--border-faint);
+  --color-border-strong: var(--border-strong);
   --color-input-border: var(--input-border);
+  --color-chip: var(--chip);
+  --color-track: var(--track);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-fg-bright: var(--fg-bright);
+  --color-fg-strong: var(--fg-strong);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-faint: var(--fg-faint);
+  --color-danger-fg: var(--danger-fg);
+  --color-warning-fg: var(--warning-fg);
+  --color-success-fg: var(--success-fg);
+  --color-info-fg: var(--info-fg);
+  --color-violet-fg: var(--violet-fg);
+  --color-pink-fg: var(--pink-fg);
+  --color-blue-fg: var(--blue-fg);
+  --color-sky-fg: var(--sky-fg);
+  --color-yellow-fg: var(--yellow-fg);
+  --color-indigo-fg: var(--indigo-fg);
+  --color-orange-fg: var(--orange-fg);
   --color-accent: var(--accent);
   --color-accent-text: var(--accent-text);
   --color-accent-foreground: var(--accent-foreground);

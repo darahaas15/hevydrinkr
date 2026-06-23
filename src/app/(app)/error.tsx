@@ -25,29 +25,29 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
       <div className="text-center max-w-md w-full">
         <div className="text-5xl mb-4">💥</div>
         <h1 className="text-xl font-extrabold mb-2">Something went wrong</h1>
-        <p className="text-sm text-zinc-500 mb-2 break-words">
+        <p className="text-sm text-fg-secondary mb-2 break-words">
           {error.message || 'An unexpected error occurred'}
         </p>
         <div className="flex flex-col gap-2 mt-6">
           <button
             onClick={reset}
-            className="px-6 py-3 rounded-xl bg-accent text-black font-bold text-sm"
+            className="px-6 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm"
           >
             Try Again
           </button>
           <button
             onClick={() => setShowDetails((s) => !s)}
-            className="text-xs text-zinc-500 underline"
+            className="text-xs text-fg-secondary underline"
           >
             {showDetails ? 'Hide details' : 'Show details'}
           </button>
         </div>
         {showDetails && (
           <div className="mt-4 text-left">
-            <pre className="text-[10px] text-zinc-400 bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 whitespace-pre-wrap break-all max-h-64 overflow-auto">
+            <pre className="text-[10px] text-muted-foreground bg-card border border-card-border rounded-xl p-3 whitespace-pre-wrap break-all max-h-64 overflow-auto">
               {detailText}
             </pre>
-            <button onClick={copy} className="mt-2 px-3 py-1.5 rounded-lg bg-white/[0.06] text-xs text-zinc-300">
+            <button onClick={copy} className="mt-2 px-3 py-1.5 rounded-lg bg-surface-raised text-xs text-fg-strong">
               {copied ? 'Copied' : 'Copy error'}
             </button>
           </div>

@@ -18,7 +18,7 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
     <motion.div
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className="group-card w-full rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 text-left active:bg-white/[0.05] transition-colors"
+      className="group-card w-full rounded-2xl bg-card border border-hairline p-4 text-left active:bg-surface-subtle transition-colors"
     >
       <div className="flex items-center gap-3">
         {group.iconUrl ? (
@@ -32,7 +32,7 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold truncate">{group.name}</h3>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-zinc-500 flex items-center gap-1">
+            <span className="text-xs text-fg-secondary flex items-center gap-1">
               <Users className="w-3 h-3" />
               {group.members.length} member{group.members.length !== 1 ? 's' : ''}
             </span>
@@ -47,18 +47,18 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
         {/* Member Avatars */}
         <div className="flex -space-x-2">
           {group.members.slice(0, 3).map((member) => (
-            <div key={member.userId} className="ring-2 ring-[#09090b] rounded-full">
+            <div key={member.userId} className="ring-2 ring-background rounded-full">
               <Avatar name={member.userName} size="sm" src={member.userAvatar} />
             </div>
           ))}
           {group.members.length > 3 && (
-            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-400 ring-2 ring-[#09090b]">
+            <div className="w-8 h-8 rounded-full bg-chip flex items-center justify-center text-[10px] text-muted-foreground ring-2 ring-background">
               +{group.members.length - 3}
             </div>
           )}
         </div>
 
-        <ChevronRight className="w-5 h-5 text-zinc-600 shrink-0" />
+        <ChevronRight className="w-5 h-5 text-muted shrink-0" />
       </div>
     </motion.div>
     </div>

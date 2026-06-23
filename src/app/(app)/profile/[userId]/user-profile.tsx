@@ -141,25 +141,25 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   if (loadingUser && !user) {
     return (
       <div className="min-h-full">
-        <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
           <div className="px-5 py-3 flex items-center gap-3">
-            <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-white">
-              <ChevronLeft className="w-6 h-6 text-zinc-400" />
+            <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-foreground">
+              <ChevronLeft className="w-6 h-6 text-muted-foreground" />
             </button>
-            <div className="h-5 w-24 rounded bg-white/5 animate-pulse" />
+            <div className="h-5 w-24 rounded bg-surface-subtle animate-pulse" />
           </div>
         </div>
         <div className="px-5 py-5 space-y-5 animate-pulse">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/5" />
+            <div className="w-16 h-16 rounded-full bg-surface-subtle" />
             <div className="flex-1 space-y-2">
-              <div className="h-5 w-32 rounded bg-white/5" />
-              <div className="h-3 w-20 rounded bg-white/5" />
+              <div className="h-5 w-32 rounded bg-surface-subtle" />
+              <div className="h-3 w-20 rounded bg-surface-subtle" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 h-20" />
+              <div key={i} className="rounded-2xl bg-card border border-hairline p-4 h-20" />
             ))}
           </div>
         </div>
@@ -170,19 +170,19 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   if (!user || !currentUser) {
     return (
       <div className="min-h-full">
-        <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
           <div className="px-5 py-3 flex items-center gap-3">
-            <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-white">
-              <ChevronLeft className="w-6 h-6 text-zinc-400" />
+            <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-foreground">
+              <ChevronLeft className="w-6 h-6 text-muted-foreground" />
             </button>
             <h1 className="text-lg font-bold truncate flex-1">Profile</h1>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-            <ChevronLeft className="w-8 h-8 text-zinc-700" />
+          <div className="w-16 h-16 rounded-full bg-surface-subtle flex items-center justify-center mb-4">
+            <ChevronLeft className="w-8 h-8 text-fg-faint" />
           </div>
-          <p className="text-zinc-500 text-sm">User not found</p>
+          <p className="text-fg-secondary text-sm">User not found</p>
         </div>
       </div>
     );
@@ -191,10 +191,10 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   return (
     <div className="min-h-full pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-white">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
+          <button onClick={() => router.back()} aria-label="Back" className="p-2 -ml-2 active:text-foreground">
+            <ChevronLeft className="w-6 h-6 text-muted-foreground" />
           </button>
           <h1 className="text-lg font-bold truncate flex-1">{user.displayName}</h1>
           <button
@@ -203,17 +203,17 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
               if (result === 'copied') addToast('Link copied!', 'success');
             }}
             aria-label="Share profile"
-            className="p-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
+            className="p-2.5 rounded-lg hover:bg-surface-subtle active:bg-surface-strong"
           >
-            <Share2 className="w-5 h-5 text-zinc-500" />
+            <Share2 className="w-5 h-5 text-fg-secondary" />
           </button>
           <div className="relative">
             <button
               onClick={() => setShowMoreMenu((v) => !v)}
               aria-label="More options"
-              className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
+              className="p-2.5 -mr-2.5 rounded-lg hover:bg-surface-subtle active:bg-surface-strong"
             >
-              <MoreHorizontal className="w-5 h-5 text-zinc-500" />
+              <MoreHorizontal className="w-5 h-5 text-fg-secondary" />
             </button>
             <AnimatePresence>
               {showMoreMenu && (
@@ -223,13 +223,13 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.1 }}
                   className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-30"
-                  style={{ background: 'rgba(30,30,34,0.95)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  style={{ background: 'var(--popover-strong-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--chrome-border)' }}
                 >
                   <button
                     onClick={() => { setShowMoreMenu(false); setShowReport(true); }}
-                    className="w-full px-4 py-3 flex items-center gap-3 text-sm text-zinc-400 active:bg-white/[0.05]"
+                    className="w-full px-4 py-3 flex items-center gap-3 text-sm text-muted-foreground active:bg-surface-subtle"
                   >
-                    <Flag className="w-4 h-4 text-red-400" />
+                    <Flag className="w-4 h-4 text-danger-fg" />
                     Report User
                   </button>
                   <button
@@ -243,9 +243,9 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
                         addToast('User blocked', 'success');
                       }
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 text-sm text-zinc-400 active:bg-white/[0.05] border-t border-white/[0.05]"
+                    className="w-full px-4 py-3 flex items-center gap-3 text-sm text-muted-foreground active:bg-surface-subtle border-t border-hairline"
                   >
-                    <Ban className="w-4 h-4 text-red-400" />
+                    <Ban className="w-4 h-4 text-danger-fg" />
                     {isBlocked ? 'Unblock User' : 'Block User'}
                   </button>
                 </motion.div>
@@ -261,8 +261,8 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
           <Avatar name={user.displayName} size="xl" src={user.avatarUrl} />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-extrabold truncate">{user.displayName}</h2>
-            <p className="text-sm text-zinc-500 truncate">@{user.username}</p>
-            {user.bio && <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{user.bio}</p>}
+            <p className="text-sm text-fg-secondary truncate">@{user.username}</p>
+            {user.bio && <p className="text-xs text-fg-secondary mt-1 line-clamp-2">{user.bio}</p>}
           </div>
         </div>
 
@@ -270,18 +270,18 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
         <div className="flex items-center gap-5">
           <button onClick={() => setShowFollowList('following')} className="active:opacity-70">
             <span className="text-lg font-bold">{user.following.length}</span>
-            <span className="text-xs text-zinc-500 ml-1">Following</span>
+            <span className="text-xs text-fg-secondary ml-1">Following</span>
           </button>
           <button onClick={() => setShowFollowList('followers')} className="active:opacity-70">
             <span className="text-lg font-bold">{user.followers.length}</span>
-            <span className="text-xs text-zinc-500 ml-1">Followers</span>
+            <span className="text-xs text-fg-secondary ml-1">Followers</span>
           </button>
           <div className="flex-1" />
           {hasPendingRequest ? (
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => { hapticLight(); cancelFollowRequest(resolvedUserId); }}
-              className="px-5 py-2 rounded-xl text-sm font-semibold bg-white/[0.06] border border-white/[0.08] text-zinc-400"
+              className="px-5 py-2 rounded-xl text-sm font-semibold bg-surface-raised border border-border-strong text-muted-foreground"
             >
               Requested
             </motion.button>
@@ -291,8 +291,8 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
               onClick={() => { hapticLight(); toggleFollow(resolvedUserId); }}
               className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
                 isFollowing
-                  ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                  : 'bg-accent text-black'
+                  ? 'bg-surface-raised border border-border-strong text-muted-foreground'
+                  : 'bg-accent text-accent-foreground'
               }`}
             >
               {isFollowing ? 'Following' : 'Follow'}
@@ -301,15 +301,15 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
         </div>
 
         {isLockedProfile ? (
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-8 text-center">
-            <Lock className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <div className="rounded-2xl bg-card border border-hairline p-8 text-center">
+            <Lock className="w-10 h-10 text-muted mx-auto mb-3" />
             <h3 className="text-base font-semibold mb-1">This account is private</h3>
-            <p className="text-sm text-zinc-500 mb-5">Follow this account to see their sessions and posts</p>
+            <p className="text-sm text-fg-secondary mb-5">Follow this account to see their sessions and posts</p>
             {hasPendingRequest ? (
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { hapticLight(); cancelFollowRequest(resolvedUserId); }}
-                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.06] border border-white/[0.08] text-zinc-400"
+                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-surface-raised border border-border-strong text-muted-foreground"
               >
                 Requested
               </motion.button>
@@ -317,7 +317,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { hapticLight(); toggleFollow(resolvedUserId); }}
-                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-black"
+                className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-accent-foreground"
               >
                 Follow
               </motion.button>
@@ -328,21 +328,21 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { icon: Calendar, label: 'Sessions', value: stats.totalSessions, color: 'text-violet-400' },
+                { icon: Calendar, label: 'Sessions', value: stats.totalSessions, color: 'text-violet-fg' },
                 { icon: Wine, label: 'Total Drinks', value: stats.totalDrinks, color: 'text-accent' },
-                { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-cyan-400' },
-                { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinks.toFixed(1), color: 'text-green-400' },
+                { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-info-fg' },
+                { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinks.toFixed(1), color: 'text-success-fg' },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4"
+                  className="rounded-2xl bg-card border border-hairline p-4"
                 >
                   <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
                   <p className="text-xl font-bold">{stat.value}</p>
-                  <p className="text-[10px] text-zinc-500">{stat.label}</p>
+                  <p className="text-[10px] text-fg-secondary">{stat.label}</p>
                 </motion.div>
               ))}
             </div>
@@ -350,7 +350,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             {/* Achievements */}
             {earnedMilestones.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Achievements</h3>
+                <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Achievements</h3>
                 <div className="flex flex-wrap gap-2">
                   {earnedMilestones.map((m) => (
                     <span key={m.threshold} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-[11px] font-semibold text-accent">
@@ -364,17 +364,17 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             {/* Session Highlights */}
             {highlights.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Highlights</h3>
+                <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Highlights</h3>
                 <div className="flex gap-2.5 overflow-x-auto scrollbar-hide">
                   {highlights.map((h) => (
                     <div
                       key={h.label}
                       onClick={() => router.push(`/feed?post=${h.postId}`)}
-                      className="shrink-0 w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 cursor-pointer active:bg-white/[0.05] transition-colors"
+                      className="shrink-0 w-[130px] rounded-2xl bg-card border border-hairline p-3.5 cursor-pointer active:bg-surface-subtle transition-colors"
                     >
                       <h.icon className="w-4 h-4 text-accent mb-2" />
                       <p className="text-lg font-bold">{h.value}</p>
-                      <p className="text-[10px] text-zinc-500">{h.label}</p>
+                      <p className="text-[10px] text-fg-secondary">{h.label}</p>
                     </div>
                   ))}
                 </div>
@@ -384,12 +384,12 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             {/* Signature Drink */}
             {signatureDrink && (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Signature Drink</h3>
-                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 flex items-center gap-4">
+                <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Signature Drink</h3>
+                <div className="rounded-2xl bg-card border border-hairline p-4 flex items-center gap-4">
                   <DrinkIcon category={signatureDrink.category} className="w-8 h-8" />
                   <div className="flex-1">
                     <p className="text-sm font-bold">{signatureDrink.name}</p>
-                    <p className="text-[11px] text-zinc-500">{signatureDrink.count} times &middot; {signatureDrink.pct}% of drinks</p>
+                    <p className="text-[11px] text-fg-secondary">{signatureDrink.count} times &middot; {signatureDrink.pct}% of drinks</p>
                   </div>
                 </div>
               </div>
@@ -398,7 +398,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             {/* User's posts */}
             {userPosts.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
+                <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Posts</h3>
                 <div className="space-y-3">
                   {userPosts.map((post) => (
                     <FeedCard key={post.id} item={post} />
@@ -408,8 +408,8 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
             )}
 
             {userPosts.length === 0 && (
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
-                <p className="text-sm text-zinc-600">No posts yet</p>
+              <div className="rounded-2xl bg-card border border-hairline p-6 text-center">
+                <p className="text-sm text-muted">No posts yet</p>
               </div>
             )}
           </>
@@ -440,12 +440,12 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
-              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+              style={{ background: 'var(--popover-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
-              <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-hairline">
                 <h3 className="text-base font-bold capitalize">{showFollowList}</h3>
-                <button onClick={() => setShowFollowList(null)} className="p-2 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
-                  <X className="w-5 h-5 text-zinc-500" />
+                <button onClick={() => setShowFollowList(null)} className="p-2 rounded-lg hover:bg-surface-subtle active:bg-surface-strong">
+                  <X className="w-5 h-5 text-fg-secondary" />
                 </button>
               </div>
               <div className="max-h-[60dvh] overflow-y-auto">
@@ -456,7 +456,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
                   if (users.length === 0) {
                     return (
                       <div className="py-12 text-center">
-                        <p className="text-sm text-zinc-600">
+                        <p className="text-sm text-muted">
                           {showFollowList === 'followers' ? 'No followers yet' : 'Not following anyone'}
                         </p>
                       </div>
@@ -468,7 +468,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
                     const iAmFollowing = currentUser.following.includes(u.id);
                     const isMe = u.id === currentUser.id;
                     return (
-                      <div key={u.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
+                      <div key={u.id} className="flex items-center gap-3 px-5 py-3 active:bg-card">
                         <div onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile/${u.id}`); }} className="cursor-pointer">
                           <Avatar name={u.displayName} size="md" src={u.avatarUrl} />
                         </div>
@@ -477,7 +477,7 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
                           onClick={() => { setShowFollowList(null); router.push(isMe ? '/profile' : `/profile/${u.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{isMe ? 'You' : u.displayName}</p>
-                          <p className="text-[11px] text-zinc-500">@{u.username}</p>
+                          <p className="text-[11px] text-fg-secondary">@{u.username}</p>
                         </div>
                         {!isMe && (
                           <motion.button
@@ -485,8 +485,8 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
                             onClick={() => { hapticLight(); toggleFollow(u.id); }}
                             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                               iAmFollowing
-                                ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                                : 'bg-accent text-black'
+                                ? 'bg-surface-raised border border-border-strong text-muted-foreground'
+                                : 'bg-accent text-accent-foreground'
                             }`}
                           >
                             {iAmFollowing ? 'Following' : 'Follow'}

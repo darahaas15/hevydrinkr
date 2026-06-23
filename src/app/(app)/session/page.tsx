@@ -211,17 +211,17 @@ function SessionPageInner() {
         >
           <DrinkIcon category="beer" className="w-12 h-12 mb-5" />
           <h1 className="text-2xl font-extrabold tracking-tight mb-1">Start a Sesh</h1>
-          <p className="text-zinc-500 text-sm mb-8">Log drinks, track your score, beat PRs</p>
+          <p className="text-fg-secondary text-sm mb-8">Log drinks, track your score, beat PRs</p>
 
           <div className="w-full max-w-sm space-y-3">
             <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600" />
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
               <input
                 type="text"
                 value={venue}
                 onChange={(e) => setVenue(e.target.value)}
                 placeholder="Where are you drinking?"
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors"
+                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-surface-secondary border border-card-border text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
                 onKeyDown={(e) => e.key === 'Enter' && handleStart()}
               />
             </div>
@@ -230,14 +230,14 @@ function SessionPageInner() {
               whileTap={{ scale: 0.98 }}
               onClick={handleStart}
               disabled={!venue.trim()}
-              className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-base disabled:opacity-20 transition-all"
+              className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base disabled:opacity-20 transition-all"
             >
               Start Drinking
             </motion.button>
 
             <button
               onClick={() => router.push('/session/log-past')}
-              className="w-full py-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-zinc-400 font-medium text-[13px] active:bg-white/[0.05] transition-colors"
+              className="w-full py-3 rounded-2xl bg-card border border-hairline text-muted-foreground font-medium text-[13px] active:bg-surface-subtle transition-colors"
             >
               Log past session
             </button>
@@ -245,23 +245,23 @@ function SessionPageInner() {
 
           {loadingHistory ? (
             <div className="w-full mt-10">
-              <div className="w-16 h-3 rounded bg-white/5 mb-3 animate-pulse" />
+              <div className="w-16 h-3 rounded bg-surface-subtle mb-3 animate-pulse" />
               <div className="space-y-1.5">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] animate-pulse">
-                    <div className="w-5 h-5 rounded bg-white/5" />
+                  <div key={i} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface-faint border border-border-faint animate-pulse">
+                    <div className="w-5 h-5 rounded bg-surface-subtle" />
                     <div className="flex-1 space-y-1.5">
-                      <div className="w-28 h-3.5 rounded bg-white/5" />
-                      <div className="w-20 h-2.5 rounded bg-white/[0.03]" />
+                      <div className="w-28 h-3.5 rounded bg-surface-subtle" />
+                      <div className="w-20 h-2.5 rounded bg-card" />
                     </div>
-                    <div className="w-12 h-2.5 rounded bg-white/[0.03]" />
+                    <div className="w-12 h-2.5 rounded bg-card" />
                   </div>
                 ))}
               </div>
             </div>
           ) : mySessions.length > 0 && (
             <div className="w-full mt-10">
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Recent</h3>
+              <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Recent</h3>
               <div className="space-y-1.5">
                 {mySessions.map((session) => {
                   const feedPost = myPosts.find((f) => f.sessionId === session.id);
@@ -269,19 +269,19 @@ function SessionPageInner() {
                     <button
                       key={session.id}
                       onClick={() => router.push(feedPost ? `/feed?post=${feedPost.id}` : `/session?id=${session.id}`)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-left active:bg-white/[0.05] transition-colors"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface-faint border border-border-faint text-left active:bg-surface-subtle transition-colors"
                     >
                       {session.drinks[0] ? <DrinkIcon category={session.drinks[0].category} className="w-5 h-5" /> : <DrinkIcon category="beer" className="w-5 h-5" />}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{session.venue}</p>
-                        <p className="text-[11px] text-zinc-600">
+                        <p className="text-[11px] text-muted">
                           {session.drinks.length} drink{session.drinks.length !== 1 ? 's' : ''} · {Math.floor(session.durationMinutes / 60)}h {session.durationMinutes % 60}m
                         </p>
                       </div>
-                      <p className="text-[11px] text-zinc-700">
+                      <p className="text-[11px] text-fg-faint">
                         {new Date(session.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </p>
-                      <ChevronRight className="w-4 h-4 text-zinc-700" />
+                      <ChevronRight className="w-4 h-4 text-fg-faint" />
                     </button>
                   );
                 })}
@@ -309,12 +309,12 @@ function SessionPageInner() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <div>
             {editingVenue ? (
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-3 h-3 text-zinc-500" />
+                <MapPin className="w-3 h-3 text-fg-secondary" />
                 <input
                   autoFocus
                   value={venueEdit}
@@ -329,7 +329,7 @@ function SessionPageInner() {
                   }}
                   enterKeyHint="done"
                   autoCapitalize="words"
-                  className="px-2 py-0.5 rounded-lg bg-white/[0.06] border border-accent/30 text-[11px] text-white focus:outline-none w-32"
+                  className="px-2 py-0.5 rounded-lg bg-surface-raised border border-accent/30 text-[11px] text-foreground focus:outline-none w-32"
                 />
                 <button
                   onClick={() => {
@@ -338,18 +338,18 @@ function SessionPageInner() {
                       setEditingVenue(false);
                     }
                   }}
-                  className="p-2 rounded hover:bg-white/5 active:bg-white/[0.08]"
+                  className="p-2 rounded hover:bg-surface-subtle active:bg-surface-strong"
                 >
                   <Check className="w-4 h-4 text-accent" />
                 </button>
-                <button onClick={() => setEditingVenue(false)} className="p-2 rounded hover:bg-white/5 active:bg-white/[0.08]">
-                  <X className="w-4 h-4 text-zinc-500" />
+                <button onClick={() => setEditingVenue(false)} className="p-2 rounded hover:bg-surface-subtle active:bg-surface-strong">
+                  <X className="w-4 h-4 text-fg-secondary" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => { setVenueEdit(activeSession.venue); setEditingVenue(true); }}
-                className="text-[11px] text-zinc-500 flex items-center gap-1 hover:text-zinc-400 transition-colors max-w-[200px]"
+                className="text-[11px] text-fg-secondary flex items-center gap-1 hover:text-muted-foreground transition-colors max-w-[200px]"
               >
                 <MapPin className="w-3 h-3 shrink-0" />
                 <span className="truncate">{activeSession.venue}</span>
@@ -358,7 +358,7 @@ function SessionPageInner() {
             )}
             <div className="flex items-center gap-2 mt-0.5">
               <Clock className="w-4 h-4 text-accent" />
-              <span className="text-lg font-mono font-bold text-white">{timer.formatted}</span>
+              <span className="text-lg font-mono font-bold text-foreground">{timer.formatted}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -366,21 +366,21 @@ function SessionPageInner() {
               whileTap={{ scale: 0.9 }}
               onClick={handleAddPhoto}
               aria-label="Add photo"
-              className="p-2 rounded-xl bg-white/[0.06] border border-white/[0.08]"
+              className="p-2 rounded-xl bg-surface-raised border border-border-strong"
             >
-              <Camera className="w-4 h-4 text-zinc-400" />
+              <Camera className="w-4 h-4 text-muted-foreground" />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowAbandonConfirm(true)}
-              className="px-3 py-2 rounded-xl bg-white/[0.06] text-zinc-500 text-sm"
+              className="px-3 py-2 rounded-xl bg-surface-raised text-fg-secondary text-sm"
             >
               Abandon
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => activeDrinks.length > 0 ? setShowPostPreview(true) : addToast('Add at least one drink first', 'error')}
-              className="px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-sm font-semibold"
+              className="px-4 py-2 rounded-xl bg-red-500/10 text-danger-fg text-sm font-semibold"
             >
               End
             </motion.button>
@@ -393,15 +393,15 @@ function SessionPageInner() {
         {currentUser?.heightCm === null && !dismissedMetricsBanner && (
           <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-amber-400">Set up body metrics</p>
-              <p className="text-[11px] text-zinc-500">For accurate BAC estimates</p>
+              <p className="text-sm font-medium text-warning-fg">Set up body metrics</p>
+              <p className="text-[11px] text-fg-secondary">For accurate BAC estimates</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => router.push('/profile/settings')} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium">
+              <button onClick={() => router.push('/profile/settings')} className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-warning-fg text-xs font-medium">
                 Setup
               </button>
               <button onClick={() => setDismissedMetricsBanner(true)} className="p-1">
-                <X className="w-4 h-4 text-zinc-600" />
+                <X className="w-4 h-4 text-muted" />
               </button>
             </div>
           </div>
@@ -409,17 +409,17 @@ function SessionPageInner() {
 
         {bacEstimate && bacEstimate.currentBac >= BAC_LEGAL_LIMIT && !dismissedBacWarning && (
           <div role="alert" className="rounded-xl bg-red-500/10 border border-red-500/25 px-4 py-3 flex items-start gap-3">
-            <IconSteeringWheel className="w-5 h-5 text-red-400 shrink-0 mt-0.5" stroke={1.75} />
+            <IconSteeringWheel className="w-5 h-5 text-danger-fg shrink-0 mt-0.5" stroke={1.75} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-red-400">Over legal driving limit</p>
-              <p className="text-[11px] text-zinc-300 leading-snug">
+              <p className="text-sm font-semibold text-danger-fg">Over legal driving limit</p>
+              <p className="text-[11px] text-fg-strong leading-snug">
                 Estimated BAC is {bacEstimate.currentBac.toFixed(3)}% — do not drive. BAC is an estimate and can be inaccurate; arrange a ride.
               </p>
             </div>
             <button
               onClick={() => setDismissedBacWarning(true)}
               aria-label="Dismiss warning"
-              className="p-1 -mr-1 text-red-400/60 active:text-red-400"
+              className="p-1 -mr-1 text-danger-fg/60 active:text-danger-fg"
             >
               <X className="w-4 h-4" />
             </button>
@@ -429,18 +429,18 @@ function SessionPageInner() {
         <BacGauge standardDrinks={totalStdDrinks} drinks={activeDrinks} />
 
         {/* Pace & Context */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
+        <div className="rounded-2xl bg-card border border-hairline p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-3xl font-extrabold">{activeDrinks.length}</p>
-              <p className="text-[11px] text-zinc-500">drinks</p>
+              <p className="text-[11px] text-fg-secondary">drinks</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-right">
                 <p className="text-2xl font-bold font-mono" style={{ color: bacEstimate ? getSafetyColor(bacEstimate.safetyLevel) : '#a1a1aa' }}>
                   {bacEstimate ? bacEstimate.currentBac.toFixed(3) : '0.000'}%
                 </p>
-                <p className="text-[10px] text-zinc-600">est. BAC</p>
+                <p className="text-[10px] text-muted">est. BAC</p>
               </div>
               <IconSteeringWheel
                 className="w-7 h-7 -mt-4"
@@ -455,13 +455,13 @@ function SessionPageInner() {
             <div className="flex gap-3 mb-3">
               {bacEstimate.hoursUntilDriveSafe > 0 && (
                 <div className="flex-1 rounded-xl bg-red-500/[0.08] border border-red-500/[0.15] px-3 py-2">
-                  <p className="text-sm font-bold text-red-400">~{formatDuration(Math.round(bacEstimate.hoursUntilDriveSafe * 60))}</p>
-                  <p className="text-[10px] text-red-400/60">until drive-safe</p>
+                  <p className="text-sm font-bold text-danger-fg">~{formatDuration(Math.round(bacEstimate.hoursUntilDriveSafe * 60))}</p>
+                  <p className="text-[10px] text-danger-fg/60">until drive-safe</p>
                 </div>
               )}
-              <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+              <div className="flex-1 rounded-xl bg-card border border-border-faint px-3 py-2">
                 <p className="text-sm font-bold">~{formatDuration(Math.round(bacEstimate.hoursUntilSober * 60))}</p>
-                <p className="text-[10px] text-zinc-600">until sober</p>
+                <p className="text-[10px] text-muted">until sober</p>
               </div>
             </div>
           )}
@@ -469,22 +469,22 @@ function SessionPageInner() {
           {activeDrinks.length > 0 && (
             <div className="flex gap-3">
               {avgDrinksPerSession > 0 && (
-                <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-                  <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent' : drinkDiff < 0 ? 'text-zinc-400' : 'text-zinc-300'}`}>
+                <div className="flex-1 rounded-xl bg-card border border-border-faint px-3 py-2">
+                  <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent-text' : drinkDiff < 0 ? 'text-muted-foreground' : 'text-fg-strong'}`}>
                     {drinkDiff > 0 ? '+' : ''}{drinkDiff.toFixed(0)}
                   </p>
-                  <p className="text-[10px] text-zinc-600">vs your avg</p>
+                  <p className="text-[10px] text-muted">vs your avg</p>
                 </div>
               )}
-              <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+              <div className="flex-1 rounded-xl bg-card border border-border-faint px-3 py-2">
                 <p className="text-sm font-bold">{new Set(activeDrinks.map(d => d.drinkDefinitionId)).size}</p>
-                <p className="text-[10px] text-zinc-600">Types</p>
+                <p className="text-[10px] text-muted">Types</p>
               </div>
             </div>
           )}
 
           {/* Disclaimer */}
-          <p className="text-[11px] text-zinc-500 mt-3 leading-snug">{BAC_DISCLAIMER}</p>
+          <p className="text-[11px] text-fg-secondary mt-3 leading-snug">{BAC_DISCLAIMER}</p>
         </div>
 
         <DrinkList drinks={activeDrinks} onRemove={handleRemoveDrink} onAdd={addDrink} />
@@ -492,7 +492,7 @@ function SessionPageInner() {
         {/* Session Photos */}
         {(activeSession.photos?.length ?? 0) > 0 && (
           <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Photos</p>
+            <p className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2">Photos</p>
             <PhotoGallery photos={activeSession.photos} onRemove={removePhoto} />
           </div>
         )}
@@ -512,7 +512,7 @@ function SessionPageInner() {
           right: 'max(1.25rem, calc(50% - 240px + 1.25rem))',
         }}
       >
-        <Plus className="w-6 h-6 text-black" />
+        <Plus className="w-6 h-6 text-accent-foreground" />
       </motion.button>
 
       {/* Drink Picker */}
@@ -550,13 +550,13 @@ function SessionPageInner() {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl p-6 space-y-4"
-              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+              style={{ background: 'var(--popover-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
               {/* Session info */}
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-bold">End Session</h2>
-                  <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
+                  <p className="text-[11px] text-fg-secondary flex items-center gap-1 mt-0.5">
                     <MapPin className="w-3 h-3" />
                     {activeSession.venue} · {activeDrinks.length} drinks · {timer.formatted}
                   </p>
@@ -566,7 +566,7 @@ function SessionPageInner() {
                     <DrinkIcon key={d.id} category={d.category} className="w-4 h-4" />
                   ))}
                   {activeDrinks.length > 6 && (
-                    <span className="text-[10px] text-zinc-600">+{activeDrinks.length - 6}</span>
+                    <span className="text-[10px] text-muted">+{activeDrinks.length - 6}</span>
                   )}
                 </div>
               </div>
@@ -604,7 +604,7 @@ function SessionPageInner() {
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="Add a caption (optional)"
                 rows={2}
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 transition-colors resize-none"
+                className="w-full px-4 py-3 rounded-xl bg-surface-secondary border border-card-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors resize-none"
               />
 
               {/* Tag people */}
@@ -614,7 +614,7 @@ function SessionPageInner() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowPostPreview(false)}
-                  className="flex-1 py-3 rounded-xl bg-white/[0.04] text-zinc-400 font-medium text-sm"
+                  className="flex-1 py-3 rounded-xl bg-surface-secondary text-muted-foreground font-medium text-sm"
                 >
                   Back
                 </button>
@@ -622,7 +622,7 @@ function SessionPageInner() {
                   whileTap={{ scale: 0.97 }}
                   onClick={handlePost}
                   disabled={posting}
-                  className="flex-1 py-3 rounded-xl bg-accent text-black font-bold text-sm disabled:opacity-50"
+                  className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm disabled:opacity-50"
                 >
                   Post
                 </motion.button>
@@ -647,22 +647,22 @@ function SessionPageInner() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
-              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+              style={{ background: 'var(--popover-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
-              <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
+              <Trash2 className="w-8 h-8 text-danger-fg mx-auto mb-3" />
               <h3 className="text-lg font-bold mb-1">Cancel session?</h3>
-              <p className="text-sm text-zinc-500 mb-5">This session won&apos;t be saved</p>
+              <p className="text-sm text-fg-secondary mb-5">This session won&apos;t be saved</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowAbandonConfirm(false)}
-                  className="flex-1 py-3 rounded-xl bg-white/[0.04] text-zinc-400 font-medium text-sm"
+                  className="flex-1 py-3 rounded-xl bg-surface-secondary text-muted-foreground font-medium text-sm"
                 >
                   Keep Going
                 </button>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => { hapticWarning(); abandonSession(); setShowAbandonConfirm(false); }}
-                  className="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 font-bold text-sm"
+                  className="flex-1 py-3 rounded-xl bg-red-500/20 text-danger-fg font-bold text-sm"
                 >
                   Cancel It
                 </motion.button>

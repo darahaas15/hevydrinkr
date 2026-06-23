@@ -64,7 +64,7 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
   if (loading && recaps.length === 0) {
     return (
       <div>
-        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <BarChart3 className="w-3.5 h-3.5" />
           Weekly Roundup
         </h3>
@@ -81,7 +81,7 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
     <div className="space-y-5">
       {/* Section header */}
       <div>
-        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <BarChart3 className="w-3.5 h-3.5" />
           Weekly Roundup
         </h3>
@@ -90,18 +90,18 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center"
+            className="rounded-2xl bg-card border border-hairline p-6 text-center"
           >
             <div className="inline-block w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin mb-3" />
-            <p className="text-sm text-zinc-400">Tallying the damage...</p>
+            <p className="text-sm text-muted-foreground">Tallying the damage...</p>
           </motion.div>
         )}
 
         {!generating && recaps.length === 0 && (
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
-            <BarChart3 className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm text-zinc-400">No roundups yet</p>
-            <p className="text-[10px] text-zinc-600 mt-1">
+          <div className="rounded-2xl bg-card border border-hairline p-6 text-center">
+            <BarChart3 className="w-8 h-8 text-fg-faint mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No roundups yet</p>
+            <p className="text-[10px] text-muted mt-1">
               Log some drinks and the roundup drops next week
             </p>
           </div>
@@ -115,19 +115,19 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
                 <button
                   onClick={() => setSelectedIndex((i) => Math.min(i + 1, recaps.length - 1))}
                   disabled={selectedIndex >= recaps.length - 1}
-                  className="p-1.5 rounded-lg hover:bg-white/5 disabled:opacity-20 transition-opacity"
+                  className="p-1.5 rounded-lg hover:bg-surface-subtle disabled:opacity-20 transition-opacity"
                 >
-                  <ChevronLeft className="w-4 h-4 text-zinc-400" />
+                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                 </button>
-                <span className="text-xs font-mono text-zinc-500 min-w-[5rem] text-center">
+                <span className="text-xs font-mono text-fg-secondary min-w-[5rem] text-center">
                   {selectedRecap?.weekKey}
                 </span>
                 <button
                   onClick={() => setSelectedIndex((i) => Math.max(i - 1, 0))}
                   disabled={selectedIndex <= 0}
-                  className="p-1.5 rounded-lg hover:bg-white/5 disabled:opacity-20 transition-opacity"
+                  className="p-1.5 rounded-lg hover:bg-surface-subtle disabled:opacity-20 transition-opacity"
                 >
-                  <ChevronRight className="w-4 h-4 text-zinc-400" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             )}

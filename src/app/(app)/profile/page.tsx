@@ -156,7 +156,7 @@ function ProfilePageOwn() {
   return (
     <div className="min-h-full pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className="text-xl font-extrabold">Profile</h1>
           <div className="flex items-center gap-1">
@@ -166,26 +166,26 @@ function ProfilePageOwn() {
                 if (result === 'copied') addToast('Link copied!', 'success');
               }}
               aria-label="Share profile"
-              className="p-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]"
+              className="p-2 rounded-xl hover:bg-surface-subtle active:bg-surface-strong"
             >
-              <Share2 className="w-5 h-5 text-zinc-500" />
+              <Share2 className="w-5 h-5 text-fg-secondary" />
             </button>
               {isPrivate && (
                 <button
                   onClick={() => router.push('/profile/requests')}
                   aria-label="Follow requests"
-                  className="relative p-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]"
+                  className="relative p-2.5 rounded-lg hover:bg-surface-subtle active:bg-surface-strong"
                 >
-                  <UserPlus className="w-5 h-5 text-zinc-500" />
+                  <UserPlus className="w-5 h-5 text-fg-secondary" />
                   {followRequests.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-accent text-[10px] font-bold text-black flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-accent text-[10px] font-bold text-accent-foreground flex items-center justify-center">
                       {followRequests.length > 9 ? '9+' : followRequests.length}
                     </span>
                   )}
                 </button>
               )}
-            <button onClick={() => router.push('/profile/settings')} aria-label="Settings" className="p-2 -mr-2 rounded-xl hover:bg-white/5 active:bg-white/[0.08]">
-              <Settings className="w-5 h-5 text-zinc-500" />
+            <button onClick={() => router.push('/profile/settings')} aria-label="Settings" className="p-2 -mr-2 rounded-xl hover:bg-surface-subtle active:bg-surface-strong">
+              <Settings className="w-5 h-5 text-fg-secondary" />
             </button>
           </div>
         </div>
@@ -204,8 +204,8 @@ function ProfilePageOwn() {
           />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-extrabold truncate">{currentUser.displayName}</h2>
-            <p className="text-sm text-zinc-500 truncate">@{currentUser.username}</p>
-            <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{currentUser.bio}</p>
+            <p className="text-sm text-fg-secondary truncate">@{currentUser.username}</p>
+            <p className="text-xs text-fg-secondary mt-1 line-clamp-2">{currentUser.bio}</p>
           </div>
         </div>
 
@@ -213,49 +213,49 @@ function ProfilePageOwn() {
         <div className="flex gap-5">
           <button onClick={() => setShowFollowList('following')} className="active:opacity-70">
             <span className="text-lg font-bold">{currentUser.following.length}</span>
-            <span className="text-xs text-zinc-500 ml-1">Following</span>
+            <span className="text-xs text-fg-secondary ml-1">Following</span>
           </button>
           <button onClick={() => setShowFollowList('followers')} className="active:opacity-70">
             <span className="text-lg font-bold">{currentUser.followers.length}</span>
-            <span className="text-xs text-zinc-500 ml-1">Followers</span>
+            <span className="text-xs text-fg-secondary ml-1">Followers</span>
           </button>
         </div>
 
         {/* Streak */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 flex items-center gap-4">
+        <div className="rounded-2xl bg-card border border-hairline p-4 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
             <Flame className="w-6 h-6 text-accent" />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-zinc-500">Party Streak</p>
+            <p className="text-xs text-fg-secondary">Party Streak</p>
             <p className="text-2xl font-extrabold">
-              {streak.currentStreak}<span className="text-sm font-normal text-zinc-600 ml-1">weeks</span>
+              {streak.currentStreak}<span className="text-sm font-normal text-muted ml-1">weeks</span>
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-zinc-700">Best</p>
-            <p className="text-sm font-bold text-zinc-500">{streak.longestStreak}w</p>
+            <p className="text-[10px] text-fg-faint">Best</p>
+            <p className="text-sm font-bold text-fg-secondary">{streak.longestStreak}w</p>
           </div>
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-2.5">
           {[
-            { icon: Calendar, label: 'Sessions', value: stats.totalSessions, color: 'text-violet-400' },
+            { icon: Calendar, label: 'Sessions', value: stats.totalSessions, color: 'text-violet-fg' },
             { icon: Wine, label: 'Total Drinks', value: stats.totalDrinks, color: 'text-accent' },
-            { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-cyan-400' },
-            { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinksPerSession.toFixed(1), color: 'text-green-400' },
+            { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-info-fg' },
+            { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinksPerSession.toFixed(1), color: 'text-success-fg' },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
-              className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4"
+              className="rounded-2xl bg-card border border-hairline p-4"
             >
               <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
               <p className="text-xl font-bold">{stat.value}</p>
-              <p className="text-[10px] text-zinc-500">{stat.label}</p>
+              <p className="text-[10px] text-fg-secondary">{stat.label}</p>
             </motion.div>
           ))}
         </div>
@@ -263,8 +263,8 @@ function ProfilePageOwn() {
         {/* Achievements */}
         {(earnedMilestones.length > 0 || nextMilestone) && (
           <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Achievements</h3>
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
+            <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Achievements</h3>
+            <div className="rounded-2xl bg-card border border-hairline p-4">
               {earnedMilestones.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {earnedMilestones.map((m) => (
@@ -277,10 +277,10 @@ function ProfilePageOwn() {
               {nextMilestone && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[11px] text-zinc-500">Next: {nextMilestone.label}</p>
-                    <p className="text-[11px] text-zinc-600">{sessionCount}/{nextMilestone.threshold}</p>
+                    <p className="text-[11px] text-fg-secondary">Next: {nextMilestone.label}</p>
+                    <p className="text-[11px] text-muted">{sessionCount}/{nextMilestone.threshold}</p>
                   </div>
-                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-surface-raised overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${(sessionCount / nextMilestone.threshold) * 100}%` }}
@@ -297,17 +297,17 @@ function ProfilePageOwn() {
         {/* Session Highlights */}
         {highlights.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Highlights</h3>
+            <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Highlights</h3>
             <div className="flex gap-2.5 overflow-x-auto scrollbar-hide">
               {highlights.map((h) => (
                 <div
                   key={h.label}
                   onClick={() => router.push(`/feed?post=${h.postId}`)}
-                  className="shrink-0 w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 cursor-pointer active:bg-white/[0.05] transition-colors"
+                  className="shrink-0 w-[130px] rounded-2xl bg-card border border-hairline p-3.5 cursor-pointer active:bg-surface-subtle transition-colors"
                 >
                   <h.icon className="w-4 h-4 text-accent mb-2" />
                   <p className="text-lg font-bold">{h.value}</p>
-                  <p className="text-[10px] text-zinc-500">{h.label}</p>
+                  <p className="text-[10px] text-fg-secondary">{h.label}</p>
                 </div>
               ))}
             </div>
@@ -317,12 +317,12 @@ function ProfilePageOwn() {
         {/* Signature Drink */}
         {signatureDrink && (
           <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Signature Drink</h3>
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 flex items-center gap-4">
+            <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Signature Drink</h3>
+            <div className="rounded-2xl bg-card border border-hairline p-4 flex items-center gap-4">
               <DrinkIcon category={signatureDrink.category} className="w-8 h-8" />
               <div className="flex-1">
                 <p className="text-sm font-bold">{signatureDrink.name}</p>
-                <p className="text-[11px] text-zinc-500">{signatureDrink.count} times &middot; {signatureDrink.pct}% of your drinks</p>
+                <p className="text-[11px] text-fg-secondary">{signatureDrink.count} times &middot; {signatureDrink.pct}% of your drinks</p>
               </div>
             </div>
           </div>
@@ -331,8 +331,8 @@ function ProfilePageOwn() {
         {/* Drink breakdown — donut style */}
         {categoryEntries.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Drink Breakdown</h3>
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
+            <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Drink Breakdown</h3>
+            <div className="rounded-2xl bg-card border border-hairline p-4">
               {/* Stacked bar */}
               <div className="h-3 rounded-full overflow-hidden flex mb-4">
                 {categoryEntries.map(([cat, count]) => (
@@ -355,9 +355,9 @@ function ProfilePageOwn() {
                   return (
                     <div key={cat} className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                      <span className="text-xs text-zinc-400 capitalize truncate flex-1">{cat}</span>
-                      <span className="text-xs font-mono text-zinc-500">{count}</span>
-                      <span className="text-[10px] text-zinc-700">{pct}%</span>
+                      <span className="text-xs text-muted-foreground capitalize truncate flex-1">{cat}</span>
+                      <span className="text-xs font-mono text-fg-secondary">{count}</span>
+                      <span className="text-[10px] text-fg-faint">{pct}%</span>
                     </div>
                   );
                 })}
@@ -368,10 +368,10 @@ function ProfilePageOwn() {
 
         {/* Personal Records */}
         <div>
-          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Personal Records</h3>
+          <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Personal Records</h3>
           {myPRs.length === 0 ? (
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
-              <p className="text-sm text-zinc-600">No PRs yet — start a session!</p>
+            <div className="rounded-2xl bg-card border border-hairline p-6 text-center">
+              <p className="text-sm text-muted">No PRs yet — start a session!</p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -381,12 +381,12 @@ function ProfilePageOwn() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 flex items-center gap-3"
+                  className="rounded-xl bg-card border border-hairline p-3 flex items-center gap-3"
                 >
                   {(() => { const Icon = PR_ICONS[pr.category]; return <Icon className="w-5 h-5 text-accent" />; })()}
                   <div className="flex-1">
                     <p className="text-sm font-medium">{PR_LABELS[pr.category]}</p>
-                    <p className="text-[10px] text-zinc-600">
+                    <p className="text-[10px] text-muted">
                       {new Date(pr.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
@@ -403,20 +403,20 @@ function ProfilePageOwn() {
           if (!myPostsLoaded && !feedError) {
             return (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
+                <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Posts</h3>
                 <div className="space-y-3">
                   {Array.from({ length: 2 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden animate-pulse">
+                    <div key={i} className="rounded-2xl bg-card border border-hairline overflow-hidden animate-pulse">
                       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white/5" />
+                        <div className="w-10 h-10 rounded-full bg-surface-subtle" />
                         <div className="flex-1 space-y-2">
-                          <div className="h-3.5 w-28 rounded bg-white/5" />
-                          <div className="h-2.5 w-16 rounded bg-white/5" />
+                          <div className="h-3.5 w-28 rounded bg-surface-subtle" />
+                          <div className="h-2.5 w-16 rounded bg-surface-subtle" />
                         </div>
                       </div>
                       <div className="px-4 pb-3 space-y-2">
-                        <div className="h-3 w-full rounded bg-white/5" />
-                        <div className="h-3 w-3/4 rounded bg-white/5" />
+                        <div className="h-3 w-full rounded bg-surface-subtle" />
+                        <div className="h-3 w-3/4 rounded bg-surface-subtle" />
                       </div>
                     </div>
                   ))}
@@ -426,7 +426,7 @@ function ProfilePageOwn() {
           }
           return sortedPosts.length > 0 ? (
             <div>
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>
+              <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Posts</h3>
               <div className="space-y-3">
                 {sortedPosts.map((post) => (
                   <FeedCard key={post.id} item={post} />
@@ -453,12 +453,12 @@ function ProfilePageOwn() {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
-              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+              style={{ background: 'var(--popover-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
-              <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-hairline">
                 <h3 className="text-base font-bold capitalize">{showFollowList}</h3>
-                <button onClick={() => setShowFollowList(null)} className="p-2 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
-                  <X className="w-5 h-5 text-zinc-500" />
+                <button onClick={() => setShowFollowList(null)} className="p-2 rounded-lg hover:bg-surface-subtle active:bg-surface-strong">
+                  <X className="w-5 h-5 text-fg-secondary" />
                 </button>
               </div>
               <div className="max-h-[60dvh] overflow-y-auto">
@@ -469,7 +469,7 @@ function ProfilePageOwn() {
                   if (users.length === 0) {
                     return (
                       <div className="py-12 text-center">
-                        <p className="text-sm text-zinc-600">
+                        <p className="text-sm text-muted">
                           {showFollowList === 'followers' ? 'No followers yet' : 'Not following anyone'}
                         </p>
                       </div>
@@ -481,7 +481,7 @@ function ProfilePageOwn() {
                     const isFollowing = currentUser.following.includes(user.id);
                     const isMe = user.id === currentUser.id;
                   return (
-                      <div key={user.id} className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03]">
+                      <div key={user.id} className="flex items-center gap-3 px-5 py-3 active:bg-card">
                         <div onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }} className="cursor-pointer">
                           <Avatar name={user.displayName} size="md" src={user.avatarUrl} />
                         </div>
@@ -490,7 +490,7 @@ function ProfilePageOwn() {
                           onClick={() => { setShowFollowList(null); router.push(`/profile/${user.id}`); }}
                         >
                           <p className="text-sm font-semibold truncate">{user.displayName}</p>
-                          <p className="text-[11px] text-zinc-500">@{user.username}</p>
+                          <p className="text-[11px] text-fg-secondary">@{user.username}</p>
                         </div>
                         {!isMe && (
                           <>
@@ -499,8 +499,8 @@ function ProfilePageOwn() {
                               onClick={() => { hapticLight(); toggleFollow(user.id); }}
                               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                                 isFollowing
-                                  ? 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
-                                  : 'bg-accent text-black'
+                                  ? 'bg-surface-raised border border-border-strong text-muted-foreground'
+                                  : 'bg-accent text-accent-foreground'
                               }`}
                             >
                               {isFollowing ? 'Following' : 'Follow'}
@@ -509,9 +509,9 @@ function ProfilePageOwn() {
                               <motion.button
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => { hapticLight(); removeFollower(user.id); }}
-                                className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center ml-1.5"
+                                className="w-8 h-8 rounded-lg bg-surface-secondary border border-card-border flex items-center justify-center ml-1.5"
                               >
-                                <X className="w-3.5 h-3.5 text-zinc-500" />
+                                <X className="w-3.5 h-3.5 text-fg-secondary" />
                               </motion.button>
                             )}
                           </>

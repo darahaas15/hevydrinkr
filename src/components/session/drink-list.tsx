@@ -43,8 +43,8 @@ export function DrinkList({ drinks, onRemove, onAdd }: DrinkListProps) {
     return (
       <div className="flex flex-col items-center py-8 text-center">
         <DrinkIcon category="beer" className="w-10 h-10 mb-3" />
-        <p className="text-sm text-zinc-500">No drinks yet</p>
-        <p className="text-xs text-zinc-600">Tap + to add your first drink</p>
+        <p className="text-sm text-fg-secondary">No drinks yet</p>
+        <p className="text-xs text-muted">Tap + to add your first drink</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function DrinkList({ drinks, onRemove, onAdd }: DrinkListProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-zinc-500">
+        <h3 className="text-sm font-medium text-fg-secondary">
           Drinks ({drinks.length})
         </h3>
       </div>

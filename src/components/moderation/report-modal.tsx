@@ -71,7 +71,7 @@ export function ReportModal({ open, onClose, targetType, targetId, targetLabel }
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative w-full max-w-sm mx-4 mb-4 sm:mb-0 rounded-3xl overflow-hidden"
-            style={{ background: 'rgba(20,20,24,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+            style={{ background: 'var(--popover-strong-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {submitted ? (
@@ -80,22 +80,22 @@ export function ReportModal({ open, onClose, targetType, targetId, targetLabel }
                   <Check className="w-6 h-6 text-accent" />
                 </div>
                 <h3 className="text-lg font-bold mb-1">Report Submitted</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed mb-6">Thank you. We&apos;ll review this and take action if it violates our guidelines.</p>
-                <button onClick={handleClose} className="px-8 py-3 rounded-2xl bg-accent text-black text-sm font-bold active:scale-[0.98] transition-transform">
+                <p className="text-sm text-fg-secondary leading-relaxed mb-6">Thank you. We&apos;ll review this and take action if it violates our guidelines.</p>
+                <button onClick={handleClose} className="px-8 py-3 rounded-2xl bg-accent text-accent-foreground text-sm font-bold active:scale-[0.98] transition-transform">
                   Done
                 </button>
               </div>
             ) : (
               <>
-                <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.06]">
+                <div className="px-5 py-4 flex items-center justify-between border-b border-card-border">
                   <h3 className="text-base font-bold">Report</h3>
-                  <button onClick={handleClose} className="p-2 -mr-2 rounded-lg active:bg-white/[0.08]">
-                    <X className="w-5 h-5 text-zinc-500" />
+                  <button onClick={handleClose} className="p-2 -mr-2 rounded-lg active:bg-surface-strong">
+                    <X className="w-5 h-5 text-fg-secondary" />
                   </button>
                 </div>
 
                 <div className="px-5 pt-4 pb-3">
-                  <p className="text-[13px] text-zinc-400 mb-3">Why are you reporting this?</p>
+                  <p className="text-[13px] text-muted-foreground mb-3">Why are you reporting this?</p>
                   <div className="space-y-2">
                     {REPORT_REASONS.map((reason) => (
                       <button
@@ -103,8 +103,8 @@ export function ReportModal({ open, onClose, targetType, targetId, targetLabel }
                         onClick={() => { hapticLight(); setSelected(reason.value); }}
                         className={`w-full px-4 py-3 rounded-xl text-left text-[13px] font-medium transition-all ${
                           selected === reason.value
-                            ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-                            : 'bg-white/[0.03] border border-white/[0.06] text-zinc-400 active:bg-white/[0.05]'
+                            ? 'bg-red-500/10 border border-red-500/30 text-danger-fg'
+                            : 'bg-card border border-card-border text-muted-foreground active:bg-surface-subtle'
                         }`}
                       >
                         {reason.label}
@@ -120,7 +120,7 @@ export function ReportModal({ open, onClose, targetType, targetId, targetLabel }
                       onChange={(e) => setDetails(e.target.value)}
                       placeholder="Please describe the issue..."
                       rows={3}
-                      className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-red-500/30 resize-none"
+                      className="w-full px-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-red-500/30 resize-none"
                     />
                   </div>
                 )}

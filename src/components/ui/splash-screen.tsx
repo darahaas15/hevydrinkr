@@ -7,7 +7,7 @@ export function SplashScreen() {
   return (
     <div
       className="h-dvh flex flex-col items-center justify-center relative overflow-hidden"
-      style={{ background: '#09090b' }}
+      style={{ background: 'var(--background)' }}
     >
       {/* Radial glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

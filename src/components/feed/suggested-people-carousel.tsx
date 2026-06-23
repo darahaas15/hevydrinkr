@@ -80,13 +80,13 @@ function SuggestedPersonCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
       transition={{ delay: index < 6 ? index * 0.04 : 0 }}
-      className="shrink-0 snap-start w-[130px] rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 flex flex-col items-center"
+      className="shrink-0 snap-start w-[130px] rounded-2xl bg-card border border-hairline p-3.5 flex flex-col items-center"
     >
       <div onClick={() => onViewProfile(user.id)} className="cursor-pointer flex flex-col items-center">
         <Avatar name={user.displayName} size="lg" src={user.avatarUrl} />
         <p className="text-sm font-semibold truncate w-full text-center mt-2">{user.displayName}</p>
-        <p className="text-[11px] text-zinc-600 truncate w-full text-center">@{user.username}</p>
-        <span className="text-[10px] text-zinc-500 bg-white/[0.04] rounded-full px-2 py-0.5 mt-1.5">
+        <p className="text-[11px] text-muted truncate w-full text-center">@{user.username}</p>
+        <span className="text-[10px] text-fg-secondary bg-surface-secondary rounded-full px-2 py-0.5 mt-1.5">
           {statLabel}
         </span>
       </div>
@@ -95,8 +95,8 @@ function SuggestedPersonCard({
         onClick={() => { hapticLight(); onClick(); }}
         className={`mt-3 w-full py-1.5 rounded-lg text-xs font-semibold transition-all ${
           isAccent
-            ? 'bg-accent text-black'
-            : 'bg-white/[0.06] border border-white/[0.08] text-zinc-400'
+            ? 'bg-accent text-accent-foreground'
+            : 'bg-surface-raised border border-border-strong text-muted-foreground'
         }`}
       >
         {label}

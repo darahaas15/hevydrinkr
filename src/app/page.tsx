@@ -198,7 +198,7 @@ function LandingContent() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: '#06060a' }}>
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background-deep)' }}>
       {/* Ambient blurs */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />
@@ -240,7 +240,7 @@ function LandingContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-[15px] text-zinc-500 text-center leading-relaxed mb-12"
+              className="text-[15px] text-fg-secondary text-center leading-relaxed mb-12"
             >
               Track sessions. Compete with friends.<br />Own the night.
             </motion.p>
@@ -254,7 +254,7 @@ function LandingContent() {
             >
               <button
                 onClick={() => { setScreen('signup'); setError(''); }}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 text-black active:scale-[0.98] transition-transform"
+                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 text-accent-foreground active:scale-[0.98] transition-transform"
                 style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
               >
                 Get Started
@@ -263,8 +263,8 @@ function LandingContent() {
 
               <button
                 onClick={() => { setScreen('login'); setError(''); }}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] text-zinc-400 active:bg-white/[0.03] transition-colors"
-                style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] text-muted-foreground active:bg-card transition-colors"
+                style={{ border: '1px solid var(--chrome-border)' }}
               >
                 Sign In
               </button>
@@ -277,7 +277,7 @@ function LandingContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="text-[10px] text-zinc-700 text-center max-w-[280px] leading-relaxed pb-6"
+              className="text-[10px] text-fg-faint text-center max-w-[280px] leading-relaxed pb-6"
             >
               For adults 18+ only. Drink responsibly. If you need help, contact SAMHSA at 1-800-662-4357.
             </motion.p>
@@ -294,12 +294,12 @@ function LandingContent() {
             transition={{ duration: 0.2 }}
             className="relative z-10 flex flex-col w-full max-w-sm px-6 pt-3 pb-6 safe-top safe-bottom overflow-y-auto flex-1"
           >
-            <button onClick={() => { setScreen('landing'); setError(''); }} className="flex items-center gap-1 text-zinc-500 text-sm mb-5 self-start active:text-zinc-300 transition-colors -ml-1">
+            <button onClick={() => { setScreen('landing'); setError(''); }} className="flex items-center gap-1 text-fg-secondary text-sm mb-5 self-start active:text-fg-strong transition-colors -ml-1">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
 
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Create Account</h2>
-            <p className="text-sm text-zinc-500 mb-6">Join the party</p>
+            <p className="text-sm text-fg-secondary mb-6">Join the party</p>
 
             <div className="space-y-3 mb-5">
               <AuthInput icon={<User className="w-4 h-4" />} value={displayName} onChange={setDisplayName} placeholder="Display name" />
@@ -308,11 +308,11 @@ function LandingContent() {
               <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (8+ chars)" onSubmit={handleSignup} />
 
               <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} placeholder="Date of birth" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
-              <p className="text-[10px] text-zinc-600 pl-1 -mt-1">Date of birth (must be 18+)</p>
+              <p className="text-[10px] text-muted pl-1 -mt-1">Date of birth (must be 18+)</p>
 
               {/* Gender */}
               <div>
-                <p className="text-[10px] text-zinc-500 pl-1 mb-1.5">Gender (for BAC estimation)</p>
+                <p className="text-[10px] text-fg-secondary pl-1 mb-1.5">Gender (for BAC estimation)</p>
                 <div className="flex gap-2">
                   {(['male', 'female', 'other'] as const).map((g) => (
                     <button
@@ -322,7 +322,7 @@ function LandingContent() {
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         gender === g
                           ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
-                          : 'bg-white/[0.03] border border-white/[0.06] text-zinc-500'
+                          : 'bg-card border border-card-border text-fg-secondary'
                       }`}
                     >
                       {g.charAt(0).toUpperCase() + g.slice(1)}
@@ -334,7 +334,7 @@ function LandingContent() {
               {/* Height & Weight */}
               <div className="flex gap-3">
                 <div className="flex-1 relative group">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors">
                     <Ruler className="w-4 h-4" />
                   </div>
                   <input
@@ -343,11 +343,11 @@ function LandingContent() {
                     value={heightCm}
                     onChange={(e) => setHeightCm(e.target.value)}
                     placeholder="Height (cm)"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 transition-colors"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 transition-colors"
                   />
                 </div>
                 <div className="flex-1 relative group">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-accent transition-colors">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors">
                     <Weight className="w-4 h-4" />
                   </div>
                   <input
@@ -356,7 +356,7 @@ function LandingContent() {
                     value={weightKg}
                     onChange={(e) => setWeightKg(e.target.value)}
                     placeholder="Weight (kg)"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 transition-colors"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 transition-colors"
                   />
                 </div>
               </div>
@@ -365,11 +365,11 @@ function LandingContent() {
             <label className="flex items-start gap-2.5 cursor-pointer mb-5 px-0.5">
               <div className="relative mt-[3px] shrink-0">
                 <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="sr-only peer" />
-                <div className="w-[18px] h-[18px] rounded-[5px] border border-white/10 bg-white/[0.04] peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center">
+                <div className="w-[18px] h-[18px] rounded-[5px] border border-input-border bg-surface-secondary peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center">
                   {agreedToTerms && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </div>
               </div>
-              <span className="text-xs text-zinc-500 leading-relaxed">
+              <span className="text-xs text-fg-secondary leading-relaxed">
                 I agree to the <a href="/legal/terms" target="_blank" className="text-accent">Terms</a> and <a href="/legal/privacy" target="_blank" className="text-accent">Privacy Policy</a>
               </span>
             </label>
@@ -381,7 +381,7 @@ function LandingContent() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSignup}
                 disabled={submitting}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-black transition-opacity"
+                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
                 style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
               >
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
@@ -400,12 +400,12 @@ function LandingContent() {
             transition={{ duration: 0.2 }}
             className="relative z-10 flex flex-col w-full max-w-sm px-6 pt-3 pb-6 safe-top safe-bottom flex-1"
           >
-            <button onClick={() => { setScreen('landing'); setError(''); }} className="flex items-center gap-1 text-zinc-500 text-sm mb-5 self-start active:text-zinc-300 transition-colors -ml-1">
+            <button onClick={() => { setScreen('landing'); setError(''); }} className="flex items-center gap-1 text-fg-secondary text-sm mb-5 self-start active:text-fg-strong transition-colors -ml-1">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
 
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Welcome Back</h2>
-            <p className="text-sm text-zinc-500 mb-8">Sign in to your account</p>
+            <p className="text-sm text-fg-secondary mb-8">Sign in to your account</p>
 
             <div className="space-y-3 mb-2">
               <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={loginEmail} onChange={setLoginEmail} placeholder="Email" />
@@ -414,7 +414,7 @@ function LandingContent() {
 
             <button
               onClick={() => router.push('/forgot-password')}
-              className="text-xs text-zinc-500 active:text-accent transition-colors self-end mb-2"
+              className="text-xs text-fg-secondary active:text-accent transition-colors self-end mb-2"
             >
               Forgot password?
             </button>
@@ -426,7 +426,7 @@ function LandingContent() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleLogin}
                 disabled={submitting}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-black transition-opacity"
+                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
                 style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
               >
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
@@ -434,7 +434,7 @@ function LandingContent() {
 
               <button
                 onClick={() => { setScreen('signup'); setError(''); }}
-                className="w-full py-3 text-sm text-zinc-500 active:text-zinc-300 transition-colors"
+                className="w-full py-3 text-sm text-fg-secondary active:text-fg-strong transition-colors"
               >
                 Don&apos;t have an account? <span className="text-accent">Sign up</span>
               </button>
@@ -457,7 +457,7 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: '#06060a' }}>
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background-deep)' }}>
       {/* Ambient blurs */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />
@@ -489,7 +489,7 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-[15px] text-zinc-500 text-center leading-relaxed mb-10"
+          className="text-[15px] text-fg-secondary text-center leading-relaxed mb-10"
         >
           Install the app for the full experience
         </motion.p>
@@ -505,7 +505,7 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
             /* Android / Chrome — native install prompt */
             <button
               onClick={onInstall}
-              className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 text-black active:scale-[0.98] transition-transform"
+              className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 text-accent-foreground active:scale-[0.98] transition-transform"
               style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
             >
               <Download className="w-[18px] h-[18px]" />
@@ -513,16 +513,16 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
             </button>
           ) : isIOS ? (
             /* iOS — manual instructions */
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 space-y-4">
-              <p className="text-sm font-medium text-zinc-300 text-center mb-4">Add to your Home Screen</p>
+            <div className="rounded-2xl border border-card-border bg-card p-5 space-y-4">
+              <p className="text-sm font-medium text-fg-strong text-center mb-4">Add to your Home Screen</p>
               <Step number={1} icon={<Share className="w-4 h-4" />} text="Tap the Share button in your browser" />
               <Step number={2} icon={<Plus className="w-4 h-4" />} text='Scroll down and tap "Add to Home Screen"' />
               <Step number={3} text="Tap Add to confirm" />
             </div>
           ) : (
             /* Other browsers — generic instructions */
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 space-y-4">
-              <p className="text-sm font-medium text-zinc-300 text-center mb-4">Install from your browser</p>
+            <div className="rounded-2xl border border-card-border bg-card p-5 space-y-4">
+              <p className="text-sm font-medium text-fg-strong text-center mb-4">Install from your browser</p>
               <Step number={1} icon={<MoreVertical className="w-4 h-4" />} text="Tap the menu button in your browser" />
               <Step number={2} icon={<Download className="w-4 h-4" />} text='Tap "Install app" or "Add to Home Screen"' />
             </div>
@@ -536,7 +536,7 @@ function InstallGate({ canInstallNative, onInstall }: { canInstallNative: boolea
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="text-[10px] text-zinc-700 text-center max-w-[280px] leading-relaxed pb-6"
+          className="text-[10px] text-fg-faint text-center max-w-[280px] leading-relaxed pb-6"
         >
           For adults 18+ only. Drink responsibly.
         </motion.p>
@@ -551,8 +551,8 @@ function Step({ number, icon, text }: { number: number; icon?: React.ReactNode; 
       <div className="w-7 h-7 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
         <span className="text-xs font-bold text-accent">{number}</span>
       </div>
-      {icon && <div className="text-zinc-400">{icon}</div>}
-      <p className="text-sm text-zinc-400">{text}</p>
+      {icon && <div className="text-muted-foreground">{icon}</div>}
+      <p className="text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }

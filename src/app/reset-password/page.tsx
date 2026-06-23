@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: '#06060a' }}>
+    <div className="min-h-dvh flex flex-col items-center relative overflow-hidden" style={{ background: 'var(--background-deep)' }}>
       {/* Ambient blurs */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 60%)' }} />
@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
             className="flex flex-col items-center justify-center flex-1 gap-3"
           >
             <Loader2 className="w-8 h-8 text-accent animate-spin" />
-            <p className="text-sm text-zinc-500">Verifying reset link...</p>
+            <p className="text-sm text-fg-secondary">Verifying reset link...</p>
           </motion.div>
         )}
 
@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
             className="flex flex-col flex-1 pt-16"
           >
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Set New Password</h2>
-            <p className="text-sm text-zinc-500 mb-8">Choose a new password for your account</p>
+            <p className="text-sm text-fg-secondary mb-8">Choose a new password for your account</p>
 
             <div className="space-y-3 mb-4">
               <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="New password (6+ chars)" />
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-black transition-opacity"
+                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
                 style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
               >
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Update Password'}
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
           >
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <h2 className="text-[22px] font-extrabold tracking-tight mb-2">Password Updated</h2>
-            <p className="text-sm text-zinc-500 leading-relaxed">
+            <p className="text-sm text-fg-secondary leading-relaxed">
               Open the Drinkr app and sign in<br />with your new password.
             </p>
           </motion.div>
@@ -142,9 +142,9 @@ export default function ResetPasswordPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center flex-1 text-center"
           >
-            <XCircle className="w-12 h-12 text-red-400 mb-4" />
+            <XCircle className="w-12 h-12 text-danger-fg mb-4" />
             <h2 className="text-[22px] font-extrabold tracking-tight mb-2">Link Expired</h2>
-            <p className="text-sm text-zinc-500 leading-relaxed mb-8">
+            <p className="text-sm text-fg-secondary leading-relaxed mb-8">
               This reset link has expired or is invalid.<br />Please request a new one.
             </p>
             <button

@@ -59,12 +59,12 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
   }, [mounted, isLoading, isAuthenticated, currentUser, code, joinGroup, router]);
 
   return (
-    <div className="h-dvh flex items-center justify-center px-6 safe-top safe-bottom" style={{ background: '#09090b' }}>
+    <div className="h-dvh flex items-center justify-center px-6 safe-top safe-bottom" style={{ background: 'var(--background)' }}>
       <div className="text-center max-w-sm">
         {(status === 'loading' || status === 'joining') && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center">
             <Loader2 className="w-8 h-8 text-accent animate-spin mb-4" />
-            <p className="text-sm text-zinc-400">Joining group...</p>
+            <p className="text-sm text-muted-foreground">Joining group...</p>
           </motion.div>
         )}
 
@@ -72,18 +72,18 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <h2 className="text-xl font-bold mb-2">You're in!</h2>
-            <p className="text-sm text-zinc-500">Redirecting to groups...</p>
+            <p className="text-sm text-fg-secondary">Redirecting to groups...</p>
           </motion.div>
         )}
 
         {status === 'error' && (
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
-            <XCircle className="w-12 h-12 text-red-400 mb-4" />
+            <XCircle className="w-12 h-12 text-danger-fg mb-4" />
             <h2 className="text-xl font-bold mb-2">Couldn't join</h2>
-            <p className="text-sm text-zinc-500 mb-6">{errorMsg}</p>
+            <p className="text-sm text-fg-secondary mb-6">{errorMsg}</p>
             <button
               onClick={() => router.replace('/groups')}
-              className="px-6 py-3 rounded-xl bg-accent text-black font-bold text-sm"
+              className="px-6 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm"
             >
               Go to Groups
             </button>
@@ -94,10 +94,10 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
             <Users className="w-12 h-12 text-accent mb-4" />
             <h2 className="text-xl font-bold mb-2">You've been invited!</h2>
-            <p className="text-sm text-zinc-500 mb-6">Sign up or log in to join this group</p>
+            <p className="text-sm text-fg-secondary mb-6">Sign up or log in to join this group</p>
             <button
               onClick={() => router.push(`/?invite=${code}`)}
-              className="px-6 py-3 rounded-xl bg-accent text-black font-bold text-sm"
+              className="px-6 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm"
             >
               Get Started
             </button>
