@@ -470,7 +470,7 @@ function SessionPageInner() {
             <div className="flex gap-3">
               {avgDrinksPerSession > 0 && (
                 <div className="flex-1 rounded-xl bg-card border border-border-faint px-3 py-2">
-                  <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent' : drinkDiff < 0 ? 'text-muted-foreground' : 'text-fg-strong'}`}>
+                  <p className={`text-sm font-bold ${drinkDiff > 0 ? 'text-accent-text' : drinkDiff < 0 ? 'text-muted-foreground' : 'text-fg-strong'}`}>
                     {drinkDiff > 0 ? '+' : ''}{drinkDiff.toFixed(0)}
                   </p>
                   <p className="text-[10px] text-muted">vs your avg</p>

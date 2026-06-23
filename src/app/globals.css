@@ -81,6 +81,10 @@
   --violet-fg: #a78bfa;
   --pink-fg: #f472b6;
   --blue-fg: #60a5fa;
+  --sky-fg: #38bdf8;
+  --yellow-fg: #facc15;
+  --indigo-fg: #818cf8;
+  --orange-fg: #fb923c;
 
   /* App-frame glass chrome (sticky headers, bottom nav, composers, popovers).
      These feed inline `style={{ background: 'var(--…)' }}` bars, not Tailwind
@@ -214,6 +218,10 @@
   --violet-fg: #7c3aed;
   --pink-fg: #be185d;
   --blue-fg: #2563eb;
+  --sky-fg: #0284c7;
+  --yellow-fg: #a16207;
+  --indigo-fg: #4f46e5;
+  --orange-fg: #c2410c;
 
   /* Frosted light glass + dark hairline; opaque-ish white popovers. */
   --chrome-bg: rgba(246, 247, 249, 0.80);
@@ -304,6 +312,10 @@
   --color-violet-fg: var(--violet-fg);
   --color-pink-fg: var(--pink-fg);
   --color-blue-fg: var(--blue-fg);
+  --color-sky-fg: var(--sky-fg);
+  --color-yellow-fg: var(--yellow-fg);
+  --color-indigo-fg: var(--indigo-fg);
+  --color-orange-fg: var(--orange-fg);
   --color-accent: var(--accent);
   --color-accent-text: var(--accent-text);
   --color-accent-foreground: var(--accent-foreground);

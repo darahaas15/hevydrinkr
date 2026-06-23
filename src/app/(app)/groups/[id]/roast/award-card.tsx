@@ -32,7 +32,7 @@ export function AwardCard({ award, index, streakCount }: AwardCardProps) {
             </div>
             <span className={`text-xs font-bold ${visual.color}`}>{award.title}</span>
             {streakCount && streakCount >= 2 && (
-              <span className="text-[10px] bg-orange-500/15 text-orange-400 px-1.5 py-0.5 rounded-full font-bold">
+              <span className="text-[10px] bg-orange-500/15 text-orange-fg px-1.5 py-0.5 rounded-full font-bold">
                 x{streakCount}
               </span>
             )}

@@ -40,7 +40,7 @@ When adding or converting UI, drive colors from tokens so they respond to the th
 | sheet drag-handle pip `bg-white/20` / `bg-white/15` | `bg-[var(--grabber-bg)]` |
 | unselected selection-circle outline `border-white/20` | `border-[var(--selection-border)]` |
 
-Semantic **text** colors (the bright `-400` shades that fail AA on white) have AA-safe `*-fg` tokens, vivid in dark and deepened in light: `text-danger-fg` (red-400), `text-warning-fg` (amber-400), `text-success-fg` (emerald/green-400), `text-info-fg` (cyan-400), `text-violet-fg` (violet/purple-400), `text-pink-fg` (pink-400), `text-blue-fg` (blue-400).
+Semantic **text** colors (the bright `-400` shades that fail AA on white) have AA-safe `*-fg` tokens, vivid in dark and deepened in light: `text-danger-fg` (red-400), `text-warning-fg` (amber-400), `text-success-fg` (emerald/green-400), `text-info-fg` (cyan-400), `text-violet-fg` (violet/purple-400), `text-pink-fg` (pink-400), `text-blue-fg` (blue-400), `text-sky-fg` (sky-400), `text-yellow-fg` (yellow-400), `text-indigo-fg` (indigo-400), `text-orange-fg` (orange-400).
 Brand-color **tints** (`bg-X-500/15`, etc.) are theme-neutral and stay as-is - only their text/icon color needs an `*-fg` token.
 The BAC/drink gauge uses `var(--gauge-1..5)` (intoxication levels) and `var(--violet)` for its SVG arc strokes + status label; SVG `stroke`/`fill` can't take `var()` as an *attribute*, so set them via `style={{ stroke: ... }}` / a `fill-*` class (`fill-foreground`).
 
