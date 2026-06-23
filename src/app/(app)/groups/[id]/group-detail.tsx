@@ -40,7 +40,7 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
   if (!group || !currentUser) {
     return (
       <div className="min-h-full flex items-center justify-center">
-        <p className="text-zinc-500">Group not found</p>
+        <p className="text-fg-secondary">Group not found</p>
       </div>
     );
   }
@@ -102,31 +102,31 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.push('/groups')} className="p-2 -ml-2 active:text-white">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
+          <button onClick={() => router.push('/groups')} className="p-2 -ml-2 active:text-foreground">
+            <ChevronLeft className="w-6 h-6 text-muted-foreground" />
           </button>
           <h1 className="text-lg font-bold flex-1 truncate">{group.name}</h1>
-          <button onClick={() => setShowMenu(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
-            <MoreHorizontal className="w-5 h-5 text-zinc-500" />
+          <button onClick={() => setShowMenu(true)} className="p-2.5 -mr-2.5 rounded-lg hover:bg-surface-subtle active:bg-surface-strong">
+            <MoreHorizontal className="w-5 h-5 text-fg-secondary" />
           </button>
         </div>
       </div>
 
       <div className="px-5 py-4 space-y-5">
         {/* Invite code */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-3.5 flex items-center justify-between">
+        <div className="rounded-2xl bg-card border border-hairline p-3.5 flex items-center justify-between">
           <button onClick={copyInviteCode} className="text-left flex-1">
-            <p className="text-[10px] text-zinc-600 mb-0.5">Invite Code</p>
+            <p className="text-[10px] text-muted mb-0.5">Invite Code</p>
             <p className="text-lg font-mono font-bold tracking-wider text-accent">{group.inviteCode}</p>
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={copyInviteCode} className="p-2 rounded-lg hover:bg-white/5">
-              <Copy className="w-4 h-4 text-zinc-600" />
+            <button onClick={copyInviteCode} className="p-2 rounded-lg hover:bg-surface-subtle">
+              <Copy className="w-4 h-4 text-muted" />
             </button>
-            <button onClick={shareInviteLink} className="p-2 rounded-lg hover:bg-white/5">
-              <Share2 className="w-4 h-4 text-zinc-600" />
+            <button onClick={shareInviteLink} className="p-2 rounded-lg hover:bg-surface-subtle">
+              <Share2 className="w-4 h-4 text-muted" />
             </button>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
         <div>
           <button
             onClick={() => setShowMembers(!showMembers)}
-            className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2.5 flex items-center gap-1"
+            className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-2.5 flex items-center gap-1"
           >
             Members ({group.members.length})
           </button>
@@ -143,7 +143,7 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
           {showMembers && (
             <div className="space-y-1.5 mb-4">
               {group.members.map((m) => (
-                <div key={m.userId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <div key={m.userId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface-faint border border-border-faint">
                   <div onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)} className="cursor-pointer">
                     <Avatar name={m.userName} size="sm" src={m.userAvatar} />
                   </div>
@@ -153,16 +153,16 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
                   >
                     <p className="text-sm font-medium truncate hover:underline">
                       {m.userName}
-                      {m.userId === currentUser.id && <span className="text-zinc-600 ml-1">(you)</span>}
+                      {m.userId === currentUser.id && <span className="text-muted ml-1">(you)</span>}
                     </p>
-                    <p className="text-[10px] text-zinc-700 capitalize">{m.role}</p>
+                    <p className="text-[10px] text-fg-faint capitalize">{m.role}</p>
                   </div>
                   {isAdmin && m.userId !== currentUser.id && (
                     <button
                       onClick={() => handleRemoveMember(m.userId, m.userName)}
                       className="p-2.5 rounded-lg hover:bg-red-500/10 active:bg-red-500/15"
                     >
-                      <UserMinus className="w-4 h-4 text-zinc-600 active:text-red-400" />
+                      <UserMinus className="w-4 h-4 text-muted active:text-danger-fg" />
                     </button>
                   )}
                 </div>
@@ -175,14 +175,14 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
               {group.members.slice(0, 6).map((m) => (
                 <div
                   key={m.userId}
-                  className="ring-2 ring-[#09090b] rounded-full cursor-pointer"
+                  className="ring-2 ring-background rounded-full cursor-pointer"
                   onClick={() => router.push(m.userId === currentUser.id ? '/profile' : `/profile/${m.userId}`)}
                 >
                   <Avatar name={m.userName} size="sm" src={m.userAvatar} />
                 </div>
               ))}
               {group.members.length > 6 && (
-                <div className="w-8 h-8 rounded-full bg-zinc-800 ring-2 ring-[#09090b] flex items-center justify-center text-[10px] text-zinc-400">
+                <div className="w-8 h-8 rounded-full bg-chip ring-2 ring-background flex items-center justify-center text-[10px] text-muted-foreground">
                   +{group.members.length - 6}
                 </div>
               )}
@@ -210,26 +210,26 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
               exit={{ y: 100, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               className="absolute bottom-0 left-0 right-0 max-w-lg mx-auto rounded-t-3xl p-5 space-y-1"
-              style={{ background: '#111114' }}
+              style={{ background: 'var(--popover-strong-bg)' }}
             >
               <div className="flex justify-center mb-3">
-                <div className="w-9 h-1 rounded-full bg-white/15" />
+                <div className="w-9 h-1 rounded-full bg-muted-foreground/40" />
               </div>
 
               {isAdmin && (
                 <>
                   <button
                     onClick={() => { setShowMenu(false); setEditName(group.name); setShowEditName(true); }}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-surface-subtle transition-colors"
                   >
-                    <Pencil className="w-4 h-4 text-zinc-400" />
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm">Rename Group</span>
                   </button>
                   <button
                     onClick={handleChangeIcon}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-surface-subtle transition-colors"
                   >
-                    <ImageIcon className="w-4 h-4 text-zinc-400" />
+                    <ImageIcon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm">Change Icon</span>
                   </button>
                 </>
@@ -237,18 +237,18 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
 
               <button
                 onClick={() => { setShowMenu(false); setShowMembers(true); }}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-surface-subtle transition-colors"
               >
-                <UserMinus className="w-4 h-4 text-zinc-400" />
+                <UserMinus className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">{isAdmin ? 'Manage Members' : 'View Members'}</span>
               </button>
 
               {!isAdmin && (
                 <button
                   onClick={() => { setShowMenu(false); handleLeave(); }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/5 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-surface-subtle transition-colors"
                 >
-                  <LogOut className="w-4 h-4 text-zinc-400" />
+                  <LogOut className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm">Leave Group</span>
                 </button>
               )}
@@ -258,14 +258,14 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
                   onClick={() => { if (confirmDelete) { setShowMenu(false); handleDeleteGroup(); } else { setConfirmDelete(true); } }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-red-500/5 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                  <span className="text-sm text-red-400">{confirmDelete ? 'Tap again to confirm' : 'Delete Group'}</span>
+                  <Trash2 className="w-4 h-4 text-danger-fg" />
+                  <span className="text-sm text-danger-fg">{confirmDelete ? 'Tap again to confirm' : 'Delete Group'}</span>
                 </button>
               )}
 
               <button
                 onClick={() => setShowMenu(false)}
-                className="w-full py-3 mt-2 rounded-xl bg-white/[0.04] text-sm text-zinc-400 font-medium"
+                className="w-full py-3 mt-2 rounded-xl bg-surface-secondary text-sm text-muted-foreground font-medium"
               >
                 Cancel
               </button>
@@ -289,18 +289,18 @@ export default function GroupDetailPage({ params, groupId }: { params?: Promise<
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="relative rounded-3xl p-6 w-[300px] space-y-4"
-              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+              style={{ background: 'var(--popover-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
               <h3 className="text-lg font-bold">Rename Group</h3>
               <input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 autoFocus
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white focus:outline-none focus:border-accent/40 transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-surface-secondary border border-card-border text-foreground focus:outline-none focus:border-accent/40 transition-colors"
               />
               <div className="flex gap-3">
-                <button onClick={() => setShowEditName(false)} className="flex-1 py-3 rounded-xl bg-white/[0.04] text-zinc-400 font-medium text-sm">Cancel</button>
-                <motion.button whileTap={{ scale: 0.97 }} onClick={handleRename} className="flex-1 py-3 rounded-xl bg-accent text-black font-bold text-sm">Save</motion.button>
+                <button onClick={() => setShowEditName(false)} className="flex-1 py-3 rounded-xl bg-surface-secondary text-muted-foreground font-medium text-sm">Cancel</button>
+                <motion.button whileTap={{ scale: 0.97 }} onClick={handleRename} className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm">Save</motion.button>
               </div>
             </motion.div>
           </motion.div>

@@ -56,14 +56,14 @@ export function ImagePicker({
         />
       ) : (
         <div
-          className={`w-full h-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center ${
+          className={`w-full h-full bg-surface-raised border border-border-strong flex items-center justify-center ${
             shape === 'circle' ? 'rounded-full' : 'rounded-2xl'
           }`}
         >
           {placeholder ? (
             <span className="text-lg font-bold text-accent">{placeholder}</span>
           ) : (
-            <Camera className="w-5 h-5 text-zinc-500" />
+            <Camera className="w-5 h-5 text-fg-secondary" />
           )}
         </div>
       )}
@@ -72,7 +72,7 @@ export function ImagePicker({
           shape === 'circle' ? 'rounded-full' : 'rounded-2xl'
         }`}
       >
-        <Camera className="w-5 h-5 text-white" />
+        <Camera className="w-5 h-5 text-foreground" />
       </div>
       {loading && (
         <div

@@ -94,7 +94,7 @@ export function ToastContainer() {
                     removeToast(toast.id);
                   }}
                   aria-label="Dismiss"
-                  className="p-1 -mr-1 text-zinc-500 active:text-zinc-300"
+                  className="p-1 -mr-1 text-fg-secondary active:text-fg-strong"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

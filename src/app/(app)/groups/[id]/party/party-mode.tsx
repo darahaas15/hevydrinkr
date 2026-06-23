@@ -52,15 +52,15 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
           <button onClick={() => router.back()} className="p-1">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
+            <ChevronLeft className="w-6 h-6 text-muted-foreground" />
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold">Party Mode 🎉</h1>
             {activeParty && (
-              <p className="text-xs text-zinc-500">{activeParty.name}</p>
+              <p className="text-xs text-fg-secondary">{activeParty.name}</p>
             )}
           </div>
           {activeParty?.status === 'active' && (
@@ -79,7 +79,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
           >
             <div className="text-6xl mb-6">🎉</div>
             <h2 className="text-xl font-bold mb-2">Start a Party</h2>
-            <p className="text-sm text-zinc-500 text-center mb-8 max-w-xs">
+            <p className="text-sm text-fg-secondary text-center mb-8 max-w-xs">
               Everyone in the group logs drinks together with a live leaderboard
             </p>
 
@@ -87,13 +87,13 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
               value={partyName}
               onChange={(e) => setPartyName(e.target.value)}
               placeholder="Party name (optional)"
-              className="w-full max-w-sm px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-accent/40 mb-4"
+              className="w-full max-w-sm px-4 py-3 rounded-xl bg-surface-secondary border border-card-border text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 mb-4"
             />
 
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleCreate}
-              className="w-full max-w-sm py-4 rounded-2xl bg-accent text-black font-semibold text-lg"
+              className="w-full max-w-sm py-4 rounded-2xl bg-accent text-accent-foreground font-semibold text-lg"
             >
               Create Party
             </motion.button>
@@ -102,11 +102,11 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
           /* Active Party */
           <div className="space-y-6">
             {/* Status */}
-            <div className="bg-white/[0.03] border border-white/[0.05] rounded-2xl p-4 text-center">
+            <div className="bg-card border border-hairline rounded-2xl p-4 text-center">
               <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-3 ${
                 activeParty.status === 'active' ? 'bg-accent/15 text-accent' :
-                activeParty.status === 'waiting' ? 'bg-amber-400/15 text-amber-400' :
-                'bg-zinc-500/20 text-zinc-400'
+                activeParty.status === 'waiting' ? 'bg-amber-400/15 text-warning-fg' :
+                'bg-zinc-500/20 text-muted-foreground'
               }`}>
                 <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
                 {activeParty.status === 'active' ? 'Party in Progress' :
@@ -117,7 +117,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={startParty}
-                  className="w-full py-3 rounded-xl bg-accent text-black font-medium flex items-center justify-center gap-2"
+                  className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-medium flex items-center justify-center gap-2"
                 >
                   <Play className="w-5 h-5" />
                   Start Party
@@ -138,7 +138,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
 
             {/* Live Leaderboard */}
             <div>
-              <h3 className="text-sm font-medium text-zinc-500 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-fg-secondary mb-3 flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Live Leaderboard
               </h3>
@@ -147,12 +147,12 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                   <motion.div
                     key={p.userId}
                     layout
-                    className={`bg-white/[0.03] border border-white/[0.05] rounded-xl p-3 flex items-center gap-3 ${
+                    className={`bg-card border border-hairline rounded-xl p-3 flex items-center gap-3 ${
                       p.userId === currentUser.id ? 'ring-1 ring-accent/30' : ''
                     }`}
                   >
                     <span className={`text-lg font-bold w-8 text-center ${
-                      i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-400' : 'text-zinc-600'
+                      i === 0 ? 'text-warning-fg' : i === 1 ? 'text-muted-foreground' : 'text-muted'
                     }`}>
                       {i === 0 ? '👑' : `#${i + 1}`}
                     </span>
@@ -162,7 +162,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                       <p className="text-lg font-bold font-mono text-accent font-extrabold">
                         {p.totalStandardDrinks.toFixed(1)}
                       </p>
-                      <p className="text-[10px] text-zinc-600">std drinks</p>
+                      <p className="text-[10px] text-muted">std drinks</p>
                     </div>
                   </motion.div>
                 ))}
@@ -174,7 +174,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setShowDrinkPicker(true)}
-                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-lg flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-lg flex items-center justify-center gap-2"
               >
                 <Plus className="w-5 h-5" />
                 Log a Drink
@@ -195,7 +195,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                     isActive: true,
                   });
                 }}
-                className="w-full py-4 rounded-2xl bg-accent text-black font-bold text-lg"
+                className="w-full py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-lg"
               >
                 Join Party
               </motion.button>
@@ -204,7 +204,7 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
             {/* Live Drink Feed */}
             {activeParty.liveDrinkFeed.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-zinc-500 mb-3">Live Feed</h3>
+                <h3 className="text-sm font-medium text-fg-secondary mb-3">Live Feed</h3>
                 <div className="space-y-1.5 max-h-60 overflow-y-auto">
                   <AnimatePresence initial={false}>
                     {[...activeParty.liveDrinkFeed].reverse().slice(0, 20).map((event) => (
@@ -215,8 +215,8 @@ export default function PartyModePage({ params }: { params: Promise<{ id: string
                         className="flex items-center gap-2 text-sm py-1"
                       >
                         <DrinkIcon category={event.drinkCategory || 'custom'} className="w-4 h-4" />
-                        <span className="text-zinc-400">
-                          <span className="text-white font-medium">{event.userName}</span> had a {event.drinkName}
+                        <span className="text-muted-foreground">
+                          <span className="text-foreground font-medium">{event.userName}</span> had a {event.drinkName}
                         </span>
                       </motion.div>
                     ))}

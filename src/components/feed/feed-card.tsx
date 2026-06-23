@@ -79,7 +79,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   return (
     <div
       onClick={handleCardClick}
-      className="feed-card rounded-2xl bg-white/[0.03] border border-white/[0.05] overflow-hidden active:bg-white/[0.05] transition-colors cursor-pointer"
+      className="feed-card rounded-2xl bg-card border border-hairline overflow-hidden active:bg-surface-subtle transition-colors cursor-pointer"
     >
       {/* Header */}
       <div className="px-4 pt-4 pb-2 flex items-center gap-3">
@@ -87,14 +87,14 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate cursor-pointer" onClick={goToProfile}>{item.userName}</p>
           <div className="flex items-center gap-1.5">
-            <p className="text-[11px] text-zinc-500">{formatTimeAgo(item.createdAt)}</p>
+            <p className="text-[11px] text-fg-secondary">{formatTimeAgo(item.createdAt)}</p>
             {item.isBackfilled && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 text-[10px] font-medium leading-none">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-surface-raised text-muted-foreground text-[10px] font-medium leading-none">
                 Past session
               </span>
             )}
             {milestone && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-black text-[10px] font-semibold leading-none">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold leading-none">
                 {milestone.label}
               </span>
             )}
@@ -104,7 +104,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={(e) => { e.stopPropagation(); hapticLight(); toggleFollow(item.userId); }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-black text-xs font-semibold"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-semibold"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Follow
@@ -114,7 +114,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
 
       {/* Caption */}
       {item.caption && (
-        <p className="px-4 pb-2 text-[13px] text-zinc-300">{item.caption}</p>
+        <p className="px-4 pb-2 text-[13px] text-fg-strong">{item.caption}</p>
       )}
 
       {/* Tagged people */}
@@ -138,8 +138,8 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       )}
 
       {/* Session stats */}
-      <div className="mx-4 mb-3 rounded-xl bg-white/[0.03] border border-white/[0.04] p-3">
-        <p className="text-[11px] text-zinc-500 mb-2">{s.venue}</p>
+      <div className="mx-4 mb-3 rounded-xl bg-card border border-border-faint p-3">
+        <p className="text-[11px] text-fg-secondary mb-2">{s.venue}</p>
 
         {/* Drink icons */}
         {s.drinks && s.drinks.length > 0 ? (
@@ -148,7 +148,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
               <DrinkIcon key={i} category={drink.category} className="w-4 h-4" />
             ))}
             {s.drinks.length > 15 && (
-              <span className="text-[11px] text-zinc-600 self-center ml-1">+{s.drinks.length - 15}</span>
+              <span className="text-[11px] text-muted self-center ml-1">+{s.drinks.length - 15}</span>
             )}
           </div>
         ) : s.drinkEmojis.length > 0 && (
@@ -157,13 +157,13 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
               <DrinkIcon key={i} category="custom" className="w-4 h-4" />
             ))}
             {s.drinkEmojis.length > 15 && (
-              <span className="text-[11px] text-zinc-600 self-center ml-1">+{s.drinkEmojis.length - 15}</span>
+              <span className="text-[11px] text-muted self-center ml-1">+{s.drinkEmojis.length - 15}</span>
             )}
           </div>
         )}
 
         {/* Stats row */}
-        <div className="flex items-center gap-4 text-[11px] text-zinc-500">
+        <div className="flex items-center gap-4 text-[11px] text-fg-secondary">
           <span className="flex items-center gap-1">
             <Wine className="w-3 h-3" />
             {s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}
@@ -184,22 +184,22 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
               whileTap={{ scale: 1.15 }}
               onClick={handleLike}
             >
-              <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-zinc-600'}`} />
+              <Heart size={18} className={`transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-muted'}`} />
             </motion.button>
             {item.likeCount > 0 && (
-              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-zinc-600'}`}>{item.likeCount}</span>
+              <span className={`text-[11px] ${isLiked ? 'text-red-500' : 'text-muted'}`}>{item.likeCount}</span>
             )}
           </div>
 
           <span className="flex items-center gap-1.5">
-            <MessageCircle size={18} className="text-zinc-600" />
+            <MessageCircle size={18} className="text-muted" />
             {item.commentCount > 0 && (
-              <span className="text-[11px] text-zinc-600">{item.commentCount}</span>
+              <span className="text-[11px] text-muted">{item.commentCount}</span>
             )}
           </span>
 
           <button onClick={handleShare} aria-label="Share">
-            <Share2 size={18} className="text-zinc-600" />
+            <Share2 size={18} className="text-muted" />
           </button>
         </div>
 
@@ -212,7 +212,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
           <div className="flex items-center gap-2 mt-2" aria-hidden="true">
             <div className="flex -space-x-1.5">
               {Array.from({ length: Math.min(3, item.likeCount) }).map((_, i) => (
-                <Skeleton key={i} variant="circle" className="w-4 h-4 ring-1 ring-black" />
+                <Skeleton key={i} variant="circle" className="w-4 h-4 ring-1 ring-background" />
               ))}
             </div>
             <Skeleton variant="text" className="h-3 w-32" />
@@ -232,14 +232,14 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
                     name={like.userName}
                     size="xs"
                     src={user?.avatarUrl ?? null}
-                    className="ring-1 ring-black"
+                    className="ring-1 ring-background"
                   />
                 );
               })}
             </div>
-            <p className="text-[12px] text-zinc-400">
-              Liked by <span className="font-semibold text-zinc-200">{item.likes[0].userId === currentUser?.id ? 'you' : item.likes[0].userName}</span>
-              {item.likes.length > 1 && <> and <span className="font-semibold text-zinc-200">{item.likes.length - 1} other{item.likes.length - 1 !== 1 ? 's' : ''}</span></>}
+            <p className="text-[12px] text-muted-foreground">
+              Liked by <span className="font-semibold text-fg-bright">{item.likes[0].userId === currentUser?.id ? 'you' : item.likes[0].userName}</span>
+              {item.likes.length > 1 && <> and <span className="font-semibold text-fg-bright">{item.likes.length - 1} other{item.likes.length - 1 !== 1 ? 's' : ''}</span></>}
             </p>
           </button>
         )}
@@ -262,12 +262,12 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-sm mx-6 rounded-3xl overflow-hidden"
-              style={{ background: 'rgba(20,20,24,0.85)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
+              style={{ background: 'var(--popover-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)' }}
             >
-              <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-hairline">
                 <h3 className="text-base font-bold">Likes</h3>
-                <button onClick={() => setShowLikesList(false)} className="p-2 rounded-lg hover:bg-white/5 active:bg-white/[0.08]">
-                  <X className="w-5 h-5 text-zinc-500" />
+                <button onClick={() => setShowLikesList(false)} className="p-2 rounded-lg hover:bg-surface-subtle active:bg-surface-strong">
+                  <X className="w-5 h-5 text-fg-secondary" />
                 </button>
               </div>
               <div className="max-h-[60dvh] overflow-y-auto">
@@ -291,7 +291,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
                           setShowLikesList(false);
                           router.push(like.userId === currentUser?.id ? '/profile' : `/profile/${like.userId}`);
                         }}
-                        className="flex items-center gap-3 px-5 py-3 active:bg-white/[0.03] cursor-pointer"
+                        className="flex items-center gap-3 px-5 py-3 active:bg-card cursor-pointer"
                       >
                         <Avatar name={like.userName} size="sm" src={user?.avatarUrl ?? null} />
                         <p className="text-sm font-medium truncate flex-1">

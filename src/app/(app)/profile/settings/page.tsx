@@ -140,10 +140,10 @@ export default function SettingsPage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <div className="sticky top-0 z-20 safe-top" style={{ background: 'rgba(9,9,11,0.82)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-20 safe-top" style={{ background: 'var(--chrome-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', borderBottom: '1px solid var(--chrome-border)' }}>
         <div className="px-5 py-3 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-white">
-            <ChevronLeft className="w-6 h-6 text-zinc-400" />
+          <button onClick={() => router.back()} className="p-2 -ml-2 active:text-foreground">
+            <ChevronLeft className="w-6 h-6 text-muted-foreground" />
           </button>
           <h1 className="text-lg font-bold">Settings</h1>
         </div>
@@ -152,21 +152,21 @@ export default function SettingsPage() {
       <div className="px-5 py-5 space-y-6">
         {/* Profile section */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Profile</h3>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2.5">Profile</h3>
+          <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
             <button
               onClick={handleChangePhoto}
-              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-surface-faint transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Camera className="w-4 h-4 text-zinc-500" />
+                <Camera className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Change Photo</span>
               </div>
-              <span className="text-sm text-zinc-600">Tap to update</span>
+              <span className="text-sm text-muted">Tap to update</span>
             </button>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Type className="w-4 h-4 text-zinc-500" />
+                <Type className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Display Name</span>
               </div>
               <div className="flex items-center gap-2">
@@ -174,20 +174,20 @@ export default function SettingsPage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   onBlur={handleSaveDisplayName}
-                  className="w-32 text-right text-sm bg-transparent text-white focus:outline-none"
+                  className="w-32 text-right text-sm bg-transparent text-foreground focus:outline-none"
                 />
               </div>
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <User className="w-4 h-4 text-zinc-500" />
+                <User className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Username</span>
               </div>
-              <span className="text-sm text-zinc-500">@{currentUser?.username}</span>
+              <span className="text-sm text-fg-secondary">@{currentUser?.username}</span>
             </div>
             <div className="px-4 py-3.5">
               <div className="flex items-center gap-3 mb-2">
-                <FileText className="w-4 h-4 text-zinc-500" />
+                <FileText className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Bio</span>
               </div>
               <textarea
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                 onBlur={handleSaveBio}
                 placeholder="Tell people about yourself..."
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.05] text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-accent/30 resize-none"
+                className="w-full px-3 py-2 rounded-lg bg-card border border-hairline text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 resize-none"
               />
             </div>
           </div>
@@ -204,13 +204,13 @@ export default function SettingsPage() {
 
         {/* Body Metrics */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Body Metrics</h3>
-          <p className="text-[11px] text-zinc-600 mb-2.5">Used for BAC estimation</p>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1.5">Body Metrics</h3>
+          <p className="text-[11px] text-muted mb-2.5">Used for BAC estimation</p>
+          <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
             {/* Gender */}
             <div className="px-4 py-3.5">
               <div className="flex items-center gap-3 mb-2.5">
-                <User className="w-4 h-4 text-zinc-500" />
+                <User className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Gender</span>
               </div>
               <div className="flex gap-2">
@@ -221,7 +221,7 @@ export default function SettingsPage() {
                     className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
                       gender === g
                         ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
-                        : 'bg-white/[0.03] border border-white/[0.06] text-zinc-500'
+                        : 'bg-card border border-card-border text-fg-secondary'
                     }`}
                   >
                     {g.charAt(0).toUpperCase() + g.slice(1)}
@@ -233,7 +233,7 @@ export default function SettingsPage() {
             {/* Height */}
             <div className="px-4 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Ruler className="w-4 h-4 text-zinc-500" />
+                <Ruler className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Height</span>
               </div>
               <div className="flex items-center gap-1">
@@ -244,16 +244,16 @@ export default function SettingsPage() {
                   onChange={(e) => setHeightInput(e.target.value)}
                   onBlur={handleSaveHeight}
                   placeholder="170"
-                  className="w-16 text-right text-sm bg-transparent text-white focus:outline-none"
+                  className="w-16 text-right text-sm bg-transparent text-foreground focus:outline-none"
                 />
-                <span className="text-xs text-zinc-600">cm</span>
+                <span className="text-xs text-muted">cm</span>
               </div>
             </div>
 
             {/* Weight */}
             <div className="px-4 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Weight className="w-4 h-4 text-zinc-500" />
+                <Weight className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Weight</span>
               </div>
               <div className="flex items-center gap-1">
@@ -264,32 +264,32 @@ export default function SettingsPage() {
                   onChange={(e) => setWeightInput(e.target.value)}
                   onBlur={handleSaveWeight}
                   placeholder="70"
-                  className="w-16 text-right text-sm bg-transparent text-white focus:outline-none"
+                  className="w-16 text-right text-sm bg-transparent text-foreground focus:outline-none"
                 />
-                <span className="text-xs text-zinc-600">kg</span>
+                <span className="text-xs text-muted">kg</span>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-zinc-600 px-1 mt-2">BAC estimates are approximate and should not be used for legal or medical decisions.</p>
+          <p className="text-[10px] text-muted px-1 mt-2">BAC estimates are approximate and should not be used for legal or medical decisions.</p>
         </div>
 
         {/* Privacy */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-1.5">Privacy</h3>
-          <p className="text-[11px] text-zinc-600 mb-2.5">Control who can see your sessions and posts</p>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1.5">Privacy</h3>
+          <p className="text-[11px] text-muted mb-2.5">Control who can see your sessions and posts</p>
+          <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
             <button
               onClick={handleTogglePrivacy}
-              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-surface-faint transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Lock className="w-4 h-4 text-zinc-500" />
+                <Lock className="w-4 h-4 text-fg-secondary" />
                 <div className="text-left">
                   <span className="text-sm block">Private Account</span>
-                  <span className="text-[11px] text-zinc-600">Only approved followers can see your sessions and posts</span>
+                  <span className="text-[11px] text-muted">Only approved followers can see your sessions and posts</span>
                 </div>
               </div>
-              <div className={`w-10 h-6 rounded-full relative transition-colors ${currentUser?.isPrivate ? 'bg-teal-500' : 'bg-zinc-700'}`}>
+              <div className={`w-10 h-6 rounded-full relative transition-colors ${currentUser?.isPrivate ? 'bg-accent' : 'bg-track'}`}>
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${currentUser?.isPrivate ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </div>
             </button>
@@ -298,8 +298,8 @@ export default function SettingsPage() {
 
         {/* Notifications */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Notifications</h3>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2.5">Notifications</h3>
+          <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
             {([
               ['likesEnabled', 'Likes', 'When someone likes your post'] as const,
               ['commentsEnabled', 'Comments & Replies', 'When someone comments or replies'] as const,
@@ -313,16 +313,16 @@ export default function SettingsPage() {
               <button
                 key={key}
                 onClick={() => handleTogglePref(key)}
-                className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+                className="w-full px-4 py-3.5 flex items-center justify-between active:bg-surface-faint transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Bell className="w-4 h-4 text-zinc-500" />
+                  <Bell className="w-4 h-4 text-fg-secondary" />
                   <div className="text-left">
                     <span className="text-sm block">{label}</span>
-                    <span className="text-[11px] text-zinc-600">{desc}</span>
+                    <span className="text-[11px] text-muted">{desc}</span>
                   </div>
                 </div>
-                <div className={`w-10 h-6 rounded-full relative transition-colors ${preferences[key] ? 'bg-teal-500' : 'bg-zinc-700'}`}>
+                <div className={`w-10 h-6 rounded-full relative transition-colors ${preferences[key] ? 'bg-accent' : 'bg-track'}`}>
                   <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${preferences[key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                 </div>
               </button>
@@ -332,10 +332,10 @@ export default function SettingsPage() {
 
         {/* Appearance */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Appearance</h3>
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2.5">Appearance</h3>
           <div className="rounded-2xl bg-card border border-card-border p-4">
             <div className="flex items-center gap-3 mb-3">
-              <Sun className="w-4 h-4 text-zinc-500" />
+              <Sun className="w-4 h-4 text-fg-secondary" />
               <span className="text-sm">Theme</span>
             </div>
             <div className="flex gap-2">
@@ -362,70 +362,70 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-            <p className="text-[11px] text-zinc-600 mt-3">System follows your device&apos;s appearance setting.</p>
+            <p className="text-[11px] text-muted mt-3">System follows your device&apos;s appearance setting.</p>
           </div>
         </div>
 
         {/* Legal */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Legal</h3>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2.5">Legal</h3>
+          <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
             <button
               onClick={() => router.push('/legal/terms')}
-              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-surface-faint transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Scale className="w-4 h-4 text-zinc-500" />
+                <Scale className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Terms of Service</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
+              <ChevronRight className="w-4 h-4 text-muted" />
             </button>
             <button
               onClick={() => router.push('/legal/privacy')}
-              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-surface-faint transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Shield className="w-4 h-4 text-zinc-500" />
+                <Shield className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">Privacy Policy</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
+              <ChevronRight className="w-4 h-4 text-muted" />
             </button>
           </div>
         </div>
 
         {/* About */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">About</h3>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04]">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2.5">About</h3>
+          <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
             <button
               onClick={() => router.push('/changelog')}
-              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/[0.02] transition-colors"
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-surface-faint transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-zinc-500" />
+                <Sparkles className="w-4 h-4 text-fg-secondary" />
                 <span className="text-sm">What&apos;s New</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
+              <ChevronRight className="w-4 h-4 text-muted" />
             </button>
             <div className="px-4 py-3.5 flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Version</span>
-              <span className="text-sm text-zinc-600">{APP_VERSION}</span>
+              <span className="text-sm text-muted-foreground">Version</span>
+              <span className="text-sm text-muted">{APP_VERSION}</span>
             </div>
             <div className="px-4 py-3.5 flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Contact</span>
-              <span className="text-sm text-zinc-600">support@drinkr.app</span>
+              <span className="text-sm text-muted-foreground">Contact</span>
+              <span className="text-sm text-muted">support@drinkr.app</span>
             </div>
           </div>
         </div>
 
         {/* Responsible Drinking */}
         <div>
-          <h3 className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2.5">Responsible Drinking</h3>
-          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4">
-            <p className="text-xs text-zinc-500 leading-relaxed">
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2.5">Responsible Drinking</h3>
+          <div className="rounded-2xl bg-card border border-hairline p-4">
+            <p className="text-xs text-fg-secondary leading-relaxed">
               Drinkr is for informational and social purposes only. It does not encourage excessive alcohol consumption. All drink counts and statistics are estimates and should not be used for medical or legal purposes.
             </p>
-            <p className="text-xs text-zinc-500 leading-relaxed mt-2">
+            <p className="text-xs text-fg-secondary leading-relaxed mt-2">
               If you or someone you know needs help with alcohol use, contact the SAMHSA helpline at <span className="text-accent">1-800-662-4357</span> (free, confidential, 24/7).
             </p>
           </div>
@@ -436,7 +436,7 @@ export default function SettingsPage() {
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handleLogout}
-            className="w-full py-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center gap-2 text-sm text-zinc-400"
+            className="w-full py-3.5 rounded-xl bg-card border border-hairline flex items-center justify-center gap-2 text-sm text-muted-foreground"
           >
             <LogOut className="w-4 h-4" />
             Sign Out
@@ -445,16 +445,16 @@ export default function SettingsPage() {
 
         {/* Danger zone */}
         <div className="pt-4">
-          <h3 className="text-[10px] font-semibold text-red-400/60 uppercase tracking-wider mb-2.5">Danger Zone</h3>
+          <h3 className="text-[10px] font-semibold text-danger-fg/60 uppercase tracking-wider mb-2.5">Danger Zone</h3>
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handleDeleteAccount}
-            className="w-full py-3.5 rounded-xl bg-red-500/[0.06] border border-red-500/10 flex items-center justify-center gap-2 text-sm text-red-400"
+            className="w-full py-3.5 rounded-xl bg-red-500/[0.06] border border-red-500/10 flex items-center justify-center gap-2 text-sm text-danger-fg"
           >
             <Trash2 className="w-4 h-4" />
             {confirmDelete ? 'Tap again to confirm' : 'Delete Account'}
           </motion.button>
-          <p className="text-[10px] text-zinc-700 mt-2 text-center">This will permanently delete all your data</p>
+          <p className="text-[10px] text-fg-faint mt-2 text-center">This will permanently delete all your data</p>
         </div>
       </div>
 
@@ -474,21 +474,21 @@ export default function SettingsPage() {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="relative w-full max-w-xs mx-6 rounded-3xl p-6 text-center"
-              style={{ background: 'rgba(20,20,24,0.95)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: 'var(--popover-strong-bg)', backdropFilter: 'blur(28px) saturate(180%)', WebkitBackdropFilter: 'blur(28px) saturate(180%)', border: '1px solid var(--chrome-border)' }}
             >
-              <Lock className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
+              <Lock className="w-8 h-8 text-fg-secondary mx-auto mb-3" />
               <h3 className="text-base font-bold mb-2">Switch to Public?</h3>
-              <p className="text-xs text-zinc-500 mb-5">All pending follow requests will be automatically accepted. Your posts and sessions will be visible to everyone.</p>
+              <p className="text-xs text-fg-secondary mb-5">All pending follow requests will be automatically accepted. Your posts and sessions will be visible to everyone.</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowPublicConfirm(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-sm font-semibold text-zinc-400"
+                  className="flex-1 py-2.5 rounded-xl bg-surface-raised border border-border-strong text-sm font-semibold text-muted-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirmPublic}
-                  className="flex-1 py-2.5 rounded-xl bg-accent text-sm font-semibold text-black"
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-sm font-semibold text-accent-foreground"
                 >
                   Switch
                 </button>

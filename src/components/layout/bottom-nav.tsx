@@ -39,10 +39,10 @@ const SessionBanner = memo(function SessionBanner({ onNavigate }: { onNavigate: 
       </div>
       <div className="flex-1 min-w-0 text-left">
         <p className="text-[11px] text-accent font-semibold">Live Session</p>
-        <p className="text-[10px] text-zinc-500 truncate flex items-center gap-1">
+        <p className="text-[10px] text-fg-secondary truncate flex items-center gap-1">
           <MapPin className="w-2.5 h-2.5 shrink-0" />
           {activeSession!.venue}
-          <span className="text-zinc-700 mx-0.5">·</span>
+          <span className="text-fg-faint mx-0.5">·</span>
           <Wine className="w-2.5 h-2.5 shrink-0" />
           {activeSession!.drinks.length}
         </p>
@@ -75,10 +75,10 @@ export function BottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 vt-bottom-nav"
       style={{
-        background: 'rgba(9, 9, 11, 0.82)',
+        background: 'var(--chrome-bg)',
         backdropFilter: 'blur(28px) saturate(180%)',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
+        borderTop: '1px solid var(--chrome-border)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
@@ -104,13 +104,13 @@ export function BottomNav() {
                   'w-13 h-13 rounded-2xl flex items-center justify-center transition-all',
                   isActive
                     ? 'bg-accent shadow-[0_0_20px_rgba(20,184,166,0.25)]'
-                    : activeSession ? 'bg-accent/80' : 'bg-zinc-800'
+                    : activeSession ? 'bg-accent/80' : 'bg-chip'
                 )}>
-                  <Icon size={22} className={isActive || activeSession ? 'text-black' : 'text-zinc-400'} />
+                  <Icon size={22} className={isActive || activeSession ? 'text-accent-foreground' : 'text-muted-foreground'} />
                 </div>
                 <span className={cn(
                   'text-[10px] mt-1 font-medium',
-                  isActive ? 'text-accent' : 'text-zinc-600'
+                  isActive ? 'text-accent' : 'text-muted'
                 )}>
                   {tab.label}
                 </span>
@@ -129,12 +129,12 @@ export function BottomNav() {
                 size={20}
                 className={cn(
                   'transition-colors',
-                  isActive ? 'text-white' : 'text-zinc-600'
+                  isActive ? 'text-foreground' : 'text-muted'
                 )}
               />
               <span className={cn(
                 'text-[10px] font-medium transition-colors',
-                isActive ? 'text-white' : 'text-zinc-600'
+                isActive ? 'text-foreground' : 'text-muted'
               )}>
                 {tab.label}
               </span>

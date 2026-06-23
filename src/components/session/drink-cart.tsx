@@ -49,12 +49,12 @@ export function DrinkCart({
             transition: { duration: 0.2 },
           }
         : {})}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]"
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-card border border-hairline"
     >
       <DrinkIcon category={item.template.category} className="w-5 h-5" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{item.template.drinkName}</p>
-        <p className="text-[10px] text-zinc-600">
+        <p className="text-[10px] text-muted">
           {item.template.abvPercent}% · {item.template.volumeMl}ml ·{' '}
           {(item.template.standardDrinks * item.quantity).toFixed(1)} std
         </p>
@@ -62,10 +62,10 @@ export function DrinkCart({
       <div className="flex items-center gap-1">
         <button
           onClick={() => { hapticLight(); onDec(item.key); }}
-          className="w-7 h-7 rounded-lg bg-white/[0.05] active:bg-white/[0.1] flex items-center justify-center"
+          className="w-7 h-7 rounded-lg bg-surface-subtle active:bg-surface-hover-strong flex items-center justify-center"
           aria-label={`Remove one ${item.template.drinkName}`}
         >
-          <Minus className="w-3.5 h-3.5 text-zinc-400" />
+          <Minus className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
         <span className="w-6 text-center text-sm font-mono font-semibold">
           {item.quantity}
@@ -73,10 +73,10 @@ export function DrinkCart({
         {showInc && (
           <button
             onClick={() => { hapticLight(); onInc(item.key); }}
-            className="w-7 h-7 rounded-lg bg-white/[0.05] active:bg-white/[0.1] flex items-center justify-center"
+            className="w-7 h-7 rounded-lg bg-surface-subtle active:bg-surface-hover-strong flex items-center justify-center"
             aria-label={`Add one ${item.template.drinkName}`}
           >
-            <Plus className="w-3.5 h-3.5 text-zinc-400" />
+            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
         <button
@@ -84,7 +84,7 @@ export function DrinkCart({
           className="w-7 h-7 rounded-lg active:bg-red-500/10 flex items-center justify-center"
           aria-label={`Remove all ${item.template.drinkName}`}
         >
-          <Trash2 className="w-3.5 h-3.5 text-zinc-600" />
+          <Trash2 className="w-3.5 h-3.5 text-muted" />
         </button>
       </div>
     </motion.div>
@@ -94,7 +94,7 @@ export function DrinkCart({
     <div className="space-y-1.5">
       {animate ? <AnimatePresence initial={false}>{rows}</AnimatePresence> : rows}
       {typeof totalStandardDrinks === 'number' && (
-        <p className="text-[10px] text-zinc-600 text-center pt-1">
+        <p className="text-[10px] text-muted text-center pt-1">
           {totalStandardDrinks.toFixed(1)} std drinks total
         </p>
       )}
