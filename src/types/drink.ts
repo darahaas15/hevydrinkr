@@ -38,4 +38,10 @@ export interface DrinkEntry {
   timestamp: string;
   roundId: string | null;
   notes: string;
+  // What this drink cost, in the user's display currency. Optional at every
+  // layer: undefined means "never recorded" (spend UI stays hidden), whereas
+  // 0 is a real recorded price. Backed by the nullable `drink_entries.cost`
+  // column, which the app degrades gracefully without — see
+  // lib/supabase/optional-columns.ts.
+  cost?: number | null;
 }

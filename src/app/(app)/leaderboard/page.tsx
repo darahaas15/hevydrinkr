@@ -6,6 +6,7 @@ import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useModerationStore } from '@/stores/use-moderation-store';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import { hapticSelection, hapticLight } from '@/lib/haptics';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { buildLeaderboard } from '@/lib/algorithms/leaderboard';
@@ -19,6 +20,7 @@ const METRICS: { value: LeaderboardMetric; label: string }[] = [
   { value: 'longest_session', label: 'Longest' },
   { value: 'most_diverse', label: 'Variety' },
   { value: 'single_session', label: 'Single Session' },
+  { value: 'total_spend', label: 'Spend' },
 ];
 
 const TIMEFRAMES: { value: LeaderboardTimeframe; label: string }[] = [
@@ -46,6 +48,7 @@ export default function LeaderboardPage() {
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const currentUser = useAuthStore((s) => s.currentUser);
   const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
+  const currency = useDrinkPrefsStore((s) => s.currency);
 
   const [posts, setPosts] = useState<FeedItem[] | null>(null);
   const [postsError, setPostsError] = useState<string | null>(null);
@@ -123,8 +126,8 @@ export default function LeaderboardPage() {
   }, [fetchAllUsers, loadLeaderboard]);
 
   const leaderboard = useMemo(
-    () => buildLeaderboard(posts ?? [], circleUsers, metric, timeframe),
-    [posts, circleUsers, metric, timeframe]
+    () => buildLeaderboard(posts ?? [], circleUsers, metric, timeframe, currency),
+    [posts, circleUsers, metric, timeframe, currency]
   );
 
   return (

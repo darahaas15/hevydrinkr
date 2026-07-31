@@ -7,6 +7,8 @@ import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { useThemeStore } from '@/stores/use-theme-store';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
+import { CURRENCIES } from '@/lib/money';
 import type { ThemePreference } from '@/lib/theme';
 import { useNotificationStore, type NotificationPreferences } from '@/stores/use-notification-store';
 import { unregisterPushNotifications } from '@/lib/push-notifications';
@@ -32,6 +34,8 @@ export default function SettingsPage() {
   const updatePreferences = useNotificationStore((s) => s.updatePreferences);
   const themePreference = useThemeStore((s) => s.preference);
   const setThemePreference = useThemeStore((s) => s.setPreference);
+  const currency = useDrinkPrefsStore((s) => s.currency);
+  const setCurrency = useDrinkPrefsStore((s) => s.setCurrency);
   const [showPublicConfirm, setShowPublicConfirm] = useState(false);
 
   const handleChangePhoto = async () => {
@@ -363,6 +367,41 @@ export default function SettingsPage() {
               })}
             </div>
             <p className="text-[11px] text-muted mt-3">System follows your device&apos;s appearance setting.</p>
+          </div>
+        </div>
+
+        {/* Currency */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-1.5">Currency</h3>
+          <p className="text-[11px] text-muted mb-2.5">Used to display drink prices and spend</p>
+          <div className="rounded-2xl bg-card border border-card-border p-4">
+            <div className="flex flex-wrap gap-2">
+              {CURRENCIES.map((c) => {
+                const isActive = currency === c.code;
+                return (
+                  <button
+                    key={c.code}
+                    onClick={() => {
+                      if (isActive) return;
+                      hapticSelection();
+                      setCurrency(c.code);
+                    }}
+                    aria-pressed={isActive}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-accent-muted ring-1 ring-accent/40 text-accent-text'
+                        : 'bg-card-hover border border-card-border text-muted-foreground'
+                    }`}
+                  >
+                    <span className="font-semibold">{c.symbol}</span>
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted mt-3">
+              Display only — amounts you have already recorded are not converted.
+            </p>
           </div>
         </div>
 

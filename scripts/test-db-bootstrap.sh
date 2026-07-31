@@ -35,6 +35,7 @@ FILES=(
   notifications.sql               # notifications, notification_preferences, device_tokens
   weekly-roast.sql                # roast_recaps, roast_awards, roast_streaks, group_records
   storage-policies.sql
+  migrations/20260731_drink_cost.sql  # drink_entries.cost (optional per-drink price)
 )
 
 for f in "${FILES[@]}"; do

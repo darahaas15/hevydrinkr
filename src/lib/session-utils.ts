@@ -1,4 +1,6 @@
 import type { DrinkSession, DrinkEntry, FeedItem } from '@/types';
+import { sumCosts } from '@/lib/money';
+import { normalizeVenue } from '@/lib/venues';
 
 // Spread N drink timestamps evenly across [startedAt, endedAt]. With 4 drinks
 // over 8pm–12am: 8:00, 9:20, 10:40, 12:00. With 1 drink: midpoint. With 0: [].
@@ -64,9 +66,11 @@ export function buildSessionSummary(
       standardDrinks: d.standardDrinks,
       drinkDefinitionId: d.drinkDefinitionId,
       timestamp: d.timestamp,
+      cost: d.cost ?? null,
     })),
     mood: session.mood,
     prsAchieved: session.prsAchieved,
+    totalCost: sumCosts(session.drinks),
   };
 }
 
@@ -103,7 +107,9 @@ export interface SessionFormInput {
 }
 
 export function validateSessionForm(input: SessionFormInput): string | null {
-  if (!input.venue.trim()) return 'Add a venue';
+  // Same emptiness rule as before, routed through the shared helper so the
+  // form and the venue autocomplete agree on what counts as a blank venue.
+  if (!normalizeVenue(input.venue)) return 'Add a venue';
   const start = new Date(input.startedAt).getTime();
   const end = new Date(input.endedAt).getTime();
   const now = Date.now();

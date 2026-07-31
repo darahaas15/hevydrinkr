@@ -5,6 +5,12 @@ import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 import {
+  insertDrinkEntries,
+  selectDrinkEntries,
+  withOptionalCost,
+} from '@/lib/supabase/drink-entries';
+import { normalizeVenue } from '@/lib/venues';
+import {
   spreadDrinkTimestamps,
   buildSessionSummary,
   durationMinutesBetween,
@@ -85,6 +91,7 @@ function rowToDrinkEntry(row: Record<string, unknown>): DrinkEntry {
     timestamp: row.timestamp as string,
     roundId: (row.round_id as string) ?? null,
     notes: (row.notes as string) ?? '',
+    cost: typeof row.cost === 'number' ? row.cost : null,
   };
 }
 
@@ -136,21 +143,24 @@ function sessionToRow(session: DrinkSession) {
   };
 }
 
-function drinkEntryToRow(entry: DrinkEntry, sessionId: string) {
-  return {
-    id: entry.id,
-    session_id: sessionId,
-    drink_definition_id: entry.drinkDefinitionId,
-    drink_name: entry.drinkName,
-    emoji: entry.emoji,
-    category: entry.category,
-    abv_percent: entry.abvPercent,
-    volume_ml: entry.volumeMl,
-    standard_drinks: entry.standardDrinks,
-    timestamp: entry.timestamp,
-    round_id: entry.roundId,
-    notes: entry.notes,
-  };
+function drinkEntryToRow(entry: DrinkEntry, sessionId: string): Record<string, unknown> {
+  return withOptionalCost(
+    {
+      id: entry.id,
+      session_id: sessionId,
+      drink_definition_id: entry.drinkDefinitionId,
+      drink_name: entry.drinkName,
+      emoji: entry.emoji,
+      category: entry.category,
+      abv_percent: entry.abvPercent,
+      volume_ml: entry.volumeMl,
+      standard_drinks: entry.standardDrinks,
+      timestamp: entry.timestamp,
+      round_id: entry.roundId,
+      notes: entry.notes,
+    },
+    entry.cost,
+  );
 }
 
 // Maps session temp-ID → promise that resolves when the row exists in Supabase.
@@ -198,13 +208,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     // Fetch all drink entries and photos for these sessions in parallel
     const [entriesResult, photosResult] = await Promise.all([
-      sessionIds.length > 0
-        ? supabase
-            .from('drink_entries')
-            .select('id, session_id, drink_definition_id, drink_name, emoji, category, abv_percent, volume_ml, standard_drinks, timestamp, round_id, notes')
-            .in('session_id', sessionIds)
-            .order('timestamp', { ascending: true })
-        : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
+      selectDrinkEntries(sessionIds),
       sessionIds.length > 0
         ? supabase
             .from('session_photos')
@@ -272,7 +276,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       status: 'active',
       startedAt: new Date().toISOString(),
       endedAt: null,
-      venue,
+      venue: normalizeVenue(venue),
       drinks: [],
       rounds: [],
       totalStandardDrinks: 0,
@@ -457,12 +461,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       const current = get().activeSession;
       if (!current || _sessionGeneration !== gen) return;
       const sid = current.id;
-      supabase
-        .from('drink_entries')
-        .insert(drinkEntryToRow(drink, sid))
-        .then(({ error }) => {
-          if (error) console.error('Failed to insert drink entry:', error);
-        });
+      insertDrinkEntries([drinkEntryToRow(drink, sid)]).then(({ error }) => {
+        if (error) console.error('Failed to insert drink entry:', error);
+      });
     });
   },
 
@@ -535,15 +536,12 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
       const current = get().activeSession;
       if (!current || _sessionGeneration !== gen) return;
       const sid = current.id;
-      supabase
-        .from('drink_entries')
-        .insert(drinkEntryToRow(drink, sid))
-        .then(({ error }) => {
-          if (error) {
-            console.error('Failed to restore drink entry:', error);
-            useUIStore.getState().addToast('Could not restore drink — add it again', 'error');
-          }
-        });
+      insertDrinkEntries([drinkEntryToRow(drink, sid)]).then(({ error }) => {
+        if (error) {
+          console.error('Failed to restore drink entry:', error);
+          useUIStore.getState().addToast('Could not restore drink — add it again', 'error');
+        }
+      });
     });
   },
 
@@ -664,9 +662,10 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   // -----------------------------------------------------------------------
   // Update the venue of the active session
   // -----------------------------------------------------------------------
-  updateVenue: (venue) => {
+  updateVenue: (rawVenue) => {
     const { activeSession } = get();
     if (!activeSession) return;
+    const venue = normalizeVenue(rawVenue);
 
     set({ activeSession: { ...activeSession, venue } });
 
@@ -735,7 +734,8 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
   // -----------------------------------------------------------------------
   // Create a past / backdated session in one atomic flow.
   // -----------------------------------------------------------------------
-  createPastSession: async ({ user, venue, startedAt, endedAt, drinks, mood, photos }) => {
+  createPastSession: async ({ user, venue: rawVenue, startedAt, endedAt, drinks, mood, photos }) => {
+    const venue = normalizeVenue(rawVenue);
     if (get().activeSession) {
       useUIStore.getState().addToast('End your active session first', 'error');
       return null;
@@ -793,9 +793,9 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     // Insert drink entries in bulk. If this fails, clean up the session row
     // so we don't leave an empty shell behind.
     if (drinksWithIds.length > 0) {
-      const { error: drinksError } = await supabase
-        .from('drink_entries')
-        .insert(drinksWithIds.map((d) => drinkEntryToRow(d, sessionId)));
+      const { error: drinksError } = await insertDrinkEntries(
+        drinksWithIds.map((d) => drinkEntryToRow(d, sessionId)),
+      );
       if (drinksError) {
         console.error('Failed to insert past session drinks:', drinksError);
         await supabase.from('drink_sessions').delete().eq('id', sessionId);
@@ -884,9 +884,12 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
         })()
       : target.drinks;
 
+    const normalizedVenue =
+      updates.venue !== undefined ? normalizeVenue(updates.venue) : undefined;
+
     const updated: DrinkSession = {
       ...target,
-      venue: updates.venue ?? target.venue,
+      venue: normalizedVenue ?? target.venue,
       startedAt: newStart,
       endedAt: newEnd,
       mood: updates.mood ?? target.mood,
@@ -907,7 +910,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     // Update the session row in Supabase with only changed fields.
     const dbUpdates: Record<string, unknown> = {};
-    if (updates.venue !== undefined) dbUpdates.venue = updates.venue;
+    if (normalizedVenue !== undefined) dbUpdates.venue = normalizedVenue;
     if (updates.startedAt !== undefined) dbUpdates.started_at = updates.startedAt;
     if (updates.endedAt !== undefined) dbUpdates.ended_at = updates.endedAt;
     if (updates.mood !== undefined) dbUpdates.mood = updates.mood;

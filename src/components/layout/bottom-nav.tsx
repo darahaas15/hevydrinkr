@@ -1,13 +1,21 @@
 'use client';
 
-import { useEffect, memo } from 'react';
-import { Home, Users, Trophy, User, Wine, Clock, MapPin, ChevronRight } from 'lucide-react';
+import { useEffect, memo, useMemo } from 'react';
+import { Home, Users, Trophy, User, Wine, Clock, MapPin, ChevronRight, Plus } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { hapticLight } from '@/lib/haptics';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
+import {
+  useDrinkPrefsStore,
+  selectPrefs,
+  selectRecents,
+  selectCost,
+  entryFromQuickDrink,
+} from '@/stores/use-drink-prefs-store';
+import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useTimer } from '@/hooks/use-timer';
 
 const tabs = [
@@ -21,35 +29,74 @@ const tabs = [
 // Isolated component so the 1s timer tick doesn't re-render the tab bar
 const SessionBanner = memo(function SessionBanner({ onNavigate }: { onNavigate: (path: string) => void }) {
   const activeSession = useSessionStore((s) => s.activeSession);
+  const addDrink = useSessionStore((s) => s.addDrink);
+  const removeDrink = useSessionStore((s) => s.removeDrink);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const addToast = useUIStore((s) => s.addToast);
   const pathname = usePathname();
   const timer = useTimer(activeSession?.startedAt || null);
+
+  const userId = currentUser?.id;
+  const byUser = useDrinkPrefsStore((s) => s.byUser);
+  const recordUse = useDrinkPrefsStore((s) => s.recordUse);
+  const prefs = useMemo(() => selectPrefs(byUser, userId), [byUser, userId]);
+  const lastDrink = useMemo(() => selectRecents(prefs, 1)[0] ?? null, [prefs]);
 
   const show = !!activeSession && !!currentUser && activeSession.userId === currentUser.id && pathname !== '/session';
   if (!show) return null;
 
+  // Re-log the most recent drink without leaving the current screen. Paired
+  // with an undo because this button sits under the thumb on every tab.
+  const quickLog = () => {
+    if (!lastDrink || !userId) return;
+    hapticMedium();
+    const entry = entryFromQuickDrink(lastDrink, selectCost(prefs, lastDrink.definitionId));
+    recordUse(userId, lastDrink);
+    addDrink(entry);
+    addToast(`${lastDrink.name} logged`, {
+      type: 'success',
+      durationMs: 6000,
+      action: { label: 'Undo', onPress: () => removeDrink(entry.id) },
+    });
+  };
+
   return (
-    <button
-      onClick={() => onNavigate('/session')}
-      className="w-full px-4 py-2 flex items-center gap-3"
+    <div
+      className="w-full px-4 py-2 flex items-center gap-2"
       style={{ borderBottom: '1px solid rgba(20,184,166,0.15)', background: 'rgba(20,184,166,0.05)' }}
     >
-      <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
-        <Clock className="w-3.5 h-3.5 text-accent" />
-      </div>
-      <div className="flex-1 min-w-0 text-left">
-        <p className="text-[11px] text-accent font-semibold">Live Session</p>
-        <p className="text-[10px] text-fg-secondary truncate flex items-center gap-1">
-          <MapPin className="w-2.5 h-2.5 shrink-0" />
-          {activeSession!.venue}
-          <span className="text-fg-faint mx-0.5">·</span>
-          <Wine className="w-2.5 h-2.5 shrink-0" />
-          {activeSession!.drinks.length}
-        </p>
-      </div>
-      <span className="text-xs font-mono font-bold text-accent">{timer.formatted}</span>
-      <ChevronRight className="w-3.5 h-3.5 text-accent/50 shrink-0" />
-    </button>
+      <button
+        onClick={() => onNavigate('/session')}
+        className="flex-1 min-w-0 flex items-center gap-3 text-left"
+      >
+        <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+          <Clock className="w-3.5 h-3.5 text-accent" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] text-accent font-semibold">Live Session</p>
+          <p className="text-[10px] text-fg-secondary truncate flex items-center gap-1">
+            <MapPin className="w-2.5 h-2.5 shrink-0" />
+            {activeSession!.venue}
+            <span className="text-fg-faint mx-0.5">·</span>
+            <Wine className="w-2.5 h-2.5 shrink-0" />
+            {activeSession!.drinks.length}
+          </p>
+        </div>
+        <span className="text-xs font-mono font-bold text-accent">{timer.formatted}</span>
+        <ChevronRight className="w-3.5 h-3.5 text-accent/50 shrink-0" />
+      </button>
+
+      {lastDrink && (
+        <button
+          onClick={quickLog}
+          aria-label={`Log another ${lastDrink.name}`}
+          className="shrink-0 h-9 pl-1.5 pr-2 rounded-xl bg-accent/15 border border-accent/25 flex items-center gap-0.5 active:bg-accent/25 transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5 text-accent" />
+          <DrinkIcon category={lastDrink.category} className="w-4 h-4" />
+        </button>
+      )}
+    </div>
   );
 });
 

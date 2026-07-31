@@ -42,6 +42,7 @@
     "drink_entries": [
       "abv_percent",
       "category",
+      "cost",
       "drink_definition_id",
       "drink_name",
       "emoji",

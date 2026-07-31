@@ -1,6 +1,7 @@
 import type { FeedItem } from '@/types/feed';
 import type { LeaderboardEntry, LeaderboardMetric, LeaderboardTimeframe } from '@/types/leaderboard';
 import type { UserProfile } from '@/types/user';
+import { DEFAULT_CURRENCY, formatCost } from '@/lib/money';
 
 function getTimeframeStart(timeframe: LeaderboardTimeframe): Date {
   const now = new Date();
@@ -32,6 +33,14 @@ function computeMetric(
     }
     case 'single_session':
       return posts.reduce((max, p) => Math.max(max, p.sessionSummary.totalDrinks ?? 0), 0);
+    case 'total_spend':
+      // Posts predating cost tracking have no totalCost; they contribute 0
+      // rather than excluding the user, so the board still ranks everyone.
+      return (
+        Math.round(
+          posts.reduce((sum, p) => sum + (p.sessionSummary.totalCost ?? 0), 0) * 100,
+        ) / 100
+      );
   }
 }
 
@@ -39,7 +48,10 @@ export function buildLeaderboard(
   allPosts: FeedItem[],
   users: UserProfile[],
   metric: LeaderboardMetric,
-  timeframe: LeaderboardTimeframe
+  timeframe: LeaderboardTimeframe,
+  // Only affects how `total_spend` is labelled. Amounts are never converted;
+  // this is the viewer's display currency (see lib/money.ts).
+  currencyCode: string = DEFAULT_CURRENCY,
 ): LeaderboardEntry[] {
   const start = getTimeframeStart(timeframe);
 
@@ -66,7 +78,7 @@ export function buildLeaderboard(
       userName: user.displayName,
       userAvatar: user.avatarUrl,
       value,
-      formattedValue: formatMetricValue(metric, value),
+      formattedValue: formatMetricValue(metric, value, currencyCode),
       trend: 'same',
       trendDelta: 0,
     });
@@ -87,7 +99,11 @@ export function buildLeaderboard(
   return entries;
 }
 
-function formatMetricValue(metric: LeaderboardMetric, value: number): string {
+function formatMetricValue(
+  metric: LeaderboardMetric,
+  value: number,
+  currencyCode: string,
+): string {
   switch (metric) {
     case 'total_standard_drinks':
       return `${value.toFixed(1)} drinks`;
@@ -102,5 +118,7 @@ function formatMetricValue(metric: LeaderboardMetric, value: number): string {
       return `${value} types`;
     case 'single_session':
       return `${value} drinks`;
+    case 'total_spend':
+      return formatCost(value, currencyCode);
   }
 }

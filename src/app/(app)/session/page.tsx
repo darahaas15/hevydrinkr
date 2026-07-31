@@ -2,11 +2,17 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, MapPin, Clock, Wine, ChevronRight, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, MapPin, Clock, ChevronRight, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
 import { IconSteeringWheel } from '@tabler/icons-react';
 import { calculateBac, getSafetyColor } from '@/lib/algorithms/bac';
 import { BAC_DISCLAIMER, BAC_LEGAL_LIMIT } from '@/lib/constants';
 import { formatDuration } from '@/lib/utils';
+import { formatCost, sumCosts } from '@/lib/money';
+import { canonicalizeVenue } from '@/lib/venues';
+import { useVenueStats } from '@/hooks/use-venue-stats';
+import { VenueInput } from '@/components/ui/venue-input';
+import { QuickAddRow } from '@/components/session/quick-add-row';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -25,6 +31,18 @@ import { pickImage, uploadImage } from '@/lib/image-utils';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { hapticHeavy, hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 import SessionDetailPage from './[id]/session-detail';
+import type { DrinkEntry } from '@/types';
+
+// Mid-session encouragement, keyed by drink count. Module-level so the object
+// isn't rebuilt every render.
+const DRINK_MILESTONES: Record<number, string> = {
+  5: '5 drinks deep!',
+  10: 'Double digits!',
+  15: 'On a roll!',
+  20: 'Unstoppable!',
+  25: 'Quarter century!',
+  30: 'Legend status!',
+};
 
 export default function SessionPage() {
   return (
@@ -67,6 +85,8 @@ function SessionPageInner() {
   const addToast = useUIStore((s) => s.addToast);
   const userPostsMap = useFeedStore((s) => s.userPosts);
   const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
+  const currency = useDrinkPrefsStore((s) => s.currency);
+  const venueStats = useVenueStats();
   const router = useRouter();
 
   useEffect(() => {
@@ -111,6 +131,20 @@ function SessionPageInner() {
 
   const activeDrinks = activeSession?.drinks ?? [];
   const totalStdDrinks = activeDrinks.reduce((sum, d) => sum + (d?.standardDrinks ?? 0), 0);
+  // null when no drink in this session has a recorded price.
+  const sessionSpend = sumCosts(activeDrinks);
+
+  // Single entry point for logging a drink, so the milestone toast fires
+  // no matter which affordance was used — picker, quick-add row, or the
+  // "+" on an existing drink row. (Previously only the picker fired it.)
+  const handleAddDrink = (drink: DrinkEntry) => {
+    addDrink(drink);
+    const milestone = DRINK_MILESTONES[activeDrinks.length + 1];
+    if (milestone) {
+      hapticSuccess();
+      addToast(milestone, 'success');
+    }
+  };
 
   const handleRemoveDrink = (drink: typeof activeDrinks[number]) => {
     removeDrink(drink.id);
@@ -128,13 +162,6 @@ function SessionPageInner() {
   const myPosts = (currentUser ? userPostsMap[currentUser.id] ?? [] : []).filter((f) => f.sessionSummary);
   const avgDrinksPerSession = myPosts.length > 0
     ? myPosts.reduce((sum, p) => sum + (p.sessionSummary?.totalDrinks ?? 0), 0) / myPosts.length
-    : 0;
-
-  const hoursElapsed = activeSession
-    ? (Date.now() - new Date(activeSession.startedAt).getTime()) / 3_600_000
-    : 0;
-  const drinksPerHour = hoursElapsed > 0.05 && activeSession
-    ? activeDrinks.length / hoursElapsed
     : 0;
 
   const drinkDiff = activeSession ? activeDrinks.length - avgDrinksPerSession : 0;
@@ -171,11 +198,15 @@ function SessionPageInner() {
     if (!venue.trim()) return;
     if (!currentUser) return;
     hapticHeavy();
-    startSession(venue.trim(), currentUser.id);
+    // Snap onto an existing spelling so "toit" doesn't fork from "Toit".
+    startSession(canonicalizeVenue(venue, venueStats), currentUser.id);
     setVenue('');
   };
 
-  const handlePost = () => {
+  // End the session, detect PRs, and optionally publish it to the feed.
+  // `share: false` keeps it in your own history only — the session is still
+  // the record either way, so it can be shared later from session detail.
+  const finishSession = (share: boolean) => {
     if (!activeSession || !currentUser || posting) return;
     setPosting(true);
     setShowPostPreview(false);
@@ -183,18 +214,26 @@ function SessionPageInner() {
     endSession(selectedMood);
 
     const completed = useSessionStore.getState().sessionsByUser[currentUser.id]?.[0];
-    if (completed) {
-      setLastCompletedSession(completed);
-      const newPRs = detectPRs(completed, recordsByUser[currentUser.id] ?? []);
-      newPRs.forEach((pr) => addPR(pr));
-      if (newPRs.length > 0) {
-        setTimeout(() => triggerCelebration(newPRs[0]), 500);
-      }
-      createFeedItemFromSession(completed, currentUser, caption, taggedUserIds);
-      setCaption('');
-      setTaggedUserIds([]);
-      setShowSummary(true);
+    if (!completed) {
+      // endSession rolled back (its DB update failed) and already toasted.
+      setPosting(false);
+      return;
     }
+
+    setLastCompletedSession(completed);
+    const newPRs = detectPRs(completed, recordsByUser[currentUser.id] ?? []);
+    newPRs.forEach((pr) => addPR(pr));
+    if (newPRs.length > 0) {
+      setTimeout(() => triggerCelebration(newPRs[0]), 500);
+    }
+    if (share) {
+      createFeedItemFromSession(completed, currentUser, caption, taggedUserIds);
+    } else {
+      addToast('Saved to your history — you can share it any time', 'success');
+    }
+    setCaption('');
+    setTaggedUserIds([]);
+    setShowSummary(true);
   };
 
   // ── Start screen ──
@@ -214,17 +253,12 @@ function SessionPageInner() {
           <p className="text-fg-secondary text-sm mb-8">Log drinks, track your score, beat PRs</p>
 
           <div className="w-full max-w-sm space-y-3">
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
-              <input
-                type="text"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                placeholder="Where are you drinking?"
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-surface-secondary border border-card-border text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
-                onKeyDown={(e) => e.key === 'Enter' && handleStart()}
-              />
-            </div>
+            <VenueInput
+              value={venue}
+              onChange={setVenue}
+              venues={venueStats}
+              onSubmit={handleStart}
+            />
 
             <motion.button
               whileTap={{ scale: 0.98 }}
@@ -298,7 +332,13 @@ function SessionPageInner() {
     return (
       <SessionSummary
         session={lastCompletedSession}
-        onDone={() => { setShowSummary(false); setLastCompletedSession(null); }}
+        onDone={() => {
+          setShowSummary(false);
+          setLastCompletedSession(null);
+          // Release the double-submit guard, otherwise the next session's
+          // End button stays disabled for the life of this mounted page.
+          setPosting(false);
+        }}
       />
     );
   }
@@ -480,6 +520,13 @@ function SessionPageInner() {
                 <p className="text-sm font-bold">{new Set(activeDrinks.map(d => d.drinkDefinitionId)).size}</p>
                 <p className="text-[10px] text-muted">Types</p>
               </div>
+              {/* Only shown once at least one drink carries a price. */}
+              {sessionSpend !== null && (
+                <div className="flex-1 rounded-xl bg-card border border-border-faint px-3 py-2">
+                  <p className="text-sm font-bold">{formatCost(sessionSpend, currency)}</p>
+                  <p className="text-[10px] text-muted">Spent</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -487,7 +534,9 @@ function SessionPageInner() {
           <p className="text-[11px] text-fg-secondary mt-3 leading-snug">{BAC_DISCLAIMER}</p>
         </div>
 
-        <DrinkList drinks={activeDrinks} onRemove={handleRemoveDrink} onAdd={addDrink} />
+        <QuickAddRow onAdd={handleAddDrink} />
+
+        <DrinkList drinks={activeDrinks} onRemove={handleRemoveDrink} onAdd={handleAddDrink} />
 
         {/* Session Photos */}
         {(activeSession.photos?.length ?? 0) > 0 && (
@@ -520,12 +569,8 @@ function SessionPageInner() {
         {showPicker && (
           <DrinkPicker
             onSelect={(drink) => {
-              addDrink(drink);
+              handleAddDrink(drink);
               setShowPicker(false);
-              // Mid-session milestone toast
-              const count = activeDrinks.length + 1;
-              const milestones: Record<number, string> = { 5: '5 drinks deep!', 10: 'Double digits!', 15: 'On a roll!', 20: 'Unstoppable!', 25: 'Quarter century!', 30: 'Legend status!' };
-              if (milestones[count]) { hapticSuccess(); addToast(milestones[count], 'success'); }
             }}
             onClose={() => setShowPicker(false)}
           />
@@ -559,6 +604,7 @@ function SessionPageInner() {
                   <p className="text-[11px] text-fg-secondary flex items-center gap-1 mt-0.5">
                     <MapPin className="w-3 h-3" />
                     {activeSession.venue} · {activeDrinks.length} drinks · {timer.formatted}
+                    {sessionSpend !== null && <> · {formatCost(sessionSpend, currency)}</>}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-0.5 max-w-[80px] justify-end">
@@ -611,21 +657,30 @@ function SessionPageInner() {
               <TagPeopleField value={taggedUserIds} onChange={setTaggedUserIds} />
 
               {/* Buttons */}
-              <div className="flex gap-3">
+              <div className="space-y-2.5">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowPostPreview(false)}
+                    className="flex-1 py-3 rounded-xl bg-surface-secondary text-muted-foreground font-medium text-sm"
+                  >
+                    Back
+                  </button>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => finishSession(true)}
+                    disabled={posting}
+                    className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm disabled:opacity-50"
+                  >
+                    Post
+                  </motion.button>
+                </div>
                 <button
-                  onClick={() => setShowPostPreview(false)}
-                  className="flex-1 py-3 rounded-xl bg-surface-secondary text-muted-foreground font-medium text-sm"
-                >
-                  Back
-                </button>
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={handlePost}
+                  onClick={() => finishSession(false)}
                   disabled={posting}
-                  className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl text-[13px] font-medium text-muted-foreground active:bg-surface-subtle transition-colors disabled:opacity-50"
                 >
-                  Post
-                </motion.button>
+                  Save without posting
+                </button>
               </div>
             </motion.div>
           </motion.div>
