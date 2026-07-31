@@ -26,9 +26,14 @@ export interface FeedItem {
       // drink_definitions row and per-drink times. Older rows omit these.
       drinkDefinitionId?: string;
       timestamp?: string;
+      cost?: number | null;
     }[];
     mood: SessionMood | null;
     prsAchieved: PersonalRecord[];
+    // Sum of recorded drink costs, or null/absent when no price was entered.
+    // Denormalized here so the leaderboard can rank on spend without joining
+    // drink_entries. Older rows omit it; every reader treats that as "unknown".
+    totalCost?: number | null;
   };
   photos: string[];
   caption: string;

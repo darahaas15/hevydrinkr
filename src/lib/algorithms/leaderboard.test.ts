@@ -123,4 +123,45 @@ describe('buildLeaderboard', () => {
     expect(b.value).toBe(0);
     expect(b.rank).toBe(2);
   });
+
+  describe('total_spend', () => {
+    it('sums recorded session cost and formats in the given currency', () => {
+      const posts = [
+        makeFeedItem({ userId: 'a', sessionSummary: { totalCost: 1200 } }),
+        makeFeedItem({ userId: 'a', sessionSummary: { totalCost: 800.5 } }),
+        makeFeedItem({ userId: 'b', sessionSummary: { totalCost: 1500 } }),
+      ];
+      const board = buildLeaderboard(posts, users, 'total_spend', 'all-time', 'INR');
+      const a = board.find((e) => e.userId === 'a')!;
+      expect(a.value).toBe(2000.5);
+      expect(a.formattedValue).toBe('₹2,000.50');
+      expect(a.rank).toBe(1);
+    });
+
+    it('defaults to the app default currency when none is passed', () => {
+      const posts = [makeFeedItem({ userId: 'a', sessionSummary: { totalCost: 500 } })];
+      const board = buildLeaderboard(posts, users, 'total_spend', 'all-time');
+      expect(board.find((e) => e.userId === 'a')!.formattedValue).toBe('₹500');
+    });
+
+    it('treats posts without cost as 0 rather than dropping the user', () => {
+      const posts = [
+        makeFeedItem({ userId: 'a', sessionSummary: { totalCost: 300 } }),
+        // Predates cost tracking: no totalCost key at all.
+        makeFeedItem({ userId: 'a' }),
+      ];
+      const board = buildLeaderboard(posts, users, 'total_spend', 'all-time');
+      expect(board.find((e) => e.userId === 'a')!.value).toBe(300);
+      expect(board.find((e) => e.userId === 'b')!.value).toBe(0);
+    });
+
+    it('avoids float drift when summing', () => {
+      const posts = [
+        makeFeedItem({ userId: 'a', sessionSummary: { totalCost: 0.1 } }),
+        makeFeedItem({ userId: 'a', sessionSummary: { totalCost: 0.2 } }),
+      ];
+      const board = buildLeaderboard(posts, users, 'total_spend', 'all-time');
+      expect(board.find((e) => e.userId === 'a')!.value).toBe(0.3);
+    });
+  });
 });

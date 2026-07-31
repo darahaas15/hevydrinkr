@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, MapPin, Plus, Camera } from 'lucide-react';
+import { ChevronLeft, Plus, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { DrinkSession, DrinkEntry, SessionMood, FeedItem, UserProfile } from '@/types';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -14,6 +14,9 @@ import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
 import { TagPeopleField } from '@/components/session/tag-people-picker';
 import { DateTimeField } from '@/components/ui/datetime-field';
+import { VenueInput } from '@/components/ui/venue-input';
+import { useVenueStats } from '@/hooks/use-venue-stats';
+import { canonicalizeVenue } from '@/lib/venues';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, uploadImage } from '@/lib/image-utils';
 import { detectPRs } from '@/lib/algorithms/pr-detection';
@@ -93,6 +96,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const addToast = useUIStore((s) => s.addToast);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
+  const venueStats = useVenueStats();
 
   // Hide the app's bottom tab bar while the form is open so the sticky
   // Save button isn't obscured.
@@ -214,7 +218,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       const user: UserProfile = currentUser;
       const created = await createPastSession({
         user,
-        venue: venue.trim(),
+        venue: canonicalizeVenue(venue, venueStats),
         startedAt,
         endedAt,
         drinks: drinksForSubmit,
@@ -248,7 +252,8 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
     // Step 1: sync session metadata (venue/times/mood) via updateSession.
     const updates: Parameters<typeof updateSession>[1] = {};
-    if (venue.trim() !== existingSession.venue) updates.venue = venue.trim();
+    const nextVenue = canonicalizeVenue(venue, venueStats);
+    if (nextVenue !== existingSession.venue) updates.venue = nextVenue;
     if (startedAt !== existingSession.startedAt) updates.startedAt = startedAt;
     if (endedAt !== (existingSession.endedAt ?? existingSession.startedAt))
       updates.endedAt = endedAt;
@@ -409,20 +414,17 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
       <div className="px-5 py-4 space-y-5">
         {/* Venue */}
-        <label className="block">
+        <div className="block">
           <span className="text-[11px] text-fg-secondary mb-1.5 block">Venue</span>
-          <div className="relative">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-            <input
-              type="text"
-              value={venue}
-              onChange={(e) => setVenue(e.target.value)}
-              placeholder="Where were you drinking?"
-              autoCapitalize="words"
-              className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-surface-secondary border border-card-border text-[13px] text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
-            />
-          </div>
-        </label>
+          <VenueInput
+            value={venue}
+            onChange={setVenue}
+            venues={venueStats}
+            placeholder="Where were you drinking?"
+            iconClassName="w-4 h-4"
+            className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-surface-secondary border border-card-border text-[13px] text-foreground placeholder:text-muted focus:outline-none focus:border-accent/40 transition-colors"
+          />
+        </div>
 
         {/* Start / End */}
         <div className="grid grid-cols-1 gap-3">

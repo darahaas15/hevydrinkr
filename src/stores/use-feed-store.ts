@@ -14,6 +14,7 @@ import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
+import { insertDrinkEntries, withOptionalCost } from '@/lib/supabase/drink-entries';
 import { buildSessionSummary } from '@/lib/session-utils';
 
 // Photo data URLs are huge — Supabase is the source of truth, refetch on load.
@@ -725,19 +726,24 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
 
       // Phase 2: insert the new drink entries (delete already succeeded).
       if (newDrinks.length > 0) {
-        const { error: insertErr } = await supabase.from('drink_entries').insert(
-          newDrinks.map(({ id, drink, drinkDefinitionId, timestamp }) => ({
-            id,
-            session_id: sessionId,
-            drink_definition_id: drinkDefinitionId,
-            drink_name: drink.name,
-            emoji: drink.emoji,
-            category: drink.category,
-            abv_percent: drink.abvPercent,
-            volume_ml: drink.volumeMl,
-            standard_drinks: drink.standardDrinks,
-            timestamp,
-          })),
+        const { error: insertErr } = await insertDrinkEntries(
+          newDrinks.map(({ id, drink, drinkDefinitionId, timestamp }) =>
+            withOptionalCost(
+              {
+                id,
+                session_id: sessionId,
+                drink_definition_id: drinkDefinitionId,
+                drink_name: drink.name,
+                emoji: drink.emoji,
+                category: drink.category,
+                abv_percent: drink.abvPercent,
+                volume_ml: drink.volumeMl,
+                standard_drinks: drink.standardDrinks,
+                timestamp,
+              },
+              drink.cost,
+            ),
+          ),
         );
         if (insertErr) {
           // Drinks were deleted but not re-inserted. The DB session is now
@@ -773,6 +779,7 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
             timestamp,
             roundId: null,
             notes: '',
+            cost: drink.cost ?? null,
           } as DrinkSession['drinks'][0])),
         };
       });

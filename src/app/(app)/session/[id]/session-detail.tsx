@@ -1,15 +1,20 @@
 'use client';
 
-import { use, useEffect } from 'react';
+import { use, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Clock, Wine, Droplets, TrendingUp, Pencil } from 'lucide-react';
+import { ChevronLeft, Clock, Wine, Droplets, TrendingUp, Pencil, Share2, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
+import { useFeedStore } from '@/stores/use-feed-store';
+import { useUIStore } from '@/stores/use-ui-store';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { formatDuration } from '@/lib/utils';
+import { formatCost, sumCosts } from '@/lib/money';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
+import { hapticSuccess } from '@/lib/haptics';
 
 export default function SessionDetailPage({ params, sessionId }: { params?: Promise<{ id: string }>; sessionId?: string }) {
   const resolvedId = sessionId || (params ? use(params).id : '');
@@ -17,12 +22,25 @@ export default function SessionDetailPage({ params, sessionId }: { params?: Prom
   const session = useSessionStore((s) => s.getSessionById(resolvedId));
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const currentUser = useAuthStore((s) => s.currentUser);
+  const userPostsMap = useFeedStore((s) => s.userPosts);
+  const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
+  const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
+  const addToast = useUIStore((s) => s.addToast);
+  const currency = useDrinkPrefsStore((s) => s.currency);
+  const [sharing, setSharing] = useState(false);
 
+  // Always fetch, not just on a cache miss. The persisted cache strips photo
+  // URLs to stay inside the localStorage quota, so a session restored from it
+  // has `photos: []` — which would render an empty gallery and, worse, share
+  // a photo-less post. fetchSessions is stale-guarded, so this is cheap.
   useEffect(() => {
-    if (currentUser && !session) {
-      fetchSessions(currentUser.id);
-    }
-  }, [currentUser, session, fetchSessions]);
+    if (currentUser) fetchSessions(currentUser.id);
+  }, [currentUser, fetchSessions]);
+
+  // Needed to know whether this session has already been shared.
+  useEffect(() => {
+    if (currentUser) fetchUserPosts(currentUser.id);
+  }, [currentUser, fetchUserPosts]);
 
   // Only show your own sessions
   if (!session || (currentUser && session.userId !== currentUser.id)) {
@@ -37,6 +55,32 @@ export default function SessionDetailPage({ params, sessionId }: { params?: Prom
   session.drinks.forEach((d) => {
     categoryCounts[d.category] = (categoryCounts[d.category] || 0) + 1;
   });
+
+  const spend = sumCosts(session.drinks);
+
+  const myPosts = currentUser ? userPostsMap[currentUser.id] : undefined;
+  // `undefined` = posts not loaded yet; don't offer to share until we know,
+  // otherwise a slow fetch would invite a duplicate post.
+  const existingPost = myPosts?.find((p) => p.sessionId === session.id);
+  const canShare =
+    !!currentUser &&
+    session.userId === currentUser.id &&
+    session.status === 'completed' &&
+    myPosts !== undefined &&
+    !existingPost;
+
+  const handleShare = async () => {
+    if (!currentUser || !canShare || sharing) return;
+    setSharing(true);
+    hapticSuccess();
+    await createFeedItemFromSession(session, currentUser, '', []);
+    setSharing(false);
+    // createFeedItemFromSession toasts on failure; only confirm on success.
+    const posted = useFeedStore
+      .getState()
+      .userPosts[currentUser.id]?.some((p) => p.sessionId === session.id);
+    if (posted) addToast('Shared to your feed', 'success');
+  };
 
   return (
     <div className="min-h-full pb-8">
@@ -73,13 +117,22 @@ export default function SessionDetailPage({ params, sessionId }: { params?: Prom
             { icon: Clock, label: 'Duration', value: formatDuration(session.durationMinutes), color: 'text-info-fg' },
             { icon: Droplets, label: 'Std Drinks', value: session.totalStandardDrinks.toFixed(1), color: 'text-violet-fg' },
             { icon: TrendingUp, label: 'Types', value: new Set(session.drinks.map(d => d.drinkDefinitionId)).size.toString(), color: 'text-warning-fg' },
-          ].map((stat, i) => (
+            // Spend only appears once a price was recorded, so sessions
+            // logged before/without pricing look exactly as they did.
+            ...(spend !== null
+              ? [{ icon: Wallet, label: 'Spent', value: formatCost(spend, currency), color: 'text-success-fg' }]
+              : []),
+          ].map((stat, i, all) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-card border border-hairline rounded-2xl p-4 text-center"
+              className={`bg-card border border-hairline rounded-2xl p-4 text-center ${
+                // Odd count: let the last tile span the row rather than
+                // leaving a ragged gap.
+                all.length % 2 === 1 && i === all.length - 1 ? 'col-span-2' : ''
+              }`}
             >
               <stat.icon className={`w-5 h-5 ${stat.color} mx-auto mb-2`} />
               <p className="text-2xl font-bold">{stat.value}</p>
@@ -87,6 +140,27 @@ export default function SessionDetailPage({ params, sessionId }: { params?: Prom
             </motion.div>
           ))}
         </div>
+
+        {/* Not yet shared — offer it, and make the private state explicit */}
+        {canShare && (
+          <div className="rounded-2xl bg-card border border-hairline p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+              <Share2 className="w-5 h-5 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Only you can see this</p>
+              <p className="text-[11px] text-fg-secondary">Share it to your feed whenever you want</p>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleShare}
+              disabled={sharing}
+              className="shrink-0 px-4 py-2 rounded-xl bg-accent text-accent-foreground text-xs font-bold disabled:opacity-50"
+            >
+              {sharing ? 'Sharing…' : 'Share'}
+            </motion.button>
+          </div>
+        )}
 
         {/* Photos */}
         {session.photos.length > 0 && (
@@ -139,6 +213,7 @@ export default function SessionDetailPage({ params, sessionId }: { params?: Prom
                     <p className="text-sm font-medium">{drink.drinkName}</p>
                     <p className="text-[10px] text-fg-secondary">
                       {drink.abvPercent}% · {drink.volumeMl}ml · {drink.standardDrinks.toFixed(1)} std
+                      {typeof drink.cost === 'number' && <> · {formatCost(drink.cost, currency)}</>}
                     </p>
                   </div>
                   <span className="text-xs text-muted">

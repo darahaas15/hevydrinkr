@@ -66,3 +66,12 @@ Dark mode is preserved byte-for-byte: every new token's dark value equals the li
 - Per-device state persists via `zustand` `persist` + `safeJSONStorage` (`src/lib/storage/safe-storage.ts`); account data round-trips to Supabase.
 - Tests: `npm run test` (Vitest, Node env; opt into jsdom per-file). Pure domain logic is the part held to a coverage line.
 - `npm run typecheck` and `npm run test` gate CI (`npm run ci`).
+- User-facing changes get a new entry at the top of `src/lib/changelog.ts`. It is the single source of `APP_VERSION` and drives the one-time in-app "what's new" banner - no entry means users are never told.
+
+### Columns that may not be migrated yet
+
+PROD is the only database, so app code and migrations can land out of order, and a `select()` naming a column the DB lacks fails the *whole* query (Postgres 42703 / PostgREST PGRST204) - which would take out session loading, not just the new feature.
+
+`src/lib/supabase/optional-columns.ts` handles this: an `OptionalColumn` starts optimistic and latches off the first time the DB reports the column missing, so callers retry once without it. See `drinkCostColumn` and its use in `src/lib/supabase/drink-entries.ts` for the read + write pattern. Use this for any additive column whose migration might trail the deploy.
+
+**Gotcha:** the contract extractor (`tests/contract/extract-db-contract.ts`) is regex-based on literal `.select('...')` strings. Composing a select list from a variable or helper makes it invisible, and `npm run contract:update` will silently *delete* those columns from the snapshot - a coverage loss that looks like a clean run. Always read the `git diff` of `tests/contract/db-contract.json` and expect it to grow. Conditional column lists must be written out as full literals at each call site. New migrations also need adding to the `FILES` list in `scripts/test-db-bootstrap.sh`, which does not read `supabase/migrations/`.

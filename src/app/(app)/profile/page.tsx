@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UserPlus } from 'lucide-react';
-import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2 } from 'lucide-react';
+import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2, MapPin, Wallet } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useSessionStore } from '@/stores/use-session-store';
@@ -14,6 +14,9 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { FeedCard } from '@/components/feed/feed-card';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { calculateWeeklyStreak } from '@/lib/algorithms/streaks';
+import { buildVenueStats } from '@/lib/venues';
+import { formatCost, sumCosts } from '@/lib/money';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import { formatDuration } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { PR_LABELS, PR_ICONS } from '@/types/pr';
@@ -45,6 +48,7 @@ function ProfilePageOwn() {
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
+  const currency = useDrinkPrefsStore((s) => s.currency);
 
   // Fetch on mount and refetch (stale-guarded) when page regains focus
   useEffect(() => {
@@ -94,8 +98,31 @@ function ProfilePageOwn() {
       })
     );
 
-    return { totalSessions, totalDrinks, totalMinutes, avgDrinksPerSession, categoryCounts };
+    // Spend across every session that recorded prices. null when none did,
+    // which keeps the spend UI hidden until the feature is actually used.
+    const totalSpend = sumCosts(mySessions.flatMap((s) => s.drinks));
+    const sessionsWithSpend = mySessions.filter(
+      (s) => sumCosts(s.drinks) !== null,
+    ).length;
+    const avgSpendPerSession =
+      totalSpend !== null && sessionsWithSpend > 0 ? totalSpend / sessionsWithSpend : null;
+
+    return {
+      totalSessions,
+      totalDrinks,
+      totalMinutes,
+      avgDrinksPerSession,
+      categoryCounts,
+      totalSpend,
+      avgSpendPerSession,
+    };
   }, [mySessions]);
+
+  // Venue history, most-recent-first; re-sorted by visits for the "top" list.
+  const topVenues = useMemo(
+    () => [...buildVenueStats(mySessions)].sort((a, b) => b.visits - a.visits).slice(0, 5),
+    [mySessions],
+  );
 
   const myPRs = currentUser ? recordsByUser[currentUser.id] ?? [] : [];
 
@@ -245,6 +272,27 @@ function ProfilePageOwn() {
             { icon: Wine, label: 'Total Drinks', value: stats.totalDrinks, color: 'text-accent' },
             { icon: Clock, label: 'Time Partying', value: formatDuration(stats.totalMinutes), color: 'text-info-fg' },
             { icon: TrendingUp, label: 'Avg/Session', value: stats.avgDrinksPerSession.toFixed(1), color: 'text-success-fg' },
+            // Spend tiles appear only once prices have been recorded, so
+            // profiles that never use the feature look unchanged.
+            ...(stats.totalSpend !== null
+              ? [
+                  {
+                    icon: Wallet,
+                    label: 'Total Spent',
+                    value: formatCost(stats.totalSpend, currency),
+                    color: 'text-warning-fg',
+                  },
+                  {
+                    icon: Wallet,
+                    label: 'Avg Spend',
+                    value:
+                      stats.avgSpendPerSession !== null
+                        ? formatCost(stats.avgSpendPerSession, currency)
+                        : '—',
+                    color: 'text-pink-fg',
+                  },
+                ]
+              : []),
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -324,6 +372,29 @@ function ProfilePageOwn() {
                 <p className="text-sm font-bold">{signatureDrink.name}</p>
                 <p className="text-[11px] text-fg-secondary">{signatureDrink.count} times &middot; {signatureDrink.pct}% of your drinks</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top Venues */}
+        {topVenues.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-fg-secondary uppercase tracking-wider mb-3">Top Venues</h3>
+            <div className="rounded-2xl bg-card border border-hairline divide-y divide-border-faint">
+              {topVenues.map((venue) => (
+                <div key={venue.key} className="px-4 py-3 flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-accent-text shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{venue.name}</p>
+                    <p className="text-[10px] text-fg-secondary">
+                      {venue.totalDrinks} drink{venue.totalDrinks !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <span className="text-sm font-mono font-bold text-fg-secondary shrink-0">
+                    {venue.visits}×
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}

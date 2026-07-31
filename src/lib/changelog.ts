@@ -26,6 +26,21 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.0',
+    title: 'Log faster, track what you spend',
+    date: 'July 2026',
+    changes: [
+      'Quick add: your recent and starred drinks are one tap away, right on the session screen.',
+      'Star any drink in the picker to pin it to the top of your list.',
+      'Log another of your last drink straight from the session bar, without leaving the page.',
+      'Add a price to a drink once and it is remembered — see what a night cost you, plus new Total Spent stats and a Spend leaderboard.',
+      'Pick your currency in Settings.',
+      'End a session without posting it — it stays in your history and you can share it to the feed later.',
+      'Venue suggestions from the places you have been, so the same bar stops showing up three different ways.',
+      'Your most-visited venues now appear on your profile.',
+    ],
+  },
+  {
     version: '1.13.0',
     title: 'Tag your crew',
     date: 'May 2026',

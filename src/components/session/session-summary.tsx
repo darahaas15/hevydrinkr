@@ -2,12 +2,14 @@
 
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Wine, Droplets, TrendingUp } from 'lucide-react';
+import { Clock, Wine, Droplets, TrendingUp, Wallet } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
+import { formatCost, sumCosts } from '@/lib/money';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { useUIStore } from '@/stores/use-ui-store';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import type { DrinkSession } from '@/types';
 
 interface SessionSummaryProps {
@@ -17,6 +19,8 @@ interface SessionSummaryProps {
 
 export function SessionSummary({ session, onDone }: SessionSummaryProps) {
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
+  const currency = useDrinkPrefsStore((s) => s.currency);
+  const spend = sumCosts(session.drinks);
 
   // Hide the app tab bar so the Done button isn't obscured by it on tall
   // summary content where the overlay's stacking context might let the nav
@@ -63,13 +67,19 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
             { icon: Clock, label: 'Duration', value: formatDuration(session.durationMinutes), color: 'text-info-fg' },
             { icon: Droplets, label: 'Std Drinks', value: session.totalStandardDrinks.toFixed(1), color: 'text-violet-fg' },
             { icon: TrendingUp, label: 'Types', value: new Set(session.drinks.map(d => d.drinkDefinitionId)).size.toString(), color: 'text-warning-fg' },
-          ].map((stat, i) => (
+            // Only when prices were recorded, matching session detail.
+            ...(spend !== null
+              ? [{ icon: Wallet, label: 'Spent', value: formatCost(spend, currency), color: 'text-success-fg' }]
+              : []),
+          ].map((stat, i, all) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.1 }}
-              className="bg-card border border-hairline rounded-2xl p-4 text-center"
+              className={`bg-card border border-hairline rounded-2xl p-4 text-center ${
+                all.length % 2 === 1 && i === all.length - 1 ? 'col-span-2' : ''
+              }`}
             >
               <stat.icon className={`w-5 h-5 ${stat.color} mx-auto mb-2`} />
               <p className="text-2xl font-bold">{stat.value}</p>
