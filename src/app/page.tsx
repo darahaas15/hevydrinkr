@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ChevronLeft, Loader2, User, Mail, Lock, Calendar, AtSign, Share, Plus, MoreVertical, Download, Ruler, Weight } from 'lucide-react';
@@ -12,6 +12,26 @@ import { migrateStorageKeys } from '@/lib/storage-migration';
 import { supabase } from '@/lib/supabase/client';
 
 type Screen = 'landing' | 'signup' | 'login';
+
+// Running as the installed PWA (or on localhost for development).
+const STANDALONE_QUERY = '(display-mode: standalone)';
+
+function subscribeToDisplayMode(onChange: () => void) {
+  const query = window.matchMedia(STANDALONE_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function isRunningAsApp() {
+  return (
+    window.matchMedia(STANDALONE_QUERY).matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true ||
+    window.location.hostname === 'localhost'
+  );
+}
+
+// Pre-render assumes the app is installed so the install gate never flashes.
+const assumeInstalled = () => true;
 
 export default function LandingPage() {
   return (
@@ -49,7 +69,9 @@ function LandingContent() {
   const [submitting, setSubmitting] = useState(false);
 
   // PWA install gate
-  const [isStandalone, setIsStandalone] = useState(true); // default true to avoid flash
+  const runningAsApp = useSyncExternalStore(subscribeToDisplayMode, isRunningAsApp, assumeInstalled);
+  const [installAccepted, setInstallAccepted] = useState(false);
+  const isStandalone = runningAsApp || installAccepted;
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [canInstallNative, setCanInstallNative] = useState(false);
 
@@ -64,12 +86,6 @@ function LandingContent() {
   });
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true ||
-      window.location.hostname === 'localhost';
-    setIsStandalone(standalone);
-
     const handler = (e: Event) => {
       e.preventDefault();
       deferredPromptRef.current = e as BeforeInstallPromptEvent;
@@ -84,7 +100,7 @@ function LandingContent() {
       deferredPromptRef.current.prompt();
       const result = await deferredPromptRef.current.userChoice;
       if (result.outcome === 'accepted') {
-        setIsStandalone(true);
+        setInstallAccepted(true);
       }
       deferredPromptRef.current = null;
       setCanInstallNative(false);

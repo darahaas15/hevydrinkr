@@ -57,11 +57,8 @@ jobs:
             }
           '
 
-      # Non-blocking: the repo currently has pre-existing lint errors (React 19
-      # hooks/purity rules) unrelated to the test suite. Surfaced here for
-      # visibility without failing the build; flip to a hard gate once cleaned.
-      - name: Lint (non-blocking)
-        continue-on-error: true
+      # Errors fail the build; warnings are reported but allowed.
+      - name: Lint
         run: npm run lint
 
   # Layer 3 — local-Supabase contract + RLS. MANUAL-ONLY for now (gated on the

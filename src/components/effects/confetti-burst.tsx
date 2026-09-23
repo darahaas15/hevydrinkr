@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ConfettiBurstProps {
@@ -21,18 +21,21 @@ interface Particle {
   isCircle: boolean;
 }
 
+function randomParticles(): Particle[] {
+  return Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+    id: i,
+    x: (Math.random() - 0.5) * 600,
+    y: (Math.random() - 0.5) * 600 - 200,
+    rotation: Math.random() * 720 - 360,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    size: Math.random() * 6 + 4,
+    isCircle: Math.random() > 0.5,
+  }));
+}
+
 export function ConfettiBurst({ isActive, onComplete }: ConfettiBurstProps) {
-  const particles = useMemo<Particle[]>(() => {
-    return Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 600,
-      y: (Math.random() - 0.5) * 600 - 200,
-      rotation: Math.random() * 720 - 360,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      size: Math.random() * 6 + 4,
-      isCircle: Math.random() > 0.5,
-    }));
-  }, [isActive]);
+  // Mounted fresh for each celebration, so every burst gets its own layout.
+  const [particles] = useState(randomParticles);
 
   useEffect(() => {
     if (isActive && onComplete) {
