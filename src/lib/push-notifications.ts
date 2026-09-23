@@ -55,8 +55,10 @@ export async function initPushNotifications(userId: string) {
 export async function unregisterPushNotifications(userId: string) {
   if ('serviceWorker' in navigator) {
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+      // Not `.ready`: it never resolves without an active worker (a failed
+      // install, workers blocked), which left Sign Out hanging.
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager.getSubscription();
       if (sub) await sub.unsubscribe();
     } catch {
       // Subscription may not exist

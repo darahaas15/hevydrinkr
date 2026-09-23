@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood, UserProfile } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
-import { useAuthStore } from '@/stores/use-auth-store';
+import { useAuthStore, onSignOut } from '@/stores/use-auth-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 import {
   insertDrinkEntries,
@@ -13,7 +13,6 @@ import {
 import { normalizeVenue } from '@/lib/venues';
 import {
   spreadDrinkTimestamps,
-  buildSessionSummary,
   durationMinutesBetween,
   nextActiveSession,
 } from '@/lib/session-utils';
@@ -177,6 +176,44 @@ const drinkDeletePromises: Map<string, Promise<unknown>> = new Map();
 // Increments every time a new session starts. Captured by addDrink closures
 // so stale callbacks from abandoned sessions can detect they're orphaned.
 let _sessionGeneration = 0;
+
+// While BAC is climbing the live estimate rises every second, and saving each
+// rise sent up to one request a second for the whole session. Save the peak at
+// most once a minute instead; endSession writes the final value anyway.
+export const PEAK_SYNC_INTERVAL_MS = 60_000;
+let _peakSync: { sessionId: string; lastAt: number; timer: ReturnType<typeof setTimeout> | null } | null = null;
+
+function cancelPeakSync() {
+  if (_peakSync?.timer) clearTimeout(_peakSync.timer);
+  _peakSync = null;
+}
+
+function schedulePeakSync(sessionId: string, getActive: () => DrinkSession | null) {
+  if (_peakSync?.sessionId !== sessionId) {
+    cancelPeakSync();
+    _peakSync = { sessionId, lastAt: 0, timer: null };
+  }
+  const sync = _peakSync;
+  if (sync.timer) return; // a save is already queued and will send the newest peak
+
+  const flush = () => {
+    sync.timer = null;
+    sync.lastAt = Date.now();
+    const active = getActive();
+    if (active?.id !== sessionId) return;
+    supabase
+      .from('drink_sessions')
+      .update({ peak_bac_estimate: active.peakBacEstimate })
+      .eq('id', sessionId)
+      .then(({ error }) => {
+        if (error) console.error('Failed to update peak BAC:', error);
+      });
+  };
+
+  const wait = sync.lastAt + PEAK_SYNC_INTERVAL_MS - Date.now();
+  if (wait <= 0) flush();
+  else sync.timer = setTimeout(flush, wait);
+}
 
 // ---------------------------------------------------------------------------
 // Store
@@ -358,6 +395,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     };
 
     // Optimistic update
+    cancelPeakSync();
     sessionInsertPromises.clear();
     const ownerHistory = sessionsByUser[ownerId] ?? [];
     set({
@@ -412,6 +450,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
 
     const abandoned = activeSession;
     const sessionId = abandoned.id;
+    cancelPeakSync();
     sessionInsertPromises.clear();
 
     // Clear local state — don't add to history
@@ -696,15 +735,7 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
           peakBacEstimate: bac,
         },
       });
-
-      // Sync peak BAC to Supabase
-      supabase
-        .from('drink_sessions')
-        .update({ peak_bac_estimate: bac })
-        .eq('id', activeSession.id)
-        .then(({ error }) => {
-          if (error) console.error('Failed to update peak BAC:', error);
-        });
+      schedulePeakSync(activeSession.id, () => get().activeSession);
     }
   },
 
@@ -970,3 +1001,22 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     ),
   }),
 }));
+
+// Signing out, or signing in as someone else, must not leave the previous
+// account's live session on this device. The next account loads its own.
+function clearLiveSession() {
+  cancelPeakSync();
+  sessionInsertPromises.clear();
+  useSessionStore.setState({ activeSession: null });
+}
+
+onSignOut(clearLiveSession);
+
+// A signed-in user only ever holds their own live session. Checked against the
+// signed-in user rather than on currentUser turning null, which also happens
+// when an offline launch can't load the profile.
+useAuthStore.subscribe((state) => {
+  const userId = state.currentUser?.id;
+  const active = useSessionStore.getState().activeSession;
+  if (userId && active && active.userId !== userId) clearLiveSession();
+});

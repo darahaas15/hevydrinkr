@@ -11,6 +11,7 @@ import { hapticLight } from '@/lib/haptics';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
+import { blankBrokenImage } from '@/lib/image-utils';
 import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import Skeleton from '@/components/ui/skeleton';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
@@ -124,13 +125,13 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       {item.photos && item.photos.length > 0 && (
         item.photos.length === 1 ? (
           <div className="mb-2">
-            <img src={item.photos[0]} alt="" loading="lazy" decoding="async" className="w-full aspect-[4/3] object-cover" />
+            <img src={item.photos[0]} alt="" loading="lazy" decoding="async" onError={blankBrokenImage} className="w-full aspect-[4/3] object-cover bg-surface-subtle" />
           </div>
         ) : (
           <div className="mb-2 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
             {item.photos.map((photo, i) => (
               <div key={i} className="w-full shrink-0 snap-center">
-                <img src={photo} alt="" loading="lazy" decoding="async" className="w-full aspect-[4/3] object-cover" />
+                <img src={photo} alt="" loading="lazy" decoding="async" onError={blankBrokenImage} className="w-full aspect-[4/3] object-cover bg-surface-subtle" />
               </div>
             ))}
           </div>

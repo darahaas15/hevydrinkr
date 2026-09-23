@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronRight, Users } from 'lucide-react';
@@ -12,6 +12,8 @@ import type { Group } from '@/types';
 export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
   const router = useRouter();
   const latestRecap = useRoastStore((s) => s.getLatestRecap)(group.id);
+  // An icon that fails to load falls back to the letter tile, not alt text.
+  const [failedIcon, setFailedIcon] = useState<string | null>(null);
 
   return (
     <div onClick={() => { hapticLight(); router.push(`/groups?id=${group.id}`); }} className="cursor-pointer">
@@ -21,8 +23,8 @@ export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
       className="group-card w-full rounded-2xl bg-card border border-hairline p-4 text-left active:bg-surface-subtle transition-colors"
     >
       <div className="flex items-center gap-3">
-        {group.iconUrl ? (
-          <img src={group.iconUrl} alt={group.name} loading="lazy" decoding="async" className="w-12 h-12 rounded-2xl object-cover" />
+        {group.iconUrl && group.iconUrl !== failedIcon ? (
+          <img src={group.iconUrl} alt={group.name} loading="lazy" decoding="async" onError={() => setFailedIcon(group.iconUrl)} className="w-12 h-12 rounded-2xl object-cover" />
         ) : (
           <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-lg font-bold text-accent">
             {group.name.charAt(0).toUpperCase()}

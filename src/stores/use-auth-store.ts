@@ -39,6 +39,16 @@ let _followRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 let _outgoingRequestsChannel: ReturnType<typeof supabase.channel> | null = null;
 let _followsChannel: ReturnType<typeof supabase.channel> | null = null;
 
+// Stores holding per-account data on the device register here to drop it when
+// the user signs out, without this store importing them. Only logout() fires
+// these: initialize() also sets currentUser to null when the profile can't load
+// (an offline launch), and that must not wipe anything.
+const signOutListeners = new Set<() => void>();
+export function onSignOut(listener: () => void): () => void {
+  signOutListeners.add(listener);
+  return () => signOutListeners.delete(listener);
+}
+
 function profileFromRow(row: Record<string, unknown>): UserProfile {
   return {
     id: row.id as string,
@@ -293,6 +303,7 @@ export const useAuthStore = create<AuthState>()(persist((set, get) => ({
     }
     await supabase.auth.signOut();
     set({ currentUser: null, allUsers: [], isAuthenticated: false, followRequests: [], outgoingRequests: [] });
+    signOutListeners.forEach((listener) => listener());
   },
 
   updateProfile: async (updates) => {
