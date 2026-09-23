@@ -20,6 +20,20 @@ export function spreadDrinkTimestamps(
   );
 }
 
+// The live session to keep after loading `fetchedUserId`'s sessions. Only your
+// own fetch may set it: viewing a friend's profile while they're out must not
+// adopt their live session (writes to it are then rejected by RLS). Your own
+// fetch is authoritative, so it also clears a session that isn't yours.
+export function nextActiveSession(
+  current: DrinkSession | null,
+  fetchedActive: DrinkSession | null,
+  fetchedUserId: string,
+  currentUserId: string | undefined,
+): DrinkSession | null {
+  if (!currentUserId || fetchedUserId !== currentUserId) return current;
+  return fetchedActive;
+}
+
 // Build the FeedItem.sessionSummary JSONB from a session. Shared between
 // createFeedItemFromSession (live flow) and the past-session / edit flows so
 // the shape stays identical everywhere.

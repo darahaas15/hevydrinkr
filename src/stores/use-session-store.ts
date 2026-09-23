@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { DrinkSession, DrinkEntry, Round, SessionMood, UserProfile } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/use-ui-store';
+import { useAuthStore } from '@/stores/use-auth-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 import {
   insertDrinkEntries,
@@ -14,6 +15,7 @@ import {
   spreadDrinkTimestamps,
   buildSessionSummary,
   durationMinutesBetween,
+  nextActiveSession,
 } from '@/lib/session-utils';
 
 // Photo data URLs are huge (~100KB–1MB each, base64 PNG/JPG) and live in
@@ -256,11 +258,12 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     const active = sessions.find((s) => s.status === 'active') ?? null;
 
     set((state) => ({
-      // Only replace activeSession when the fetched user owns the current
-      // active session — otherwise we'd wipe a different user's in-progress
-      // session by merely viewing this profile.
-      activeSession:
-        active ?? (state.activeSession?.userId === userId ? null : state.activeSession),
+      activeSession: nextActiveSession(
+        state.activeSession,
+        active,
+        userId,
+        useAuthStore.getState().currentUser?.id,
+      ),
       sessionsByUser: { ...state.sessionsByUser, [userId]: history },
     }));
   },
