@@ -19,10 +19,25 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
+// Only the scheduler may run this: it calls with the service role key, while
+// the anon key (a valid JWT that ships in the app) must not be able to fan out
+// notifications to every user.
+function isScheduler(req: Request): boolean {
+  const expected = `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''}`;
+  const provided = req.headers.get('Authorization') ?? '';
+  if (expected === 'Bearer ' || provided.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < provided.length; i++) mismatch |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  return mismatch === 0;
+}
+
 Deno.serve(async (req) => {
   // Allow GET (cron) and POST (manual invoke)
   if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
+  }
+  if (!isScheduler(req)) {
+    return new Response('Forbidden', { status: 403 });
   }
 
   const now = new Date();
