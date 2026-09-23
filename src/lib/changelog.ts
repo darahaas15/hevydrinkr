@@ -26,6 +26,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.2',
+    title: 'Your session stays yours',
+    date: 'September 2026',
+    changes: [
+      'Opening a friend’s profile while they were out could swap their live session in for yours, so new drinks and photos didn’t save. Your session now stays yours, and a stuck one clears itself when you open the Sesh tab.',
+    ],
+  },
+  {
     version: '1.14.1',
     title: 'Links that go where they should',
     date: 'September 2026',

@@ -6,6 +6,7 @@ import {
   localInputValueToIso,
   validateSessionForm,
   durationMinutesBetween,
+  nextActiveSession,
   type SessionFormInput,
 } from './session-utils';
 import { makeSession, makeDrink } from '../../tests/helpers/factories';
@@ -133,5 +134,32 @@ describe('validateSessionForm', () => {
 
   it('requires a mood', () => {
     expect(validateSessionForm(base({ mood: null }))).toBe('Pick a mood');
+  });
+});
+
+describe('nextActiveSession', () => {
+  const mine = makeSession({ userId: 'me', status: 'active', venue: 'My Bar' });
+  const theirs = makeSession({ userId: 'friend', status: 'active', venue: 'Their Bar' });
+
+  it("never adopts a friend's live session when viewing their profile", () => {
+    expect(nextActiveSession(null, theirs, 'friend', 'me')).toBeNull();
+    expect(nextActiveSession(mine, theirs, 'friend', 'me')).toBe(mine);
+  });
+
+  it('takes your own live session from your own fetch', () => {
+    expect(nextActiveSession(null, mine, 'me', 'me')).toBe(mine);
+  });
+
+  it('clears a session that belongs to someone else once your own sessions load', () => {
+    expect(nextActiveSession(theirs, null, 'me', 'me')).toBeNull();
+    expect(nextActiveSession(theirs, mine, 'me', 'me')).toBe(mine);
+  });
+
+  it('clears your session when your own fetch shows it has ended', () => {
+    expect(nextActiveSession(mine, null, 'me', 'me')).toBeNull();
+  });
+
+  it('leaves the session alone when nobody is signed in', () => {
+    expect(nextActiveSession(mine, theirs, 'friend', undefined)).toBe(mine);
   });
 });
