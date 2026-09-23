@@ -592,9 +592,10 @@ nav.fixed {
 }
 
 /* ── Theme switch cross-fade ─────────────────── */
-/* `.theme-transition` is added to <html> by ThemeController only for a
-   user-initiated theme switch (never on first paint), then removed after the
-   fade. Gated on reduced-motion so the swap is instant for those users. */
+/* `.theme-transition` is added to <html> by ThemeController for a theme
+   change after first paint (a switch in Settings, or the one-time pin of a
+   device that followed its phone), then removed after the fade. Never on
+   first paint. Gated on reduced-motion so the swap is instant for those users. */
 @media (prefers-reduced-motion: no-preference) {
   html.theme-transition,
   html.theme-transition * {

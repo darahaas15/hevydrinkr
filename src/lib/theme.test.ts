@@ -1,84 +1,121 @@
 import { describe, it, expect } from 'vitest';
 import {
+  DEFAULT_THEME,
+  LEGACY_EFFECTIVE_THEME_KEY,
+  migrateThemeSettings,
   resolveBootTheme,
-  resolveEffectiveTheme,
   themeInitScript,
-  THEME_STORAGE_KEY,
-  THEME_EFFECTIVE_STORAGE_KEY,
   THEME_COLORS,
+  THEME_STORAGE_KEY,
 } from './theme';
 
-describe('resolveEffectiveTheme', () => {
-  it('honors an explicit light/dark preference regardless of the OS', () => {
-    expect(resolveEffectiveTheme('light', false)).toBe('light');
-    expect(resolveEffectiveTheme('light', true)).toBe('light');
-    expect(resolveEffectiveTheme('dark', true)).toBe('dark');
-    expect(resolveEffectiveTheme('dark', false)).toBe('dark');
+describe('migrateThemeSettings', () => {
+  it('keeps a saved Light or Dark choice', () => {
+    expect(migrateThemeSettings('light', true, 'dark')).toEqual({ preference: 'light', pinPending: false });
+    expect(migrateThemeSettings('dark', false, 'light')).toEqual({ preference: 'dark', pinPending: false });
   });
 
-  it('follows the OS color-scheme when preference is system', () => {
-    expect(resolveEffectiveTheme('system', true)).toBe('light');
-    expect(resolveEffectiveTheme('system', false)).toBe('dark');
+  it('keeps what is on screen for a device that followed its phone, until it is pinned', () => {
+    // Chose System explicitly.
+    expect(migrateThemeSettings('system', false, 'light')).toEqual({ preference: 'light', pinPending: true });
+    // Never touched the setting (System was the default) but ran the System-era app.
+    expect(migrateThemeSettings(undefined, true, 'light')).toEqual({ preference: 'light', pinPending: true });
+    expect(migrateThemeSettings(undefined, true, 'dark')).toEqual({ preference: 'dark', pinPending: true });
+  });
+
+  it('gives a fresh device the default', () => {
+    expect(DEFAULT_THEME).toBe('dark');
+    expect(migrateThemeSettings(undefined, false, 'light')).toEqual({ preference: 'dark', pinPending: false });
+    expect(migrateThemeSettings('bogus', false, 'light')).toEqual({ preference: 'dark', pinPending: false });
   });
 });
 
 describe('resolveBootTheme', () => {
-  it('honors an explicit preference over both the cache and the OS', () => {
-    expect(resolveBootTheme('dark', 'light', true)).toBe('dark');
+  it('paints a saved choice regardless of anything else', () => {
     expect(resolveBootTheme('light', 'dark', false)).toBe('light');
+    expect(resolveBootTheme('dark', 'light', true)).toBe('dark');
   });
 
-  it('prefers the cached effective theme over the OS while on system', () => {
-    // The OS value cannot be trusted at launch (iOS PWA quirk) - the cache
-    // must win even when matchMedia disagrees.
+  it('never asks the phone once the device has a saved choice', () => {
+    for (const prefersLight of [true, false]) {
+      expect(resolveBootTheme('dark', null, prefersLight)).toBe('dark');
+      expect(resolveBootTheme('light', null, prefersLight)).toBe('light');
+    }
+  });
+
+  it('repaints what an unpinned phone-following device last showed', () => {
     expect(resolveBootTheme('system', 'dark', true)).toBe('dark');
-    expect(resolveBootTheme('system', 'light', false)).toBe('light');
+    expect(resolveBootTheme(undefined, 'light', false)).toBe('light');
   });
 
-  it('falls back to the OS when the cache is missing or garbage', () => {
-    expect(resolveBootTheme('system', null, false)).toBe('dark');
+  it('asks the phone only for a System choice with nothing recorded', () => {
     expect(resolveBootTheme('system', null, true)).toBe('light');
-    expect(resolveBootTheme('system', 'nonsense', false)).toBe('dark');
+    expect(resolveBootTheme('system', null, false)).toBe('dark');
+  });
+
+  it('paints the default for a fresh device, even on a light phone', () => {
+    expect(resolveBootTheme(undefined, null, true)).toBe('dark');
+    expect(resolveBootTheme('bogus', 'bogus', true)).toBe('dark');
   });
 });
 
 describe('themeInitScript', () => {
-  it('reads the same storage key the persist store writes', () => {
-    expect(themeInitScript()).toContain(JSON.stringify(THEME_STORAGE_KEY));
-  });
-
-  it('reads the effective-theme cache the ThemeController writes', () => {
-    expect(themeInitScript()).toContain(JSON.stringify(THEME_EFFECTIVE_STORAGE_KEY));
-  });
-
-  it('embeds the theme-color values for both themes', () => {
-    const script = themeInitScript();
-    expect(script).toContain(JSON.stringify(THEME_COLORS.light));
-    expect(script).toContain(JSON.stringify(THEME_COLORS.dark));
-  });
-
-  it('resolves the persisted shape the way the store + controller do', () => {
-    // Mirror the anti-FOUC logic against the zustand-persist envelope so the
-    // inline script and resolveBootTheme can never silently diverge.
-    const run = (raw: string | null, cached: string | null, prefersLight: boolean) => {
-      let preference: 'system' | 'light' | 'dark' = 'system';
-      try {
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed?.state?.preference) preference = parsed.state.preference;
-        }
-      } catch {
-        // matches the script's exception-safe fallback to `system`
+  /** Executes the real inline script against stubbed browser globals. */
+  const runScript = (stored: Record<string, string | null>, prefersLight: boolean, opts: { throws?: boolean } = {}) => {
+    const attrs: Record<string, string> = {};
+    const meta = { content: '', setAttribute: (_: string, v: string) => void (meta.content = v) };
+    const keysRead: string[] = [];
+    new Function('localStorage', 'window', 'document', themeInitScript())(
+      {
+        getItem: (k: string) => {
+          keysRead.push(k);
+          if (opts.throws) throw new Error('SecurityError');
+          return stored[k] ?? null;
+        },
+      },
+      { matchMedia: (q: string) => ({ matches: q.includes('light') === prefersLight }) },
+      {
+        documentElement: { setAttribute: (k: string, v: string) => void (attrs[k] = v) },
+        querySelector: () => meta,
       }
-      return resolveBootTheme(preference, cached, prefersLight);
-    };
+    );
+    return { theme: attrs['data-theme'], themeColor: meta.content, keysRead };
+  };
+  const envelope = (state: Record<string, unknown>, version = 1) => JSON.stringify({ state, version });
 
-    expect(run(JSON.stringify({ state: { preference: 'light' }, version: 0 }), 'dark', false)).toBe('light');
-    expect(run(JSON.stringify({ state: { preference: 'dark' }, version: 0 }), 'light', true)).toBe('dark');
-    // system + cache: the cache wins over a disagreeing (untrustworthy) OS value
-    expect(run(JSON.stringify({ state: { preference: 'system' }, version: 0 }), 'dark', true)).toBe('dark');
-    expect(run(JSON.stringify({ state: { preference: 'system' }, version: 0 }), null, true)).toBe('light');
-    expect(run(null, null, false)).toBe('dark'); // first visit → system → OS (dark)
-    expect(run('not json', null, true)).toBe('light'); // malformed → system → OS (light)
+  it('reads the keys the store and the System-era controller wrote, and tints the status bar to match', () => {
+    const out = runScript({ [THEME_STORAGE_KEY]: envelope({ preference: 'light', pinPending: false }) }, false);
+    expect(out.keysRead).toEqual([THEME_STORAGE_KEY, LEGACY_EFFECTIVE_THEME_KEY]);
+    expect(out).toMatchObject({ theme: 'light', themeColor: THEME_COLORS.light });
+    expect(runScript({}, true)).toMatchObject({ theme: 'dark', themeColor: THEME_COLORS.dark });
+  });
+
+  it('agrees with resolveBootTheme for every saved state and phone answer', () => {
+    const saved = [undefined, 'system', 'light', 'dark', 'bogus'];
+    const legacy = [null, 'light', 'dark', 'bogus'];
+    for (const preference of saved) {
+      for (const cache of legacy) {
+        for (const prefersLight of [true, false]) {
+          for (const version of [0, 1]) {
+            const stored = {
+              [THEME_STORAGE_KEY]: preference === undefined ? null : envelope({ preference }, version),
+              [LEGACY_EFFECTIVE_THEME_KEY]: cache,
+            };
+            expect(runScript(stored, prefersLight).theme, JSON.stringify({ stored, prefersLight })).toBe(
+              resolveBootTheme(preference, cache, prefersLight)
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it('treats unreadable or malformed storage as absent', () => {
+    expect(runScript({}, true, { throws: true }).theme).toBe('dark');
+    expect(runScript({ [THEME_STORAGE_KEY]: 'not json' }, true).theme).toBe('dark');
+    // A malformed settings entry still lets an unpinned device repaint what it last showed.
+    expect(runScript({ [THEME_STORAGE_KEY]: 'not json', [LEGACY_EFFECTIVE_THEME_KEY]: 'light' }, false).theme).toBe(
+      resolveBootTheme(undefined, 'light', false)
+    );
   });
 });

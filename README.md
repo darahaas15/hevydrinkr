@@ -137,7 +137,7 @@ The tour covers the highlights; this is the full list.
 ### Feels like a native app
 
 - Installable **PWA** with an install guide for iOS and Android, an offline fallback page and an in-app "new version" prompt.
-- **Light, dark or system** theme, painted before the first frame so there is no flash on launch.
+- **Light or dark** theme (dark by default), painted before the first frame so there is no flash on launch.
 - Haptic feedback where the platform supports it.
 
 <p align="center">

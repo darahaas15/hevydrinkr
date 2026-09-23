@@ -2,96 +2,86 @@
 
 import { useEffect, useRef } from 'react';
 import { useThemeStore } from '@/stores/use-theme-store';
-import {
-  resolveEffectiveTheme,
-  THEME_COLORS,
-  THEME_EFFECTIVE_STORAGE_KEY,
-  type EffectiveTheme,
-} from '@/lib/theme';
-
-// iOS home-screen PWAs report a wrong `prefers-color-scheme` for the first
-// moments after launch (WebKit updates it to the real OS value a beat later,
-// firing a `change` event). Until this settle window has passed, the live
-// matchMedia value must not overrule the theme the anti-FOUC script painted
-// from the on-device cache.
-const SYSTEM_SETTLE_MS = 2000;
+import { LEGACY_EFFECTIVE_THEME_KEY, SYSTEM_SETTLE_MS, THEME_COLORS } from '@/lib/theme';
 
 /**
- * Resolves the user's preference into an effective `light|dark` theme, writes
- * it to `data-theme` on <html>, keeps `<meta name="theme-color">` in sync, and
- * caches the resolved theme (THEME_EFFECTIVE_STORAGE_KEY) so the anti-FOUC
- * script can boot from it. While `preference === 'system'` it tracks the OS
- * color-scheme live.
+ * Applies the saved theme: writes `data-theme` on <html> and keeps
+ * `<meta name="theme-color">` in sync. The anti-FOUC `<head>` script already
+ * painted the saved theme, so on mount this only reconciles the status-bar
+ * tint. A later change (a switch in Settings, or the one-time pin below)
+ * cross-fades.
  *
- * The anti-FOUC `<head>` script already sets the boot theme before paint, so
- * on first mount this keeps what was painted (the OS value can't be trusted
- * yet at launch - see SYSTEM_SETTLE_MS) and reconciles with the settled OS
- * value afterwards. It only animates a cross-fade for a *real* change after
- * mount - a manual switch or an OS theme change the user is watching - never
- * on initial load. Mount once in the root layout; renders nothing.
+ * The phone's appearance is never followed (see SYSTEM_SETTLE_MS), except
+ * once: a device that followed its phone before the System option was removed
+ * gets its settled phone appearance saved as its choice.
+ *
+ * Mount once in the root layout; renders nothing.
  */
 export function ThemeController() {
   const preference = useThemeStore((s) => s.preference);
+  const pinPending = useThemeStore((s) => s.pinPending);
+  const setPreference = useThemeStore((s) => s.setPreference);
   const mountedRef = useRef(false);
 
   useEffect(() => {
-    const mql = window.matchMedia('(prefers-color-scheme: light)');
+    const root = document.documentElement;
 
-    const apply = (effective: EffectiveTheme, animate: boolean) => {
-      const root = document.documentElement;
+    // Reconcile the status-bar tint on every run, including first mount where
+    // `data-theme` already matches - React 19 metadata hydration can restore
+    // the SSR (dark) value, so the controller must own it unconditionally.
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', THEME_COLORS[preference]);
 
-      // Reconcile the status-bar tint on every call, including first mount where
-      // `data-theme` already matches — React 19 metadata hydration can restore
-      // the SSR (dark) value, so the controller must own it unconditionally.
-      document
-        .querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', THEME_COLORS[effective]);
+    // The first run reconciles with the anti-FOUC script and must stay instant.
+    const animate = mountedRef.current;
+    mountedRef.current = true;
+    if (root.getAttribute('data-theme') === preference) return;
 
-      // Cache the resolved theme for the anti-FOUC boot path. Best-effort:
-      // without it, boot falls back to matchMedia like a first visit.
+    if (animate) {
+      root.classList.add('theme-transition');
+      window.setTimeout(() => root.classList.remove('theme-transition'), 320);
+    }
+    root.setAttribute('data-theme', preference);
+  }, [preference]);
+
+  useEffect(() => {
+    if (!pinPending) {
+      // Nothing reads the System-era cache once the device has a saved choice.
       try {
-        window.localStorage.setItem(THEME_EFFECTIVE_STORAGE_KEY, effective);
+        window.localStorage.removeItem(LEGACY_EFFECTIVE_THEME_KEY);
       } catch {}
-
-      if (root.getAttribute('data-theme') === effective) return;
-
-      if (animate) {
-        root.classList.add('theme-transition');
-        window.setTimeout(() => root.classList.remove('theme-transition'), 320);
-      }
-      root.setAttribute('data-theme', effective);
-    };
-
-    const fromSystem = () => resolveEffectiveTheme(preference, mql.matches);
-
-    let settleTimer: number | undefined;
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      if (preference === 'system') {
-        // Keep whatever the anti-FOUC script painted (the cached last effective
-        // theme); trusting mql here would repaint the not-yet-settled OS value.
-        // If the OS theme genuinely changed while the app was closed, the
-        // post-settle reconcile below cross-fades to it.
-        const boot: EffectiveTheme =
-          document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-        apply(boot, false);
-        settleTimer = window.setTimeout(() => apply(fromSystem(), true), SYSTEM_SETTLE_MS);
-      } else {
-        apply(preference, false);
-      }
-    } else {
-      // Preference changed after mount - a manual switch the user is watching.
-      apply(fromSystem(), true);
+      return;
     }
 
-    // OS changes while on `system` always animate — the user is looking at it.
-    const onSystemChange = () => apply(fromSystem(), true);
-    mql.addEventListener('change', onSystemChange);
-    return () => {
-      mql.removeEventListener('change', onSystemChange);
-      if (settleTimer !== undefined) window.clearTimeout(settleTimer);
+    // Pin a device that followed its phone: save the phone's appearance once it
+    // has held for SYSTEM_SETTLE_MS while the app is on screen, so the device
+    // keeps the look it had. Any appearance change restarts the wait, and
+    // hiding the app cancels it: iOS fakes the other appearance while the app
+    // goes to the app switcher. A force-quit before this fires retries next launch.
+    const mql = window.matchMedia('(prefers-color-scheme: light)');
+    let timer: number | undefined;
+    let cancelled = false;
+    const pin = async () => {
+      // Another tab may have saved a choice since this one loaded; it wins.
+      await useThemeStore.persist.rehydrate();
+      if (cancelled || !useThemeStore.getState().pinPending) return;
+      setPreference(mql.matches ? 'light' : 'dark');
     };
-  }, [preference]);
+    const arm = () => {
+      window.clearTimeout(timer);
+      if (document.visibilityState === 'visible') timer = window.setTimeout(pin, SYSTEM_SETTLE_MS);
+    };
+    arm();
+    document.addEventListener('visibilitychange', arm);
+    mql.addEventListener('change', arm);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', arm);
+      mql.removeEventListener('change', arm);
+    };
+  }, [pinPending, setPreference]);
 
   return null;
 }

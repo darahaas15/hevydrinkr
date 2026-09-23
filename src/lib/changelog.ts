@@ -26,6 +26,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.4',
+    title: 'No more light flash when you open the app',
+    date: 'September 2026',
+    changes: [
+      'Closing the app from the app switcher and opening it again no longer shows it in light mode before it fades to dark.',
+      'The System theme option is gone, because iPhones don’t reliably tell the app which look they’re in. If your app was following your phone, it keeps the look it has now. You can switch between Light and Dark in Settings.',
+    ],
+  },
+  {
     version: '1.14.3',
     title: 'Faster photos, lighter live sessions',
     date: 'September 2026',
