@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
+import { ChevronLeft, LogOut, Trash2, User, Camera, Type, FileText, Bell, ChevronRight, Scale, Shield, Ruler, Weight, Lock, Sparkles, Sun, Moon } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import { CURRENCIES } from '@/lib/money';
-import type { ThemePreference } from '@/lib/theme';
+import type { Theme } from '@/lib/theme';
 import { useNotificationStore, type NotificationPreferences } from '@/stores/use-notification-store';
 import { unregisterPushNotifications } from '@/lib/push-notifications';
 import { hapticSelection } from '@/lib/haptics';
@@ -88,7 +88,7 @@ export default function SettingsPage() {
     updatePreferences(currentUser.id, { [key]: !preferences[key] });
   };
 
-  const handleSelectTheme = (value: ThemePreference) => {
+  const handleSelectTheme = (value: Theme) => {
     if (value === themePreference) return;
     hapticSelection();
     setThemePreference(value);
@@ -224,7 +224,7 @@ export default function SettingsPage() {
                     onClick={() => handleSaveGender(g)}
                     className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
                       gender === g
-                        ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
+                        ? 'bg-accent/10 border border-accent/30 text-accent-text'
                         : 'bg-card border border-card-border text-fg-secondary'
                     }`}
                   >
@@ -344,7 +344,6 @@ export default function SettingsPage() {
             </div>
             <div className="flex gap-2">
               {([
-                ['system', 'System', Monitor],
                 ['light', 'Light', Sun],
                 ['dark', 'Dark', Moon],
               ] as const).map(([value, label, Icon]) => {
@@ -356,7 +355,7 @@ export default function SettingsPage() {
                     aria-pressed={isActive}
                     className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-accent-muted ring-1 ring-accent/40 text-accent-text'
+                        ? 'bg-accent-muted border border-accent/40 text-accent-text'
                         : 'bg-card-hover border border-card-border text-muted-foreground'
                     }`}
                   >
@@ -366,7 +365,6 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted mt-3">System follows your device&apos;s appearance setting.</p>
           </div>
         </div>
 
@@ -389,7 +387,7 @@ export default function SettingsPage() {
                     aria-pressed={isActive}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-accent-muted ring-1 ring-accent/40 text-accent-text'
+                        ? 'bg-accent-muted border border-accent/40 text-accent-text'
                         : 'bg-card-hover border border-card-border text-muted-foreground'
                     }`}
                   >
