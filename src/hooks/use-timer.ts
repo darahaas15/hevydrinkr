@@ -3,20 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export function useTimer(startTime: string | null) {
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsedSinceStart, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!startTime) {
-      setElapsed(0);
-      return;
-    }
+    if (!startTime) return;
 
     const start = new Date(startTime).getTime();
 
     const update = () => {
       const now = Date.now();
-      setElapsed(Math.floor((now - start) / 1000));
+      // A session started on another device can carry a start time slightly
+      // ahead of this device's clock; count from zero rather than go negative.
+      setElapsed(Math.max(0, Math.floor((now - start) / 1000)));
     };
 
     update();
@@ -26,6 +25,9 @@ export function useTimer(startTime: string | null) {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [startTime]);
+
+  // With no session the timer reads zero, whatever the last session left behind.
+  const elapsed = startTime ? elapsedSinceStart : 0;
 
   const formatTime = useCallback(() => {
     const hrs = Math.floor(elapsed / 3600);
