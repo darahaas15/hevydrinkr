@@ -26,6 +26,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.3',
+    title: 'Faster photos, lighter live sessions',
+    date: 'September 2026',
+    changes: [
+      'Photos and avatars you’ve already seen are kept on your phone, so they load straight away and still show when your signal drops.',
+      'A profile picture that can’t load shows initials instead of a broken image.',
+      'A live session saves in the background far less often, which is easier on battery and data.',
+      'Signing out clears your live session from the phone. It’s still there when you sign back in.',
+      'Sign Out no longer gets stuck on phones where the app’s offline support hadn’t finished setting up.',
+    ],
+  },
+  {
     version: '1.14.2',
     title: 'Your session stays yours',
     date: 'September 2026',

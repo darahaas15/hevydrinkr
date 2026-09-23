@@ -1,3 +1,4 @@
+import type { SyntheticEvent } from 'react';
 import { supabase } from '@/lib/supabase/client';
 
 export const MAX_AVATAR_SIZE = 0.05; // 50KB
@@ -58,4 +59,13 @@ export function pickImage(): Promise<File | null> {
     window.addEventListener('focus', handleFocus);
     input.click();
   });
+}
+
+// Transparent 1x1 GIF, swapped in for a photo that fails to load (offline,
+// deleted) so the img keeps its size and shows its own placeholder background
+// instead of the browser's broken-image frame.
+const BLANK_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+export function blankBrokenImage(e: SyntheticEvent<HTMLImageElement>) {
+  if (e.currentTarget.src !== BLANK_IMAGE) e.currentTarget.src = BLANK_IMAGE;
 }

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { blankBrokenImage } from '@/lib/image-utils';
 
 interface PhotoGalleryProps {
   photos: string[];
@@ -48,7 +49,8 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
                   src={photo}
                   alt=""
                   loading="lazy"
-                  className="w-full aspect-[4/3] object-cover rounded-2xl"
+                  onError={blankBrokenImage}
+                  className="w-full aspect-[4/3] object-cover rounded-2xl bg-surface-subtle"
                 />
               </div>
             ))}
@@ -91,7 +93,7 @@ export function PhotoGallery({ photos, onRemove, variant = 'compact' }: PhotoGal
             onClick={() => setViewerIndex(i)}
             className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-surface-subtle cursor-pointer"
           >
-            <img src={photo} alt="" loading="lazy" className="w-full h-full object-cover" />
+            <img src={photo} alt="" loading="lazy" onError={blankBrokenImage} className="w-full h-full object-cover" />
             {onRemove && (
               <div
                 role="button"
@@ -148,6 +150,7 @@ function PhotoViewer({
       <img
         src={photo}
         alt=""
+        onError={blankBrokenImage}
         className="max-w-full max-h-full object-contain"
         onClick={(e) => e.stopPropagation()}
       />

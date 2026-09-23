@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface AvatarProps {
@@ -24,13 +27,18 @@ function getInitials(name: string): string {
 }
 
 export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
-  if (src) {
+  // A photo that fails to load (offline, deleted) falls back to initials rather
+  // than the browser's broken image with the name spilling out as alt text.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  if (src && src !== failedSrc) {
     return (
       <img
         src={src}
         alt={name}
         loading="lazy"
         decoding="async"
+        onError={() => setFailedSrc(src)}
         className={cn('rounded-full object-cover', sizeStyles[size], className)}
       />
     );
