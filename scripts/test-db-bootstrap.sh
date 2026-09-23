@@ -36,6 +36,8 @@ FILES=(
   weekly-roast.sql                # roast_recaps, roast_awards, roast_streaks, group_records
   storage-policies.sql
   migrations/20260731_drink_cost.sql  # drink_entries.cost (optional per-drink price)
+  migrations/20260923_group_roast_access.sql      # members-only roast data; joins need an invite
+  migrations/20260923_pin_function_search_path.sql  # SECURITY DEFINER functions resolve in public
 )
 
 for f in "${FILES[@]}"; do
