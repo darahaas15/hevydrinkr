@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Heart, Share2, Clock, Wine, Send, MoreHorizontal, Trash2, Pencil, X, MessageCircle, Flag } from 'lucide-react';
 import { hapticLight } from '@/lib/haptics';
@@ -19,11 +19,13 @@ import { MentionText } from '@/components/ui/mention-text';
 import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import { ReportModal } from '@/components/moderation/report-modal';
 import Skeleton from '@/components/ui/skeleton';
+import { useRouteParam } from '@/hooks/use-route-param';
 
 const MAX_VISIBLE_REPLIES = 2;
 
 export default function PostDetailPage({ params, postId, highlightCommentId }: { params?: Promise<{ id: string }>; postId?: string; highlightCommentId?: string | null }) {
-  const resolvedId = postId || (params ? use(params).id : '');
+  const routeId = useRouteParam(params, 'id');
+  const resolvedId = postId || routeId;
   const router = useRouter();
   const items = useFeedStore((s) => s.items);
   const fetchSinglePost = useFeedStore((s) => s.fetchSinglePost);

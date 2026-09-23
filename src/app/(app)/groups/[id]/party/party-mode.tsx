@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Play, Square, Users, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -12,9 +12,10 @@ import { Avatar } from '@/components/ui/avatar';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { useSessionStore } from '@/stores/use-session-store';
 import { DrinkIcon } from '@/components/ui/drink-icon';
+import { useRouteParam } from '@/hooks/use-route-param';
 
 export default function PartyModePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+  const id = useRouteParam(params, 'id');
   const router = useRouter();
   const groups = useGroupsStore((s) => s.groups);
   const group = groups.find((g) => g.id === id);
