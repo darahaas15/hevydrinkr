@@ -238,7 +238,7 @@ export function computeWeeklyAwards(
   if (lightweight.userId !== freightTrain.userId && lightweight.totalStandardDrinks > 0) {
     const val = Math.round(lightweight.totalStandardDrinks * 10) / 10;
     awards.push(makeAward('lightweight', lightweight,
-      { stat: `${val} standard drinks` }, weekKey, val, `${val} standard drinks`));
+      { stat: `${val}` }, weekKey, val, `${val} standard drinks`));
   }
 
   // ── Sprinter ── (highest std drinks in a single session)

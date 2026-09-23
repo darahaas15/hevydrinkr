@@ -708,7 +708,7 @@ Update the `partialize` at line 254 to include `isPrivate` awareness (no change 
 
 - [ ] **Step 9: Verify the app still compiles**
 
-Run: `cd /Users/dyajaman/conductor/workspaces/hevydrinkr/louisville && npm run build 2>&1 | tail -20`
+Run: `npm run build 2>&1 | tail -20`
 Expected: Build succeeds (or only warnings, no errors)
 
 - [ ] **Step 10: Commit**
@@ -1459,7 +1459,7 @@ git commit -m "feat: add remove follower button for private accounts"
 
 - [ ] **Step 1: Run build to verify everything compiles**
 
-Run: `cd /Users/dyajaman/conductor/workspaces/hevydrinkr/louisville && npm run build 2>&1 | tail -30`
+Run: `npm run build 2>&1 | tail -30`
 Expected: Build succeeds
 
 - [ ] **Step 2: Fix any build errors**
@@ -1471,7 +1471,7 @@ If there are TypeScript errors, fix them. Common issues:
 
 - [ ] **Step 3: Run lint if configured**
 
-Run: `cd /Users/dyajaman/conductor/workspaces/hevydrinkr/louisville && npm run lint 2>&1 | tail -20`
+Run: `npm run lint 2>&1 | tail -20`
 Fix any lint errors.
 
 - [ ] **Step 4: Final commit if any fixes were needed**

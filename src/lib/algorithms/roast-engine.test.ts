@@ -66,6 +66,21 @@ describe('computeWeeklyAwards', () => {
     expect(awards.some((x) => x.userId === 'a' && x.awardType === 'freight_train')).toBe(true);
   });
 
+  it('renders every Lightweight line without doubling the unit', () => {
+    const lines = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const members = [
+        member('a', [post('a', '2026-03-10T20:00:00.000Z', { totalStandardDrinks: 20 })]),
+        member(`b${i}`, [post(`b${i}`, '2026-03-10T20:00:00.000Z', { totalStandardDrinks: 0.7 })]),
+      ];
+      const { awards } = computeWeeklyAwards(members, WEEK);
+      lines.add(awards.find((x) => x.awardType === 'lightweight')!.roastLine.replaceAll(`B${i}`, '{name}'));
+    }
+    // Every template was exercised, and none reads "0.7 standard drinks drinks".
+    expect(lines.size).toBe(5);
+    for (const line of lines) expect(line).not.toMatch(/standard drinks (drinks|standards)\b/);
+  });
+
   it('is fully deterministic (seeded roast lines, no randomness)', () => {
     const members = [
       member('a', [post('a', '2026-03-10T20:00:00.000Z', { totalStandardDrinks: 20 })]),

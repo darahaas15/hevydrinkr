@@ -1,15 +1,16 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Loader2, Users, CheckCircle, XCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useGroupsStore } from '@/stores/use-groups-store';
 import type { GroupMember } from '@/types';
+import { useRouteParam } from '@/hooks/use-route-param';
 
 export default function InvitePage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = use(params);
+  const code = useRouteParam(params, 'code');
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -17,26 +18,23 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
   const initialize = useAuthStore((s) => s.initialize);
   const joinGroup = useGroupsStore((s) => s.joinGroup);
 
-  const [status, setStatus] = useState<'loading' | 'joining' | 'success' | 'error' | 'unauthenticated'>('loading');
+  const [joinStatus, setJoinStatus] = useState<'joining' | 'success' | 'error'>('joining');
   const [errorMsg, setErrorMsg] = useState('');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     initialize();
-    setMounted(true);
   }, [initialize]);
 
-  useEffect(() => {
-    if (!mounted || isLoading) return;
+  // Auth state decides the first two screens; only the join attempt needs state.
+  const signedIn = isAuthenticated && !!currentUser;
+  const status = isLoading ? 'loading' : !signedIn ? 'unauthenticated' : joinStatus;
 
-    if (!isAuthenticated || !currentUser) {
-      setStatus('unauthenticated');
-      return;
-    }
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !currentUser) return;
 
     // Try to join
     const doJoin = async () => {
-      setStatus('joining');
+      setJoinStatus('joining');
       const member: GroupMember = {
         userId: currentUser.id,
         userName: currentUser.displayName,
@@ -47,16 +45,16 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
 
       const success = await joinGroup(code.toUpperCase(), member);
       if (success) {
-        setStatus('success');
+        setJoinStatus('success');
         setTimeout(() => router.replace('/groups'), 1500);
       } else {
-        setStatus('error');
+        setJoinStatus('error');
         setErrorMsg('Invalid invite code or already a member');
       }
     };
 
     doJoin();
-  }, [mounted, isLoading, isAuthenticated, currentUser, code, joinGroup, router]);
+  }, [isLoading, isAuthenticated, currentUser, code, joinGroup, router]);
 
   return (
     <div className="h-dvh flex items-center justify-center px-6 safe-top safe-bottom" style={{ background: 'var(--background)' }}>
@@ -71,7 +69,7 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
         {status === 'success' && (
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
-            <h2 className="text-xl font-bold mb-2">You're in!</h2>
+            <h2 className="text-xl font-bold mb-2">You&apos;re in!</h2>
             <p className="text-sm text-fg-secondary">Redirecting to groups...</p>
           </motion.div>
         )}
@@ -79,7 +77,7 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
         {status === 'error' && (
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
             <XCircle className="w-12 h-12 text-danger-fg mb-4" />
-            <h2 className="text-xl font-bold mb-2">Couldn't join</h2>
+            <h2 className="text-xl font-bold mb-2">Couldn&apos;t join</h2>
             <p className="text-sm text-fg-secondary mb-6">{errorMsg}</p>
             <button
               onClick={() => router.replace('/groups')}
@@ -93,7 +91,7 @@ export default function InvitePage({ params }: { params: Promise<{ code: string 
         {status === 'unauthenticated' && (
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
             <Users className="w-12 h-12 text-accent mb-4" />
-            <h2 className="text-xl font-bold mb-2">You've been invited!</h2>
+            <h2 className="text-xl font-bold mb-2">You&apos;ve been invited!</h2>
             <p className="text-sm text-fg-secondary mb-6">Sign up or log in to join this group</p>
             <button
               onClick={() => router.push(`/?invite=${code}`)}

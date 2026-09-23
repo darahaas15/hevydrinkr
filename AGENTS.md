@@ -65,8 +65,14 @@ Dark mode is preserved byte-for-byte: every new token's dark value equals the li
 
 - Per-device state persists via `zustand` `persist` + `safeJSONStorage` (`src/lib/storage/safe-storage.ts`); account data round-trips to Supabase.
 - Tests: `npm run test` (Vitest, Node env; opt into jsdom per-file). Pure domain logic is the part held to a coverage line.
-- `npm run typecheck` and `npm run test` gate CI (`npm run ci`).
+- `npm run typecheck` and `npm run test` gate CI (`npm run ci`), and so do lint errors (`npm run lint`; warnings are allowed).
 - User-facing changes get a new entry at the top of `src/lib/changelog.ts`. It is the single source of `APP_VERSION` and drives the one-time in-app "what's new" banner - no entry means users are never told.
+
+### Dynamic routes in the static export
+
+Production is `output: 'export'`: each dynamic route is prerendered once with `_` as its param, and `vercel.json` rewrites every real URL to that page, so `params` holds `_` on any direct load (shared link, refresh, cold start from a push).
+Read route params with `useRouteParam(params, key)` from `src/hooks/use-route-param.ts`, never `use(params)` directly.
+The dev server passes real params, so this only breaks in a production build.
 
 ### Columns that may not be migrated yet
 

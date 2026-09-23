@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Clock, Wine, Droplets, TrendingUp, Pencil, Share2, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -15,9 +15,11 @@ import { formatCost, sumCosts } from '@/lib/money';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { hapticSuccess } from '@/lib/haptics';
+import { useRouteParam } from '@/hooks/use-route-param';
 
 export default function SessionDetailPage({ params, sessionId }: { params?: Promise<{ id: string }>; sessionId?: string }) {
-  const resolvedId = sessionId || (params ? use(params).id : '');
+  const routeId = useRouteParam(params, 'id');
+  const resolvedId = sessionId || routeId;
   const router = useRouter();
   const session = useSessionStore((s) => s.getSessionById(resolvedId));
   const fetchSessions = useSessionStore((s) => s.fetchSessions);

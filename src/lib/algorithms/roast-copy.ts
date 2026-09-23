@@ -22,7 +22,7 @@ const AWARD_COPY: Record<AwardType, AwardMeta> = {
     title: 'Lightweight',
     emoji: '🪶',
     lines: [
-      '{name} logged {stat} all week. Are you okay bro?',
+      '{name} logged {stat} standard drinks all week. Are you okay bro?',
       '{name} showed up but barely. {stat} standards.',
       'The bartender forgot {name} existed. {stat} drinks total.',
       '{name} was technically present. Spiritually absent. {stat} standards.',

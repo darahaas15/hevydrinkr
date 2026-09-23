@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Copy, MoreHorizontal, Trash2, LogOut, UserMinus, Pencil, ImageIcon, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -11,9 +11,11 @@ import { Avatar } from '@/components/ui/avatar';
 import { pickImage, uploadImage, MAX_AVATAR_SIZE, AVATAR_MAX_DIM } from '@/lib/image-utils';
 import { getBaseUrl, shareLink } from '@/lib/share';
 import { RoastSection } from './roast/roast-section';
+import { useRouteParam } from '@/hooks/use-route-param';
 
 export default function GroupDetailPage({ params, groupId }: { params?: Promise<{ id: string }>; groupId?: string }) {
-  const resolvedId = groupId || (params ? use(params).id : '');
+  const routeId = useRouteParam(params, 'id');
+  const resolvedId = groupId || routeId;
   const router = useRouter();
   const groups = useGroupsStore((s) => s.groups);
   const deleteGroup = useGroupsStore((s) => s.deleteGroup);

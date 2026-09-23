@@ -83,6 +83,10 @@ function ServiceWorkerRegistrar() {
         __html: `
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
+              // The first install also fires updatefound (and sw.js claims the
+              // page on activate), so only a worker that replaces an existing
+              // one is an update worth announcing.
+              var hadWorker = !!navigator.serviceWorker.controller;
               navigator.serviceWorker.register('/sw.js').then(function(reg) {
                 // Check for updates every 30 minutes
                 setInterval(function() { reg.update(); }, 30 * 60 * 1000);
@@ -92,7 +96,7 @@ function ServiceWorkerRegistrar() {
                   var newSW = reg.installing;
                   if (!newSW) return;
                   newSW.addEventListener('statechange', function() {
-                    if (newSW.state === 'activated' && navigator.serviceWorker.controller) {
+                    if (newSW.state === 'activated' && hadWorker) {
                       // New version available — show a non-intrusive banner
                       var banner = document.createElement('div');
                       banner.setAttribute('style',
@@ -106,6 +110,7 @@ function ServiceWorkerRegistrar() {
                       banner.onclick = function() { window.location.reload(); };
                       document.body.appendChild(banner);
                     }
+                    if (newSW.state === 'activated') hadWorker = true;
                   });
                 });
               });

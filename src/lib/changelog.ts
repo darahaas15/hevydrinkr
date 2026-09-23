@@ -26,6 +26,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.1',
+    title: 'Links that go where they should',
+    date: 'September 2026',
+    changes: [
+      'Group invite links join the group again instead of saying the code is invalid.',
+      'Links to a post, group or session open that page directly, including after a refresh.',
+      'The session timer no longer shows a negative time when your devices disagree on the clock.',
+      'First-time visitors no longer see a "new version available" banner.',
+      'Weekly roast lines read correctly, and the week picker only appears once there is more than one week.',
+    ],
+  },
+  {
     version: '1.14.0',
     title: 'Log faster, track what you spend',
     date: 'July 2026',

@@ -12,7 +12,6 @@ import type {
 import type { GroupMember } from '@/types/group';
 import { supabase } from '@/lib/supabase/client';
 import { computeWeeklyAwards, type MemberWeekData } from '@/lib/algorithms/roast-engine';
-import { getAwardMeta } from '@/lib/algorithms/roast-copy';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 
@@ -413,8 +412,13 @@ export const useRoastStore = create<RoastState>()(
             createdAt: new Date().toISOString(),
           };
 
+          // The fetchRecaps started alongside generation can land after our
+          // insert and already hold this week's row, so replace, don't prepend.
           set((state) => ({
-            recaps: [recap, ...state.recaps],
+            recaps: [
+              recap,
+              ...state.recaps.filter((r) => !(r.groupId === groupId && r.weekKey === weekKey)),
+            ],
             generating: false,
           }));
 

@@ -19,10 +19,30 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
+// Only the scheduler may run this. The gateway has already verified the JWT
+// signature (verify_jwt is pinned on in supabase/config.toml), so its role
+// claim can be trusted: the scheduler calls with a service_role key, while the
+// anon key that ships in the app (also a valid JWT) must not fan out
+// notifications to every user.
+function isScheduler(req: Request): boolean {
+  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  const payload = token.split('.')[1];
+  if (!payload) return false;
+  try {
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return claims.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   // Allow GET (cron) and POST (manual invoke)
   if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
+  }
+  if (!isScheduler(req)) {
+    return new Response('Forbidden', { status: 403 });
   }
 
   const now = new Date();
