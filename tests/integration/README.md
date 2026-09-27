@@ -11,7 +11,10 @@ These tests run **only** against a local Supabase stack. The guard in
 
 ## Prerequisites
 - Docker running (Docker Desktop, Colima, etc.) — needs to pull Supabase images.
+  With Colima: `colima start` before `supabase start`.
 - Supabase CLI.
+- `psql` for the bootstrap (macOS: `brew install libpq`; the script finds the
+  keg-only binary itself, no PATH change needed).
 
 ## Run locally
 ```bash
