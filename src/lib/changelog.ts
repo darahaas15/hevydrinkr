@@ -26,6 +26,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.5',
+    title: 'Sign-in screens, centred',
+    date: 'September 2026',
+    changes: [
+      'The sign-in, sign-up and password reset screens now sit in the middle of the screen instead of at the top.',
+    ],
+  },
+  {
     version: '1.14.4',
     title: 'No more light flash when you open the app',
     date: 'September 2026',
