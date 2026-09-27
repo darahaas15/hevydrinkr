@@ -95,7 +95,12 @@ if (!pending) {
 }
 
 // One group with alice as creator.
-let { data: group } = await admin.from('groups').select('id, invite_code').eq('name', 'Friday Crew').maybeSingle();
+let { data: group } = await admin.from('groups').select('id, invite_code, created_by').eq('name', 'Friday Crew').maybeSingle();
+if (group && group.created_by !== id.alice) {
+  // Deleting users (the integration suite wipes them all) leaves the group
+  // behind with created_by NULLed, and joining it would then notify nobody.
+  check('reclaim group', await admin.from('groups').update({ created_by: id.alice }).eq('id', group.id));
+}
 if (!group) {
   const res = await admin.from('groups')
     .insert({ name: 'Friday Crew', emoji: '🍻', description: 'Local test group', created_by: id.alice, invite_code: 'FRIDAY01' })
