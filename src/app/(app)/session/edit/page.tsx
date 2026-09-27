@@ -20,12 +20,13 @@ function EditSessionInner() {
   const sessionId = searchParams.get('id');
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
-  const getSessionById = useSessionStore((s) => s.getSessionById);
+  // Select the session itself, not the getSessionById function: the function
+  // never changes, so a page opened directly would never re-render when
+  // fetchSessions lands, and stayed on "Loading…".
+  const session = useSessionStore((s) => (sessionId ? s.getSessionById(sessionId) : undefined));
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const userPosts = useFeedStore((s) => s.userPosts);
   const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
-
-  const session = sessionId ? getSessionById(sessionId) : undefined;
   const feedItem =
     currentUser && sessionId
       ? (userPosts[currentUser.id] ?? []).find((f) => f.sessionId === sessionId) ?? null
