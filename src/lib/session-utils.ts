@@ -65,6 +65,7 @@ export function buildSessionSummary(
 
   return {
     venue: session.venue,
+    startedAt: session.startedAt,
     totalDrinks: session.drinks.length,
     totalStandardDrinks: session.totalStandardDrinks,
     durationMinutes: session.durationMinutes,
@@ -86,6 +87,65 @@ export function buildSessionSummary(
     prsAchieved: session.prsAchieved,
     totalCost: sumCosts(session.drinks),
   };
+}
+
+type SummaryDrink = FeedItem['sessionSummary']['drinks'][number];
+
+export interface DrinkGroup<T> {
+  key: string;
+  // Any one drink from the group, for name/emoji/category.
+  template: T;
+  quantity: number;
+}
+
+// Group drinks by `keyOf`, keeping first-appearance order. The session cart
+// and the feed card group the same way; only the key for legacy rows differs.
+export function groupDrinks<T>(drinks: T[], keyOf: (drink: T) => string): DrinkGroup<T>[] {
+  const groups = new Map<string, DrinkGroup<T>>();
+  for (const d of drinks) {
+    const key = keyOf(d);
+    const existing = groups.get(key);
+    if (existing) existing.quantity += 1;
+    else groups.set(key, { key, template: d, quantity: 1 });
+  }
+  return [...groups.values()];
+}
+
+// A post's drinks grouped for display, most-drunk first ("Kingfisher x3").
+// Legacy rows have no drinkDefinitionId, or the 'edited' sentinel shared by
+// unrelated drinks, so those group by name instead.
+export function groupPostDrinks(drinks: SummaryDrink[]): DrinkGroup<SummaryDrink>[] {
+  const groups = groupDrinks(drinks, (d) =>
+    d.drinkDefinitionId && d.drinkDefinitionId !== 'edited' ? d.drinkDefinitionId : `name:${d.name}`,
+  );
+  // Array.prototype.sort is stable, so ties keep first-appearance order.
+  return groups.sort((a, b) => b.quantity - a.quantity);
+}
+
+// When a post's session started: the stored start time, else (older posts)
+// the earliest drink time, else unknown.
+export function postStartTime(summary: FeedItem['sessionSummary']): string | null {
+  if (summary.startedAt) return summary.startedAt;
+  const stamps = (summary.drinks ?? []).map((d) => d.timestamp).filter((t): t is string => !!t);
+  if (stamps.length === 0) return null;
+  return stamps.reduce((earliest, t) => (Date.parse(t) < Date.parse(earliest) ? t : earliest));
+}
+
+// "Fri · 9:40 PM" within the last week, "12 Sep · 9:40 PM" before that, with
+// the year added outside the current one. Local time.
+export function formatPostStartTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const daysAgo = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
+  let day: string;
+  if (daysAgo <= 6) {
+    day = date.toLocaleDateString('en-US', { weekday: 'short' });
+  } else {
+    day = `${date.getDate()} ${date.toLocaleDateString('en-US', { month: 'short' })}`;
+    if (date.getFullYear() !== now.getFullYear()) day += ` ${date.getFullYear()}`;
+  }
+  return `${day} · ${time}`;
 }
 
 // ── Datetime-local <-> ISO conversions ────────────────────────────────────

@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { memo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X, MoreHorizontal, MapPin } from 'lucide-react';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
@@ -15,7 +15,11 @@ import { blankBrokenImage } from '@/lib/image-utils';
 import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import Skeleton from '@/components/ui/skeleton';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
+import { groupPostDrinks, postStartTime, formatPostStartTime } from '@/lib/session-utils';
 import type { FeedItem } from '@/types';
+
+// Drink rows on a photo-less card before it collapses to "+N more".
+const MAX_DRINK_ROWS = 4;
 
 export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButton }: { item: FeedItem; milestone?: { label: string } | null; showFollowButton?: boolean }) {
   const router = useRouter();
@@ -76,6 +80,10 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   };
 
   const { sessionSummary: s } = item;
+  const hasPhotos = (item.photos?.length ?? 0) > 0;
+  const start = postStartTime(s);
+  const startLabel = start ? formatPostStartTime(start) : null;
+  const drinkGroups = hasPhotos ? [] : groupPostDrinks(s.drinks ?? []);
 
   return (
     <div
@@ -139,43 +147,87 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       )}
 
       {/* Session stats */}
-      <div className="mx-4 mb-3 rounded-xl bg-card border border-border-faint p-3">
-        <p className="text-[11px] text-fg-secondary mb-2">{s.venue}</p>
+      {hasPhotos ? (
+        <div className="mx-4 mb-3 rounded-xl bg-card border border-border-faint p-3">
+          <p className="text-[11px] text-fg-secondary mb-2">
+            {s.venue}
+            {startLabel && <> · {startLabel}</>}
+          </p>
 
-        {/* Drink icons */}
-        {s.drinks && s.drinks.length > 0 ? (
-          <div className="flex flex-wrap gap-0.5 mb-2">
-            {s.drinks.slice(0, 15).map((drink, i) => (
-              <DrinkIcon key={i} category={drink.category} className="w-4 h-4" />
-            ))}
-            {s.drinks.length > 15 && (
-              <span className="text-[11px] text-muted self-center ml-1">+{s.drinks.length - 15}</span>
-            )}
-          </div>
-        ) : s.drinkEmojis.length > 0 && (
-          <div className="flex flex-wrap gap-0.5 mb-2">
-            {s.drinkEmojis.slice(0, 15).map((_, i) => (
-              <DrinkIcon key={i} category="custom" className="w-4 h-4" />
-            ))}
-            {s.drinkEmojis.length > 15 && (
-              <span className="text-[11px] text-muted self-center ml-1">+{s.drinkEmojis.length - 15}</span>
-            )}
-          </div>
-        )}
+          {/* Drink icons */}
+          {s.drinks && s.drinks.length > 0 ? (
+            <div className="flex flex-wrap gap-0.5 mb-2">
+              {s.drinks.slice(0, 15).map((drink, i) => (
+                <DrinkIcon key={i} category={drink.category} className="w-4 h-4" />
+              ))}
+              {s.drinks.length > 15 && (
+                <span className="text-[11px] text-muted self-center ml-1">+{s.drinks.length - 15}</span>
+              )}
+            </div>
+          ) : s.drinkEmojis.length > 0 && (
+            <div className="flex flex-wrap gap-0.5 mb-2">
+              {s.drinkEmojis.slice(0, 15).map((_, i) => (
+                <DrinkIcon key={i} category="custom" className="w-4 h-4" />
+              ))}
+              {s.drinkEmojis.length > 15 && (
+                <span className="text-[11px] text-muted self-center ml-1">+{s.drinkEmojis.length - 15}</span>
+              )}
+            </div>
+          )}
 
-        {/* Stats row */}
-        <div className="flex items-center gap-4 text-[11px] text-fg-secondary">
-          <span className="flex items-center gap-1">
-            <Wine className="w-3 h-3" />
-            {s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {formatDuration(s.durationMinutes)}
-          </span>
-          <span>{s.totalStandardDrinks.toFixed(1)} std</span>
+          {/* Stats row */}
+          <div className="flex items-center gap-4 text-[11px] text-fg-secondary">
+            <span className="flex items-center gap-1">
+              <Wine className="w-3 h-3" />
+              {s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatDuration(s.durationMinutes)}
+            </span>
+            <span>{s.totalStandardDrinks.toFixed(1)} std</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        // No photo to carry the post, so the night itself is the hero: where
+        // and when, the three headline numbers, and what was actually drunk.
+        <div className="mx-4 mb-3 rounded-xl bg-card border border-border-faint p-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <MapPin className="w-3.5 h-3.5 text-accent-text shrink-0" />
+            <p className="text-[13px] font-semibold text-fg-bright truncate flex-1">{s.venue}</p>
+            {startLabel && <p className="text-[11px] text-fg-secondary shrink-0">{startLabel}</p>}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {[
+              { value: String(s.totalDrinks), label: s.totalDrinks === 1 ? 'drink' : 'drinks' },
+              { value: s.totalStandardDrinks.toFixed(1), label: 'std drinks' },
+              { value: formatDuration(s.durationMinutes), label: 'duration' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums">{stat.value}</p>
+                <p className="text-[10px] text-fg-secondary uppercase tracking-wider mt-1.5">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {drinkGroups.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-hairline space-y-2">
+              {drinkGroups.slice(0, MAX_DRINK_ROWS).map((g) => (
+                <div key={g.key} className="flex items-center gap-2.5">
+                  <DrinkIcon category={g.template.category} className="w-4 h-4 shrink-0" />
+                  <p className="text-[13px] text-fg-strong truncate flex-1">{g.template.name}</p>
+                  <p className="text-[12px] text-fg-secondary tabular-nums">×{g.quantity}</p>
+                </div>
+              ))}
+              {drinkGroups.length > MAX_DRINK_ROWS && (
+                // The whole card opens the post, where every drink is listed.
+                <p className="text-[12px] text-accent-text">+{drinkGroups.length - MAX_DRINK_ROWS} more</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="px-4 pb-3">

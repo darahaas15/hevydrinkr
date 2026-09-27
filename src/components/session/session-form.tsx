@@ -25,35 +25,21 @@ import {
   durationMinutesBetween,
   buildSessionSummary,
   spreadDrinkTimestamps,
+  groupDrinks,
+  type DrinkGroup,
 } from '@/lib/session-utils';
 import { formatDuration } from '@/lib/utils';
 import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
 // Aggregate-by-drink-definition shopping-cart row.
-interface CartItem {
-  key: string; // group key — usually drinkDefinitionId, but drink.id for legacy
-  template: DrinkEntry; // any one instance — name/emoji/abv come from it
-  quantity: number;
-}
+type CartItem = DrinkGroup<DrinkEntry>;
 
 function groupDrinksIntoCart(drinks: DrinkEntry[]): CartItem[] {
-  const map = new Map<string, CartItem>();
-  const order: string[] = [];
-  for (const d of drinks) {
-    // Legacy rows edited via the old modal have drinkDefinitionId === 'edited'.
-    // Don't collapse them into one row — key by drink.id so each legacy drink
-    // stays distinct. Otherwise touching the cart would rewrite disparate
-    // drinks to a single template.
-    const key = d.drinkDefinitionId === 'edited' ? d.id : d.drinkDefinitionId;
-    const existing = map.get(key);
-    if (existing) {
-      existing.quantity += 1;
-    } else {
-      order.push(key);
-      map.set(key, { key, template: d, quantity: 1 });
-    }
-  }
-  return order.map((id) => map.get(id)!);
+  // Legacy rows edited via the old modal have drinkDefinitionId === 'edited'.
+  // Don't collapse them into one row — key by drink.id so each legacy drink
+  // stays distinct. Otherwise touching the cart would rewrite disparate
+  // drinks to a single template.
+  return groupDrinks(drinks, (d) => (d.drinkDefinitionId === 'edited' ? d.id : d.drinkDefinitionId));
 }
 
 const MOODS: Array<{ value: SessionMood; emoji: string }> = [

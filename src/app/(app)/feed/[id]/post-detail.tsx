@@ -13,6 +13,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import type { FeedComment } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
+import { postStartTime, formatPostStartTime } from '@/lib/session-utils';
 import { getMilestoneBadge } from '@/lib/milestones';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { MentionText } from '@/components/ui/mention-text';
@@ -231,6 +232,8 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = userLike != null || (item.likes.length === 0 && item.currentUserLikeId != null);
   const s = item.sessionSummary;
+  const start = postStartTime(s);
+  const startLabel = start ? formatPostStartTime(start) : null;
   const highlightedThreadId = highlightCommentId
     ? item.comments.find((comment) => comment.replies.some((reply) => reply.id === highlightCommentId))?.id ?? null
     : null;
@@ -393,8 +396,11 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
             {/* Session details */}
             <div className="rounded-2xl bg-card border border-hairline p-4 space-y-3 mb-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] text-fg-secondary">{s.venue}</p>
-                <div className="flex items-center gap-3 text-[11px] text-fg-secondary">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-fg-secondary truncate">{s.venue}</p>
+                  {startLabel && <p className="text-[11px] text-fg-secondary">{startLabel}</p>}
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-fg-secondary shrink-0">
                   <span className="flex items-center gap-1"><Wine className="w-3 h-3" />{s.totalDrinks}</span>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDuration(s.durationMinutes)}</span>
                   <span>{s.totalStandardDrinks.toFixed(1)} std</span>

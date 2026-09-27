@@ -26,6 +26,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.16.0',
+    title: 'Better posts without photos',
+    date: 'September 2026',
+    changes: [
+      'Posts without photos now show a proper summary of the night: where, the big numbers, and what you drank.',
+      'Every post now shows what time the session started.',
+    ],
+  },
+  {
     version: '1.15.0',
     title: 'Records you can tap',
     date: 'September 2026',

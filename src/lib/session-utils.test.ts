@@ -7,8 +7,12 @@ import {
   validateSessionForm,
   durationMinutesBetween,
   nextActiveSession,
+  groupPostDrinks,
+  postStartTime,
+  formatPostStartTime,
   type SessionFormInput,
 } from './session-utils';
+import type { FeedItem } from '@/types';
 import { makeSession, makeDrink } from '../../tests/helpers/factories';
 
 describe('spreadDrinkTimestamps', () => {
@@ -50,6 +54,79 @@ describe('buildSessionSummary', () => {
     expect(summary.drinkEmojis).toEqual(['🍺', '🍺', '🍷']);
     expect(summary.drinks).toHaveLength(3);
     expect(summary.mood).toBe('legendary');
+  });
+
+  it('carries the session start time', () => {
+    const session = makeSession({ startedAt: '2026-03-02T20:15:00.000Z' });
+    expect(buildSessionSummary(session).startedAt).toBe('2026-03-02T20:15:00.000Z');
+  });
+});
+
+type Summary = FeedItem['sessionSummary'];
+type SummaryDrink = Summary['drinks'][number];
+const summaryDrink = (over: Partial<SummaryDrink>): SummaryDrink => ({
+  name: 'Beer', emoji: '🍺', category: 'beer', abvPercent: 5, volumeMl: 330, standardDrinks: 1, ...over,
+});
+const summary = (over: Partial<Summary>): Summary => ({
+  venue: 'X', totalDrinks: 0, totalStandardDrinks: 0, durationMinutes: 0, topDrink: '', topDrinkEmoji: '',
+  drinkEmojis: [], drinks: [], mood: null, prsAchieved: [], ...over,
+});
+
+describe('groupPostDrinks', () => {
+  it('groups by drink definition, most-drunk first, ties in order of appearance', () => {
+    const groups = groupPostDrinks([
+      summaryDrink({ name: 'Gin', drinkDefinitionId: 'gin' }),
+      summaryDrink({ name: 'Kingfisher', drinkDefinitionId: 'kf' }),
+      summaryDrink({ name: 'Wine', drinkDefinitionId: 'wine' }),
+      summaryDrink({ name: 'Kingfisher', drinkDefinitionId: 'kf' }),
+    ]);
+    expect(groups.map((g) => [g.template.name, g.quantity])).toEqual([['Kingfisher', 2], ['Gin', 1], ['Wine', 1]]);
+  });
+
+  it('groups legacy rows (no id, or the shared "edited" id) by name', () => {
+    const groups = groupPostDrinks([
+      summaryDrink({ name: 'Beer' }),
+      summaryDrink({ name: 'Rum', drinkDefinitionId: 'edited' }),
+      summaryDrink({ name: 'Beer' }),
+      summaryDrink({ name: 'Vodka', drinkDefinitionId: 'edited' }),
+    ]);
+    expect(groups.map((g) => [g.template.name, g.quantity])).toEqual([['Beer', 2], ['Rum', 1], ['Vodka', 1]]);
+  });
+});
+
+describe('postStartTime', () => {
+  it('prefers the stored start time', () => {
+    expect(postStartTime(summary({ startedAt: '2026-03-02T20:00:00.000Z', drinks: [summaryDrink({ timestamp: '2026-03-02T19:00:00.000Z' })] })))
+      .toBe('2026-03-02T20:00:00.000Z');
+  });
+
+  it('falls back to the earliest drink for older posts', () => {
+    expect(postStartTime(summary({
+      drinks: [
+        summaryDrink({ timestamp: '2026-03-02T21:30:00.000Z' }),
+        summaryDrink({ timestamp: '2026-03-02T20:10:00.000Z' }),
+        summaryDrink({}),
+      ],
+    }))).toBe('2026-03-02T20:10:00.000Z');
+  });
+
+  it('is unknown when nothing records a time', () => {
+    expect(postStartTime(summary({ drinks: [summaryDrink({})] }))).toBeNull();
+    expect(postStartTime(summary({}))).toBeNull();
+  });
+});
+
+describe('formatPostStartTime (TZ=UTC)', () => {
+  const now = new Date('2026-09-25T12:00:00.000Z'); // a Friday
+
+  it('uses the weekday within the last week', () => {
+    expect(formatPostStartTime('2026-09-25T21:40:00.000Z', now)).toBe('Fri · 9:40 PM');
+    expect(formatPostStartTime('2026-09-19T08:05:00.000Z', now)).toBe('Sat · 8:05 AM');
+  });
+
+  it('uses the date from a week back, and the year outside this one', () => {
+    expect(formatPostStartTime('2026-09-18T21:40:00.000Z', now)).toBe('18 Sep · 9:40 PM');
+    expect(formatPostStartTime('2025-12-31T23:00:00.000Z', now)).toBe('31 Dec 2025 · 11:00 PM');
   });
 });
 

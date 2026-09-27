@@ -9,6 +9,10 @@ export interface FeedItem {
   sessionId: string;
   sessionSummary: {
     venue: string;
+    // When the session started. Rebuilt whenever the summary is, so editing
+    // the session's Start time moves it. Older rows omit it; use
+    // postStartTime() to read it with their fallback.
+    startedAt?: string;
     totalDrinks: number;
     totalStandardDrinks: number;
     durationMinutes: number;
