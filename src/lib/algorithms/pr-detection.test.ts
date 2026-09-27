@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectPRs } from './pr-detection';
+import { detectPRs, formatPrValue } from './pr-detection';
 import type { PersonalRecord } from '@/types/pr';
 import { makeSession, makeDrink } from '../../../tests/helpers/factories';
 
@@ -99,5 +99,18 @@ describe('detectPRs', () => {
       existingPR({ category: 'most_drinks_session', value: 10, userId: 'someone-else' }),
     ]);
     expect(prs.find((p) => p.category === 'most_drinks_session')!.value).toBe(1);
+  });
+});
+
+// The database formats records the same way (20260927_recompute_personal_records);
+// tests/integration/records.test.ts checks the two agree.
+describe('formatPrValue', () => {
+  it('formats each category', () => {
+    expect(formatPrValue('most_drinks_session', 7)).toBe('7 drinks');
+    expect(formatPrValue('most_standard_drinks', 4.25)).toBe('4.3 std drinks');
+    expect(formatPrValue('longest_session', 135)).toBe('2h 15m');
+    expect(formatPrValue('longest_session', 45)).toBe('0h 45m');
+    expect(formatPrValue('most_unique_drinks', 3)).toBe('3 types');
+    expect(formatPrValue('fastest_drink', 7)).toBe('7m between drinks');
   });
 });

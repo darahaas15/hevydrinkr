@@ -93,6 +93,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
   const updateFeedItem = useFeedStore((s) => s.updateFeedItem);
   const addPR = useProfileStore((s) => s.addPR);
+  const fetchPRs = useProfileStore((s) => s.fetchPRs);
   const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const addToast = useUIStore((s) => s.addToast);
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
@@ -368,6 +369,8 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
       });
     }
 
+    // Edited drinks or times can move records; the DB has recomputed them.
+    fetchPRs(existingSession.userId, true);
     hapticSuccess();
     addToast('Session updated', 'success');
     router.replace(`/session?id=${existingSession.id}`);

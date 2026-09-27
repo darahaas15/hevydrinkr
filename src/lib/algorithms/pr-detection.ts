@@ -1,7 +1,7 @@
 import type { DrinkSession } from '@/types/session';
 import type { PersonalRecord, PRCategory } from '@/types/pr';
 
-function formatPrValue(category: PRCategory, value: number): string {
+export function formatPrValue(category: PRCategory, value: number): string {
   switch (category) {
     case 'most_drinks_session':
       return `${value} drinks`;

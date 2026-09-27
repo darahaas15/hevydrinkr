@@ -53,6 +53,7 @@ FILES=(
   migrations/20260731_drink_cost.sql  # drink_entries.cost (optional per-drink price)
   migrations/20260923_group_roast_access.sql      # members-only roast data; joins need an invite
   migrations/20260923_pin_function_search_path.sql  # SECURITY DEFINER functions resolve in public
+  migrations/20260927_recompute_personal_records.sql  # records follow the best existing session
 )
 
 for f in "${FILES[@]}"; do

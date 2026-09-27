@@ -15,10 +15,7 @@ interface ProfileState {
   loading: boolean;
 
   fetchPRs: (userId: string, force?: boolean) => Promise<void>;
-  addPR: (pr: PersonalRecord) => Promise<void>;
-  getPRsByUser: (userId: string) => PersonalRecord[];
-  markCelebrated: (prId: string) => Promise<void>;
-  getUncelebratedPRs: (userId: string) => PersonalRecord[];
+  addPR: (pr: PersonalRecord) => void;
 }
 
 function mapDbPrToPersonalRecord(
@@ -35,18 +32,6 @@ function mapDbPrToPersonalRecord(
     achievedAt: row.achieved_at as string,
     celebrated: row.celebrated as boolean,
   };
-}
-
-function patchPrEverywhere(
-  state: { recordsByUser: Record<string, PersonalRecord[]> },
-  prId: string,
-  fn: (pr: PersonalRecord) => PersonalRecord,
-): { recordsByUser: Record<string, PersonalRecord[]> } {
-  const recordsByUser: Record<string, PersonalRecord[]> = {};
-  for (const [uid, list] of Object.entries(state.recordsByUser)) {
-    recordsByUser[uid] = list.map((pr) => (pr.id === prId ? fn(pr) : pr));
-  }
-  return { recordsByUser };
 }
 
 export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
@@ -80,8 +65,11 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
     }));
   },
 
-  addPR: async (pr) => {
-    // Optimistic update: replace existing PR for this user+category, or add new
+  addPR: (pr) => {
+    // Local only, so the profile shows a record the moment its celebration
+    // fires. The database owns personal_records: triggers recompute them from
+    // the user's completed sessions (see 20260927_recompute_personal_records),
+    // and the next fetchPRs replaces this with the stored row.
     set((state) => {
       const existing = state.recordsByUser[pr.userId] ?? [];
       const sameCategoryIdx = existing.findIndex((e) => e.category === pr.category);
@@ -92,48 +80,7 @@ export const useProfileStore = create<ProfileState>()(persist((set, get) => ({
         recordsByUser: { ...state.recordsByUser, [pr.userId]: updated },
       };
     });
-
-    // Upsert on user_id + category
-    const { error } = await supabase.from('personal_records').upsert(
-      {
-        id: pr.id,
-        user_id: pr.userId,
-        category: pr.category,
-        value: pr.value,
-        formatted_value: pr.formattedValue,
-        previous_value: pr.previousValue,
-        session_id: pr.sessionId,
-        achieved_at: pr.achievedAt,
-        celebrated: pr.celebrated,
-      },
-      { onConflict: 'user_id,category' }
-    );
-
-    if (error) {
-      console.error('Failed to upsert PR:', error);
-    }
   },
-
-  getPRsByUser: (userId) => get().recordsByUser[userId] ?? [],
-
-  markCelebrated: async (prId) => {
-    // Optimistic update
-    set((state) => patchPrEverywhere(state, prId, (pr) => ({ ...pr, celebrated: true })));
-
-    const { error } = await supabase
-      .from('personal_records')
-      .update({ celebrated: true })
-      .eq('id', prId);
-
-    if (error) {
-      console.error('Failed to mark PR celebrated:', error);
-      // Roll back
-      set((state) => patchPrEverywhere(state, prId, (pr) => ({ ...pr, celebrated: false })));
-    }
-  },
-
-  getUncelebratedPRs: (userId) =>
-    (get().recordsByUser[userId] ?? []).filter((pr) => !pr.celebrated),
 }), {
   name: 'hd-profile',
   storage: safeJSONStorage(),

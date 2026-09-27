@@ -39,7 +39,7 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 
 **Decisions.**
 
-- Tapping a record on your profile opens the session that set it: `/session/[id]`.
+- Tapping a record on your profile opens the session that set it: `/session?id=<id>` (the app's existing link style; it renders the same detail page as `/session/[id]`).
 - A record must always belong to an existing, completed session. When a session is deleted or edited (drinks, times), the affected records are recomputed from the remaining sessions: the runner-up takes over, or the record disappears if nothing qualifies.
 - Recompute runs in the database (it sees the full history, which the client may not have loaded).
 - A one-time run of the same recompute repairs existing orphaned records.
@@ -72,7 +72,7 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 
 - **DB is the only writer.** In `use-profile-store.ts`, `addPR` keeps its optimistic local update (for the celebration) but stops upserting. After `endSession`, and after a session edit or delete, call `fetchPRs(userId, true)` so the profile shows the DB's result. If the migration trails the deploy, records simply stop updating until it lands; nothing breaks. Keep `detectPRs()` for the celebration trigger only.
 - **Display from value.** Export `formatPrValue` and render `formatPrValue(pr.category, pr.value)` on the profile rather than trusting `formatted_value`.
-- **Tappable rows.** Each record row becomes a button -> `router.push('/session/' + pr.sessionId)` (a `/session/_` rewrite in `vercel.json` already exists for `session/[id]`; the detail page reads the id via `useRouteParam`). Add a chevron to signal tappability. Confirm `session-detail.tsx` loads a session not already in the local store (older sessions beyond the loaded history); if it doesn't, fetch it by id.
+- **Tappable rows.** Each record row becomes a button -> `router.push('/session?id=' + pr.sessionId)`, the link style the rest of the app uses. Add a chevron to signal tappability. Confirm `session-detail.tsx` loads a session not already in the local store (older sessions beyond the loaded history); if it doesn't, fetch it by id.
 - Remove `markCelebrated` / `getUncelebratedPRs` / `getPRsByUser` (dead, found in the 2026-09-27 sweep) while in this file.
 
 ### 2c. Tests
