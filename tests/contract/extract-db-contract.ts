@@ -34,9 +34,28 @@ const RPC_RE = /\.rpc\(\s*'([a-z_]+)'/g;
 // bounded so it can't leap to an unrelated query).
 const FROM_SELECT_RE = /\.from\(\s*'([a-z_]+)'\s*\)[\s\S]{0,600}?\.select\(\s*'([^']*)'/g;
 
+// Split on top-level commas only, so an embedded resource's own columns
+// (`requester:profiles!fk(display_name, avatar_url)`) stay with it instead of
+// being attributed to the parent table.
+function splitTopLevel(selectArg: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < selectArg.length; i++) {
+    const ch = selectArg[i];
+    if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    else if (ch === ',' && depth === 0) {
+      parts.push(selectArg.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(selectArg.slice(start));
+  return parts;
+}
+
 function tokenizeColumns(selectArg: string): string[] {
-  return selectArg
-    .split(',')
+  return splitTopLevel(selectArg)
     .map((c) => c.trim().split('(')[0].trim()) // drop embedded-resource parens
     .map((c) => c.split(':').pop()!.trim()) // drop `alias:` renames, keep the column
     .map((c) => c.replace(/[()]/g, '').trim()) // strip stray parens from nested selects

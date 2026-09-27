@@ -314,94 +314,98 @@ function LandingContent() {
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
 
-            <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Create Account</h2>
-            <p className="text-sm text-fg-secondary mb-6">Join the party</p>
+            {/* my-auto centres the form below Back when it fits, and collapses
+                to top-aligned (the page scrolls) when it doesn't. */}
+            <div className="my-auto">
+              <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Create Account</h2>
+              <p className="text-sm text-fg-secondary mb-6">Join the party</p>
 
-            <div className="space-y-3 mb-5">
-              <AuthInput icon={<User className="w-4 h-4" />} value={displayName} onChange={setDisplayName} placeholder="Display name" />
-              <AuthInput icon={<AtSign className="w-4 h-4" />} value={username} onChange={(v) => setUsername(v.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="username" />
-              <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={email} onChange={setEmail} placeholder="Email" />
-              <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (8+ chars)" onSubmit={handleSignup} />
+              <div className="space-y-3 mb-5">
+                <AuthInput icon={<User className="w-4 h-4" />} value={displayName} onChange={setDisplayName} placeholder="Display name" />
+                <AuthInput icon={<AtSign className="w-4 h-4" />} value={username} onChange={(v) => setUsername(v.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="username" />
+                <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={email} onChange={setEmail} placeholder="Email" />
+                <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={password} onChange={setPassword} placeholder="Password (8+ chars)" onSubmit={handleSignup} />
 
-              <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} placeholder="Date of birth" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
-              <p className="text-[10px] text-muted pl-1 -mt-1">Date of birth (must be 18+)</p>
+                <AuthInput icon={<Calendar className="w-4 h-4" />} type="date" value={dob} onChange={setDob} placeholder="Date of birth" max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()} />
+                <p className="text-[10px] text-muted pl-1 -mt-1">Date of birth (must be 18+)</p>
 
-              {/* Gender */}
-              <div>
-                <p className="text-[10px] text-fg-secondary pl-1 mb-1.5">Gender (for BAC estimation)</p>
-                <div className="flex gap-2">
-                  {(['male', 'female', 'other'] as const).map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setGender(g)}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        gender === g
-                          ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
-                          : 'bg-card border border-card-border text-fg-secondary'
-                      }`}
-                    >
-                      {g.charAt(0).toUpperCase() + g.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Height & Weight */}
-              <div className="flex gap-3">
-                <div className="flex-1 relative group">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors">
-                    <Ruler className="w-4 h-4" />
+                {/* Gender */}
+                <div>
+                  <p className="text-[10px] text-fg-secondary pl-1 mb-1.5">Gender (for BAC estimation)</p>
+                  <div className="flex gap-2">
+                    {(['male', 'female', 'other'] as const).map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setGender(g)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          gender === g
+                            ? 'bg-accent/10 ring-1 ring-accent/30 text-accent'
+                            : 'bg-card border border-card-border text-fg-secondary'
+                        }`}
+                      >
+                        {g.charAt(0).toUpperCase() + g.slice(1)}
+                      </button>
+                    ))}
                   </div>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={heightCm}
-                    onChange={(e) => setHeightCm(e.target.value)}
-                    placeholder="Height (cm)"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 transition-colors"
-                  />
                 </div>
-                <div className="flex-1 relative group">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors">
-                    <Weight className="w-4 h-4" />
+
+                {/* Height & Weight */}
+                <div className="flex gap-3">
+                  <div className="flex-1 relative group">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors">
+                      <Ruler className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={heightCm}
+                      onChange={(e) => setHeightCm(e.target.value)}
+                      placeholder="Height (cm)"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 transition-colors"
+                    />
                   </div>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(e.target.value)}
-                    placeholder="Weight (kg)"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 transition-colors"
-                  />
+                  <div className="flex-1 relative group">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors">
+                      <Weight className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={weightKg}
+                      onChange={(e) => setWeightKg(e.target.value)}
+                      placeholder="Weight (kg)"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-card-border text-sm text-foreground placeholder:text-fg-faint focus:outline-none focus:border-accent/30 transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <label className="flex items-start gap-2.5 cursor-pointer mb-5 px-0.5">
-              <div className="relative mt-[3px] shrink-0">
-                <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="sr-only peer" />
-                <div className="w-[18px] h-[18px] rounded-[5px] border border-input-border bg-surface-secondary peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center">
-                  {agreedToTerms && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              <label className="flex items-start gap-2.5 cursor-pointer mb-5 px-0.5">
+                <div className="relative mt-[3px] shrink-0">
+                  <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="sr-only peer" />
+                  <div className="w-[18px] h-[18px] rounded-[5px] border border-input-border bg-surface-secondary peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center">
+                    {agreedToTerms && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
                 </div>
+                <span className="text-xs text-fg-secondary leading-relaxed">
+                  I agree to the <a href="/legal/terms" target="_blank" className="text-accent">Terms</a> and <a href="/legal/privacy" target="_blank" className="text-accent">Privacy Policy</a>
+                </span>
+              </label>
+
+              {error && <ErrorMsg message={error} />}
+
+              <div className="pt-2">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSignup}
+                  disabled={submitting}
+                  className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
+                >
+                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
+                </motion.button>
               </div>
-              <span className="text-xs text-fg-secondary leading-relaxed">
-                I agree to the <a href="/legal/terms" target="_blank" className="text-accent">Terms</a> and <a href="/legal/privacy" target="_blank" className="text-accent">Privacy Policy</a>
-              </span>
-            </label>
-
-            {error && <ErrorMsg message={error} />}
-
-            <div className="mt-auto pt-2">
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={handleSignup}
-                disabled={submitting}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
-              >
-                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
-              </motion.button>
             </div>
           </motion.div>
         )}
@@ -420,40 +424,42 @@ function LandingContent() {
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
 
-            <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Welcome Back</h2>
-            <p className="text-sm text-fg-secondary mb-8">Sign in to your account</p>
+            <div className="my-auto flex flex-col">
+              <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Welcome Back</h2>
+              <p className="text-sm text-fg-secondary mb-8">Sign in to your account</p>
 
-            <div className="space-y-3 mb-2">
-              <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={loginEmail} onChange={setLoginEmail} placeholder="Email" />
-              <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={loginPassword} onChange={setLoginPassword} placeholder="Password" onSubmit={handleLogin} />
-            </div>
-
-            <button
-              onClick={() => router.push('/forgot-password')}
-              className="text-xs text-fg-secondary active:text-accent transition-colors self-end mb-2"
-            >
-              Forgot password?
-            </button>
-
-            {error && <ErrorMsg message={error} />}
-
-            <div className="pt-6 space-y-3">
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={handleLogin}
-                disabled={submitting}
-                className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
-              >
-                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
-              </motion.button>
+              <div className="space-y-3 mb-2">
+                <AuthInput icon={<Mail className="w-4 h-4" />} type="email" value={loginEmail} onChange={setLoginEmail} placeholder="Email" />
+                <AuthInput icon={<Lock className="w-4 h-4" />} type="password" value={loginPassword} onChange={setLoginPassword} placeholder="Password" onSubmit={handleLogin} />
+              </div>
 
               <button
-                onClick={() => { setScreen('signup'); setError(''); }}
-                className="w-full py-3 text-sm text-fg-secondary active:text-fg-strong transition-colors"
+                onClick={() => router.push('/forgot-password')}
+                className="text-xs text-fg-secondary active:text-accent transition-colors self-end mb-2"
               >
-                Don&apos;t have an account? <span className="text-accent">Sign up</span>
+                Forgot password?
               </button>
+
+              {error && <ErrorMsg message={error} />}
+
+              <div className="pt-6 space-y-3">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleLogin}
+                  disabled={submitting}
+                  className="w-full py-[15px] rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-40 text-accent-foreground transition-opacity"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)' }}
+                >
+                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
+                </motion.button>
+
+                <button
+                  onClick={() => { setScreen('signup'); setError(''); }}
+                  className="w-full py-3 text-sm text-fg-secondary active:text-fg-strong transition-colors"
+                >
+                  Don&apos;t have an account? <span className="text-accent">Sign up</span>
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

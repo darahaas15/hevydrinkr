@@ -51,7 +51,8 @@ export async function createUser(
     email,
     password,
     email_confirm: true,
-    user_metadata: { username, display_name: opts.displayName ?? username, gender: opts.gender ?? 'other' },
+    // handle_new_user rejects signups without an 18+ date_of_birth.
+    user_metadata: { username, display_name: opts.displayName ?? username, gender: opts.gender ?? 'other', date_of_birth: '1990-01-01' },
   });
   if (error || !data.user) throw new Error(`createUser failed: ${error?.message ?? 'no user'}`);
   const id = data.user.id;

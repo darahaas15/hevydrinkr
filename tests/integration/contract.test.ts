@@ -7,8 +7,8 @@ import { adminClient } from './helpers';
 // exists. This is the column-level half Layer 2 can't check statically.
 //
 // Introspection uses the service-role PostgREST client (no extra deps): a
-// head-select errors when the table/column is missing; rpc() returns the
-// "function not found" code (PGRST202) when an RPC is missing.
+// head-select errors when the table/column is missing; RPCs are looked up in
+// PostgREST's OpenAPI description.
 
 interface Contract {
   tables: string[];
@@ -30,10 +30,20 @@ async function columnExists(table: string, column: string): Promise<boolean> {
   return !error;
 }
 
+// PostgREST answers a no-arg rpc() with PGRST202 both when the function is
+// missing and when it just needs arguments, so read the exposed functions from
+// its OpenAPI description instead.
+let exposedRpcs: Promise<Set<string>> | undefined;
 async function rpcExists(fn: string): Promise<boolean> {
-  // Call with no args; only a genuinely-absent function yields PGRST202.
-  const { error } = await admin.rpc(fn);
-  return error?.code !== 'PGRST202';
+  exposedRpcs ??= (async () => {
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    const spec = (await res.json()) as { paths: Record<string, unknown> };
+    return new Set(Object.keys(spec.paths).filter((p) => p.startsWith('/rpc/')).map((p) => p.slice(5)));
+  })();
+  return (await exposedRpcs).has(fn);
 }
 
 describe('DB contract — the app’s database surface exists locally', () => {

@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserPlus } from 'lucide-react';
+import { X, UserPlus, ChevronRight } from 'lucide-react';
 import { Settings, Flame, Wine, Clock, Calendar, TrendingUp, Share2, MapPin, Wallet } from 'lucide-react';
 import { useAppRouter } from '@/hooks/use-app-router';
 import { useAuthStore } from '@/stores/use-auth-store';
@@ -20,6 +20,7 @@ import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
 import { formatDuration } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { PR_LABELS, PR_ICONS } from '@/types/pr';
+import { formatPrValue } from '@/lib/algorithms/pr-detection';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { Heart, Trophy as TrophyIcon, Timer } from 'lucide-react';
@@ -447,12 +448,17 @@ function ProfilePageOwn() {
           ) : (
             <div className="space-y-1.5">
               {myPRs.map((pr, i) => (
-                <motion.div
+                <motion.button
                   key={pr.id}
+                  type="button"
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="rounded-xl bg-card border border-hairline p-3 flex items-center gap-3"
+                  // Records always point at a session once the recompute
+                  // migration has run; one that doesn't isn't tappable.
+                  disabled={!pr.sessionId}
+                  onClick={() => { hapticLight(); router.push(`/session?id=${pr.sessionId}`); }}
+                  className="w-full text-left rounded-xl bg-card border border-hairline p-3 flex items-center gap-3 active:bg-card-hover transition-colors"
                 >
                   {(() => { const Icon = PR_ICONS[pr.category]; return <Icon className="w-5 h-5 text-accent" />; })()}
                   <div className="flex-1">
@@ -461,8 +467,9 @@ function ProfilePageOwn() {
                       {new Date(pr.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
-                  <p className="text-sm font-mono font-bold text-accent">{pr.formattedValue}</p>
-                </motion.div>
+                  <p className="text-sm font-mono font-bold text-accent">{formatPrValue(pr.category, pr.value)}</p>
+                  {pr.sessionId && <ChevronRight className="w-4 h-4 text-muted shrink-0" />}
+                </motion.button>
               ))}
             </div>
           )}

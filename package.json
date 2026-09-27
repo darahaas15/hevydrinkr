@@ -15,7 +15,8 @@
     "test:rls": "vitest run --config vitest.integration.config.mts",
     "contract:update": "UPDATE_CONTRACT=1 vitest run db-contract",
     "db:bootstrap": "bash scripts/test-db-bootstrap.sh",
-    "ci": "npm run typecheck && npm run test"
+    "ci": "npm run typecheck && npm run test",
+    "db:seed-users": "node scripts/seed-local-users.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

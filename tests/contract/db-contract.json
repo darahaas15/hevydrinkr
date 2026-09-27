@@ -81,15 +81,13 @@
       "user_id"
     ],
     "follow_requests": [
-      "avatar_url",
       "created_at",
       "id",
       "profiles!follow_requests_requester_id_fkey",
       "requester_id",
       "status",
       "target_id",
-      "updated_at",
-      "username"
+      "updated_at"
     ],
     "follows": [
       "follower_id",

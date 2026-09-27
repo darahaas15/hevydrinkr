@@ -94,7 +94,7 @@ export default function ResetPasswordPage() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex flex-col flex-1 pt-16"
+            className="flex flex-col my-auto"
           >
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Set New Password</h2>
             <p className="text-sm text-fg-secondary mb-8">Choose a new password for your account</p>

@@ -54,8 +54,10 @@ export default function ForgotPasswordPage() {
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
 
+        {/* my-auto centres the form below Back when it fits, and collapses to
+            top-aligned (the page scrolls) when it doesn't. */}
         {!sent ? (
-          <>
+          <div className="my-auto">
             <h2 className="text-[26px] font-extrabold tracking-tight mb-1">Reset Password</h2>
             <p className="text-sm text-fg-secondary mb-8">Enter your email and we&apos;ll send you a reset link</p>
 
@@ -76,12 +78,12 @@ export default function ForgotPasswordPage() {
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send Reset Link'}
               </motion.button>
             </div>
-          </>
+          </div>
         ) : (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center text-center mt-12"
+            className="flex flex-col items-center text-center my-auto"
           >
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <h2 className="text-[22px] font-extrabold tracking-tight mb-2">Check your email</h2>

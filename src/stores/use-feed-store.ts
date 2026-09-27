@@ -12,6 +12,7 @@ import type {
 import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from './use-auth-store';
 import { useSessionStore } from './use-session-store';
+import { useProfileStore } from './use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { safeJSONStorage } from '@/lib/storage/safe-storage';
 import { insertDrinkEntries, withOptionalCost } from '@/lib/supabase/drink-entries';
@@ -589,6 +590,8 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
           [item.userId]: ownerHistory.filter((s) => s.id !== item.sessionId),
         },
       });
+      // The session may have held records; the DB has just handed them on.
+      useProfileStore.getState().fetchPRs(item.userId, true);
     }
   },
 

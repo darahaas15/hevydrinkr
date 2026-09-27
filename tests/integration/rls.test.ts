@@ -29,16 +29,32 @@ describe('private accounts & follows (can_view_user_data)', () => {
     const follower = await createUser();
     const stranger = await createUser();
 
-    const { error: followErr } = await follower.client
-      .from('follows')
-      .insert({ follower_id: follower.id, following_id: priv.id });
-    expect(followErr).toBeNull();
+    // Following a private account goes through request -> accept; the accept
+    // trigger inserts the follows row.
+    const { error: requestErr } = await follower.client
+      .from('follow_requests')
+      .insert({ requester_id: follower.id, target_id: priv.id });
+    expect(requestErr).toBeNull();
+    const { error: acceptErr } = await priv.client
+      .from('follow_requests')
+      .update({ status: 'accepted' })
+      .eq('requester_id', follower.id);
+    expect(acceptErr).toBeNull();
 
     const seenByFollower = await follower.client.from('follows').select('*').eq('following_id', priv.id);
     expect(seenByFollower.data?.length).toBe(1);
 
     const seenByStranger = await stranger.client.from('follows').select('*').eq('following_id', priv.id);
     expect(seenByStranger.data?.length ?? 0).toBe(0);
+  });
+
+  it('a user cannot follow a private account directly, skipping the request', async () => {
+    const priv = await createUser({ isPrivate: true });
+    const stranger = await createUser();
+    const { error } = await stranger.client
+      .from('follows')
+      .insert({ follower_id: stranger.id, following_id: priv.id });
+    expect(error).not.toBeNull();
   });
 });
 
@@ -100,11 +116,10 @@ describe('blocked_users is private to the blocker', () => {
   });
 });
 
-describe('KNOWN GAP — blocking is not enforced at the DB layer', () => {
-  // feed_items SELECT is `USING (true)`, so a blocked user can still read posts
-  // directly; blocking is client-side only. This test PINS the current behavior.
-  // If feed RLS is tightened to respect blocks, flip the expectation.
-  it('a blocked user can still read the blocker-author’s posts (documents the gap)', async () => {
+describe('blocking is enforced at the DB layer', () => {
+  // 20260425_launch_readiness (section 6) makes feed_items SELECT respect
+  // blocked_users, so a blocker no longer sees the blocked user's posts.
+  it('a blocker cannot read the blocked author’s posts', async () => {
     const author = await createUser();
     const blocker = await createUser();
     const { data: sess } = await author.client
@@ -116,6 +131,9 @@ describe('KNOWN GAP — blocking is not enforced at the DB layer', () => {
     await blocker.client.from('blocked_users').insert({ blocker_id: blocker.id, blocked_id: author.id });
 
     const { data } = await blocker.client.from('feed_items').select('id').eq('user_id', author.id);
-    expect((data?.length ?? 0)).toBeGreaterThan(0);
+    expect(data?.length ?? 0).toBe(0);
+    // Guard against a vacuous pass: the post does exist.
+    const { data: all } = await adminClient().from('feed_items').select('id').eq('user_id', author.id);
+    expect(all?.length).toBe(1);
   });
 });
