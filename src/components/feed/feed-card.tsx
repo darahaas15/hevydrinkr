@@ -29,7 +29,10 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const removeLike = useFeedStore((s) => s.removeLike);
   const isFollowing = currentUser?.following.includes(item.userId) ?? false;
 
-  const getUserById = useAuthStore((s) => s.getUserById);
+  // Subscribe to the user list itself (getUserById never changes), so
+  // likers' avatars appear once fetchAllUsers lands.
+  const allUsers = useAuthStore((s) => s.allUsers);
+  const getUserById = (id: string) => allUsers.find((u) => u.id === id);
   const addToast = useUIStore((s) => s.addToast);
   const [showLikesList, setShowLikesList] = useState(false);
 

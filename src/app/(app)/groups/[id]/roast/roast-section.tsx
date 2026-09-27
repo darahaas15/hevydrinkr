@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRoastStore } from '@/stores/use-roast-store';
@@ -24,13 +24,20 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
   const generateRoast = useRoastStore((s) => s.generateRoast);
   const loading = useRoastStore((s) => s.loading);
   const generating = useRoastStore((s) => s.generating);
-  const getRecapsByGroup = useRoastStore((s) => s.getRecapsByGroup);
+  // Subscribe to the recaps themselves (not getRecapsByGroup, a function that
+  // never changes) so loading or generating a recap re-renders this section.
+  // Filtered outside the selector: returning a fresh array from it would
+  // re-render forever.
+  const allRecaps = useRoastStore((s) => s.recaps);
   const getLastWeekKey = useRoastStore((s) => s.getLastWeekKey);
   const hasRecapForWeek = useRoastStore((s) => s.hasRecapForWeek);
   const streaks = useRoastStore((s) => s.streaks).filter((s) => s.groupId === groupId);
   const records = useRoastStore((s) => s.records).filter((r) => r.groupId === groupId);
 
-  const recaps = getRecapsByGroup(groupId).sort((a, b) => b.weekKey.localeCompare(a.weekKey));
+  const recaps = useMemo(
+    () => allRecaps.filter((r) => r.groupId === groupId).sort((a, b) => b.weekKey.localeCompare(a.weekKey)),
+    [allRecaps, groupId],
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const attemptedRef = useRef(false);
 

@@ -11,7 +11,8 @@ import type { Group } from '@/types';
 
 export const GroupCard = memo(function GroupCard({ group }: { group: Group }) {
   const router = useRouter();
-  const latestRecap = useRoastStore((s) => s.getLatestRecap)(group.id);
+  // Select the recap itself so the card re-renders when recaps load.
+  const latestRecap = useRoastStore((s) => s.getLatestRecap(group.id));
   // An icon that fails to load falls back to the letter tile, not alt text.
   const [failedIcon, setFailedIcon] = useState<string | null>(null);
 

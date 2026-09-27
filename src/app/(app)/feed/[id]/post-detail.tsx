@@ -39,7 +39,6 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const likeComment = useFeedStore((s) => s.likeComment);
   const unlikeComment = useFeedStore((s) => s.unlikeComment);
   const currentUser = useAuthStore((s) => s.currentUser);
-  const getUserById = useAuthStore((s) => s.getUserById);
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; userName: string } | null>(null);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
@@ -51,6 +50,9 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightCommentId ?? null);
   const [missingPostIds, setMissingPostIds] = useState<Set<string>>(() => new Set());
   const allUsers = useAuthStore((s) => s.allUsers);
+  // Looks up the subscribed list (not the store's getUserById, which never
+  // changes), so likers' avatars appear once fetchAllUsers lands.
+  const getUserById = (id: string) => allUsers.find((u) => u.id === id);
   const inputRef = useRef<HTMLInputElement>(null);
   const requestedPostIdsRef = useRef<Set<string>>(new Set());
   const setHideBottomNav = useUIStore((s) => s.setHideBottomNav);
