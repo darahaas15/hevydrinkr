@@ -88,8 +88,9 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 
 **Decisions.**
 
-- Posts **without photos** get a "stats hero" card: header = venue + start time; three large numbers (drinks, drink score/std, duration); then the drinks grouped with counts ("Kingfisher x3"), max 4 rows then "+N more" (tapping opens the post).
+- Posts **without photos** get a "stats hero" card: header = venue + start time; three large numbers (drinks, drink score/std, duration); then every drink as an icon.
 - Posts **with photos** keep the current compact stats box, plus the start time.
+- **Drink icons (revised 2026-09-29, replacing a grouped name list):** both card types show every drink as a 20px icon, wrapping onto as many lines as needed, with no "+N" cap. Order is when each drink was drunk (sorted by drink time, since an undone drink is re-appended to the end; older rows without times keep stored order). Very old posts that saved only emojis show generic icons. Post detail keeps its grouped list.
 - **Every** post shows the start time, e.g. "Fri · 9:40 PM".
 - The start time is stored in the post's `session_summary` JSON (no migration). Older posts fall back to their earliest drink time, else show no time.
 - The post always shows the **session's** start time. It changes only when the user edits the session's Start field in the edit screen (already exists); other edits leave it alone. There is no separate post time.
@@ -102,12 +103,13 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 2. Pure helpers in `src/lib/session-utils.ts` (unit-tested):
    - `postStartTime(summary): string | null` = `summary.startedAt` ?? earliest `drinks[].timestamp` ?? `null`;
    - `formatPostStartTime(iso, now)`: weekday + time within the last 6 days ("Fri · 9:40 PM"), else day + month ("12 Sep · 9:40 PM"), plus the year if it's not the current year;
-   - `groupDrinksForDisplay(drinks)`: groups by `drinkDefinitionId`, falling back to name for legacy rows, ordered by count desc. Extract the keying from `groupDrinksIntoCart` in `session-form.tsx` so there's one grouping rule, and reuse it in PR 4.
+   - `orderedPostDrinks(drinks)`: drinks in the order they were drunk (see above).
+   - `groupDrinks(drinks, keyOf)`: the cart's grouping, extracted from `groupDrinksIntoCart` in `session-form.tsx` for reuse in PR 4.
 3. `feed-card.tsx`: branch on `item.photos.length`. The photo-less branch renders the hero card; the photo branch keeps today's box. Both show the start time next to the venue.
 4. Post detail (`src/app/(app)/feed/[id]/`): show the start time in its stats too.
 5. The hero card must not change feed virtualization/row-height assumptions, if any. Check `feed/page.tsx` and fix any fixed-height estimate.
 
-**Tests.** Unit tests for the three helpers (legacy summary without `startedAt` or drink timestamps -> `null`; grouping of legacy rows without `drinkDefinitionId`; "+N more" boundary at 4 vs 5 groups). Visual check with seeded users: post a session with and without a photo, with 1 and 6+ drink types, in both themes.
+**Tests.** Unit tests for the three helpers (legacy summary without `startedAt` or drink timestamps -> `null`; ordering by drink time, ties and rows without times). Visual check with seeded users: post a session with and without a photo, a 30-drink session that wraps, in both themes.
 
 **Changelog.** "Posts without photos now show a proper summary of the night: what you drank and when it started." / "Every post now shows what time the session started."
 
@@ -127,7 +129,7 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 **Steps.**
 
 1. New `src/components/session/session-review.tsx`: a full-screen layer with the same z-index as today's modal, `var(--background)` base, sticky header (`var(--chrome-bg)`) holding "Back to session" and the title, scrolling body, and a bottom action bar (`var(--chrome-strong-bg)`) respecting `safe-bottom`. It takes the active session and page-owned state (mood, caption, tags) plus callbacks, so `finishSession` and its state stay in `page.tsx`.
-2. Drink rows: `DrinkCart` over `groupDrinksForDisplay(activeDrinks)` (from PR 3):
+2. Drink rows: `DrinkCart` over `groupDrinks(activeDrinks, ...)` (from PR 3), keyed like the edit screen's cart:
    - `onInc`: `addDrink` with a copy of the group's template (new id, `timestamp: now`);
    - `onDec`: `removeDrink` on the group's most recent drink;
    - `onRemove`: remove every drink in the group, with an undo toast via `restoreDrink` if the page already offers one for removals.
@@ -164,6 +166,14 @@ Held on 2026-09-27 before any Google Cloud setup. Decisions made so far:
 - **Display:** the venue name on posts and session detail becomes tappable and opens Google Maps, **only for business-type places**; posts never show an address. No static map images for now (separately billed).
 - **Privacy:** add a line to `/legal/privacy` about storing the place picked for a session.
 - **Setup still needed (user):** a GCP project; enable Maps JavaScript API + Places API (New); a browser key restricted to `hevydrinkr.com/*`, Vercel preview URLs and `localhost:3000/*`; set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in Vercel and `.env.local`. Guard spend with a daily quota cap (~300/day) and a budget alert, and degrade quietly to past venues + free text when quota is exhausted. (Recommended; not yet confirmed.)
+
+### Keep drink order when a session is edited
+
+The edit screen regroups drinks by type (its cart) and, when the drink count changes, re-spreads their times in that grouped order, so an edited session's post shows drinks grouped rather than in the order they were drunk. Logged past sessions are grouped the same way. Fix alongside the bug below, since both are in the edit screen's save path: unchanged drinks keep their ids and times, and added drinks go at the end.
+
+### Drink and photo edits on unposted sessions don't save
+
+The edit screen only writes drink (and likely photo) changes through the post, so a session saved without posting keeps its old drinks after a reload. Move drink persistence into the session store so it runs with or without a post.
 
 ### Recaps
 

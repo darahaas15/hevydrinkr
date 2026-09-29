@@ -98,8 +98,8 @@ export interface DrinkGroup<T> {
   quantity: number;
 }
 
-// Group drinks by `keyOf`, keeping first-appearance order. The session cart
-// and the feed card group the same way; only the key for legacy rows differs.
+// Group drinks by `keyOf`, keeping first-appearance order (the session cart:
+// one row per drink type with a quantity).
 export function groupDrinks<T>(drinks: T[], keyOf: (drink: T) => string): DrinkGroup<T>[] {
   const groups = new Map<string, DrinkGroup<T>>();
   for (const d of drinks) {
@@ -111,15 +111,14 @@ export function groupDrinks<T>(drinks: T[], keyOf: (drink: T) => string): DrinkG
   return [...groups.values()];
 }
 
-// A post's drinks grouped for display, most-drunk first ("Kingfisher x3").
-// Legacy rows have no drinkDefinitionId, or the 'edited' sentinel shared by
-// unrelated drinks, so those group by name instead.
-export function groupPostDrinks(drinks: SummaryDrink[]): DrinkGroup<SummaryDrink>[] {
-  const groups = groupDrinks(drinks, (d) =>
-    d.drinkDefinitionId && d.drinkDefinitionId !== 'edited' ? d.drinkDefinitionId : `name:${d.name}`,
-  );
-  // Array.prototype.sort is stable, so ties keep first-appearance order.
-  return groups.sort((a, b) => b.quantity - a.quantity);
+// A post's drinks in the order they were drunk. Sorted by time because a
+// drink restored with undo is re-appended to the end of the list; older rows
+// without per-drink times keep their stored order.
+export function orderedPostDrinks(drinks: SummaryDrink[]): SummaryDrink[] {
+  if (!drinks.every((d) => d.timestamp)) return drinks;
+  // Array.prototype.sort is stable, so drinks logged in the same instant keep
+  // their stored order.
+  return [...drinks].sort((a, b) => Date.parse(a.timestamp!) - Date.parse(b.timestamp!));
 }
 
 // When a post's session started: the stored start time, else (older posts)

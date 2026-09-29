@@ -7,7 +7,7 @@ import {
   validateSessionForm,
   durationMinutesBetween,
   nextActiveSession,
-  groupPostDrinks,
+  orderedPostDrinks,
   postStartTime,
   formatPostStartTime,
   type SessionFormInput,
@@ -72,25 +72,22 @@ const summary = (over: Partial<Summary>): Summary => ({
   drinkEmojis: [], drinks: [], mood: null, prsAchieved: [], ...over,
 });
 
-describe('groupPostDrinks', () => {
-  it('groups by drink definition, most-drunk first, ties in order of appearance', () => {
-    const groups = groupPostDrinks([
-      summaryDrink({ name: 'Gin', drinkDefinitionId: 'gin' }),
-      summaryDrink({ name: 'Kingfisher', drinkDefinitionId: 'kf' }),
-      summaryDrink({ name: 'Wine', drinkDefinitionId: 'wine' }),
-      summaryDrink({ name: 'Kingfisher', drinkDefinitionId: 'kf' }),
-    ]);
-    expect(groups.map((g) => [g.template.name, g.quantity])).toEqual([['Kingfisher', 2], ['Gin', 1], ['Wine', 1]]);
+describe('orderedPostDrinks', () => {
+  it('orders drinks by when they were drunk (an undone drink goes back in place)', () => {
+    const drinks = [
+      summaryDrink({ name: 'Beer', timestamp: '2026-03-02T20:00:00.000Z' }),
+      summaryDrink({ name: 'Gin', timestamp: '2026-03-02T21:00:00.000Z' }),
+      summaryDrink({ name: 'Wine', timestamp: '2026-03-02T20:30:00.000Z' }), // restored via undo
+    ];
+    expect(orderedPostDrinks(drinks).map((d) => d.name)).toEqual(['Beer', 'Wine', 'Gin']);
   });
 
-  it('groups legacy rows (no id, or the shared "edited" id) by name', () => {
-    const groups = groupPostDrinks([
-      summaryDrink({ name: 'Beer' }),
-      summaryDrink({ name: 'Rum', drinkDefinitionId: 'edited' }),
-      summaryDrink({ name: 'Beer' }),
-      summaryDrink({ name: 'Vodka', drinkDefinitionId: 'edited' }),
-    ]);
-    expect(groups.map((g) => [g.template.name, g.quantity])).toEqual([['Beer', 2], ['Rum', 1], ['Vodka', 1]]);
+  it('keeps stored order for ties and for older rows without times', () => {
+    const t = '2026-03-02T20:00:00.000Z';
+    expect(orderedPostDrinks([summaryDrink({ name: 'A', timestamp: t }), summaryDrink({ name: 'B', timestamp: t })]).map((d) => d.name))
+      .toEqual(['A', 'B']);
+    expect(orderedPostDrinks([summaryDrink({ name: 'B', timestamp: t }), summaryDrink({ name: 'A' })]).map((d) => d.name))
+      .toEqual(['B', 'A']);
   });
 });
 

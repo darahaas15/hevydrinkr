@@ -15,11 +15,32 @@ import { blankBrokenImage } from '@/lib/image-utils';
 import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import Skeleton from '@/components/ui/skeleton';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
-import { groupPostDrinks, postStartTime, formatPostStartTime } from '@/lib/session-utils';
+import { orderedPostDrinks, postStartTime, formatPostStartTime } from '@/lib/session-utils';
 import type { FeedItem } from '@/types';
 
-// Drink rows on a photo-less card before it collapses to "+N more".
-const MAX_DRINK_ROWS = 4;
+// Every drink in the post as an icon, in the order they were drunk, wrapping
+// onto as many lines as it takes. Very old posts saved only emojis, so they
+// get generic icons in stored order.
+function DrinkIconRows({ summary, className = '' }: { summary: FeedItem['sessionSummary']; className?: string }) {
+  const drinks = summary.drinks ?? [];
+  if (drinks.length > 0) {
+    return (
+      <div className={`flex flex-wrap gap-0.5 ${className}`}>
+        {orderedPostDrinks(drinks).map((drink, i) => (
+          <DrinkIcon key={i} category={drink.category} className="w-5 h-5" />
+        ))}
+      </div>
+    );
+  }
+  if (summary.drinkEmojis.length === 0) return null;
+  return (
+    <div className={`flex flex-wrap gap-0.5 ${className}`}>
+      {summary.drinkEmojis.map((_, i) => (
+        <DrinkIcon key={i} category="custom" className="w-5 h-5" />
+      ))}
+    </div>
+  );
+}
 
 export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButton }: { item: FeedItem; milestone?: { label: string } | null; showFollowButton?: boolean }) {
   const router = useRouter();
@@ -86,7 +107,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const hasPhotos = (item.photos?.length ?? 0) > 0;
   const start = postStartTime(s);
   const startLabel = start ? formatPostStartTime(start) : null;
-  const drinkGroups = hasPhotos ? [] : groupPostDrinks(s.drinks ?? []);
+  const hasDrinkIcons = (s.drinks?.length ?? 0) > 0 || s.drinkEmojis.length > 0;
 
   return (
     <div
@@ -157,26 +178,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
             {startLabel && <> · {startLabel}</>}
           </p>
 
-          {/* Drink icons */}
-          {s.drinks && s.drinks.length > 0 ? (
-            <div className="flex flex-wrap gap-0.5 mb-2">
-              {s.drinks.slice(0, 15).map((drink, i) => (
-                <DrinkIcon key={i} category={drink.category} className="w-4 h-4" />
-              ))}
-              {s.drinks.length > 15 && (
-                <span className="text-[11px] text-muted self-center ml-1">+{s.drinks.length - 15}</span>
-              )}
-            </div>
-          ) : s.drinkEmojis.length > 0 && (
-            <div className="flex flex-wrap gap-0.5 mb-2">
-              {s.drinkEmojis.slice(0, 15).map((_, i) => (
-                <DrinkIcon key={i} category="custom" className="w-4 h-4" />
-              ))}
-              {s.drinkEmojis.length > 15 && (
-                <span className="text-[11px] text-muted self-center ml-1">+{s.drinkEmojis.length - 15}</span>
-              )}
-            </div>
-          )}
+          <DrinkIconRows summary={s} className="mb-2" />
 
           {/* Stats row */}
           <div className="flex items-center gap-4 text-[11px] text-fg-secondary">
@@ -214,19 +216,9 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
             ))}
           </div>
 
-          {drinkGroups.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-hairline space-y-2">
-              {drinkGroups.slice(0, MAX_DRINK_ROWS).map((g) => (
-                <div key={g.key} className="flex items-center gap-2.5">
-                  <DrinkIcon category={g.template.category} className="w-4 h-4 shrink-0" />
-                  <p className="text-[13px] text-fg-strong truncate flex-1">{g.template.name}</p>
-                  <p className="text-[12px] text-fg-secondary tabular-nums">×{g.quantity}</p>
-                </div>
-              ))}
-              {drinkGroups.length > MAX_DRINK_ROWS && (
-                // The whole card opens the post, where every drink is listed.
-                <p className="text-[12px] text-accent-text">+{drinkGroups.length - MAX_DRINK_ROWS} more</p>
-              )}
+          {hasDrinkIcons && (
+            <div className="mt-4 pt-3 border-t border-hairline">
+              <DrinkIconRows summary={s} />
             </div>
           )}
         </div>
