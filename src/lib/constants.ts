@@ -60,7 +60,6 @@ import {
   IconBeer,
   IconGlassCocktail,
   IconGlass,
-  IconBottle,
   IconBarrel,
   IconGlassGin,
   IconGlassFull,

@@ -3,12 +3,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { memo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Clock, Wine, UserPlus, X } from 'lucide-react';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { hapticLight } from '@/lib/haptics';
 import { getBaseUrl, shareLink } from '@/lib/share';
+import { feedPostPath, feedShareText, likeStateFor } from '@/lib/feed-utils';
 import { useUIStore } from '@/stores/use-ui-store';
 import { Avatar } from '@/components/ui/avatar';
 import { blankBrokenImage } from '@/lib/image-utils';
@@ -29,12 +30,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const addToast = useUIStore((s) => s.addToast);
   const [showLikesList, setShowLikesList] = useState(false);
 
-  // Prefer the populated likes array (richer — has all liker info). Fall back
-  // to currentUserLikeId during the cache-only window (likes: [] but counts
-  // present). The mere presence of currentUserLikeId means "current user
-  // liked this", because it was derived against currentUser.id at write time.
-  const userLike = item.likes.find((l) => l.userId === currentUser?.id);
-  const isLiked = userLike != null || (item.likes.length === 0 && item.currentUserLikeId != null);
+  const { isLiked, likeId } = likeStateFor(item, currentUser?.id);
   const handleCardClick = () => {
     hapticLight();
     // scroll:false so opening a post doesn't snap the feed to top — the feed
@@ -48,9 +44,6 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
     if (!currentUser) return;
     hapticLight();
     if (isLiked) {
-      // userLike is set if the full array hydrated; otherwise use the cached
-      // id. Either way we have a row id to send to the server.
-      const likeId = userLike?.id ?? item.currentUserLikeId;
       if (likeId) removeLike(item.id, likeId);
     } else {
       addLike(item.id, {
@@ -64,8 +57,8 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `${getBaseUrl()}/feed/${item.id}`;
-    const text = `${item.userName} had ${item.sessionSummary.totalDrinks} drinks at ${item.sessionSummary.venue}`;
+    const url = `${getBaseUrl()}${feedPostPath(item.id)}`;
+    const text = feedShareText(item);
     const result = await shareLink(url, text, text);
     if (result === 'copied') addToast('Link copied!', 'success');
   };

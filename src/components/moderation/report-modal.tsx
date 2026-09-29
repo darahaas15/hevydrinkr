@@ -13,10 +13,9 @@ interface ReportModalProps {
   onClose: () => void;
   targetType: 'post' | 'comment' | 'user';
   targetId: string;
-  targetLabel?: string;
 }
 
-export function ReportModal({ open, onClose, targetType, targetId, targetLabel }: ReportModalProps) {
+export function ReportModal({ open, onClose, targetType, targetId }: ReportModalProps) {
   const [selected, setSelected] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState('');
   const [submitted, setSubmitted] = useState(false);

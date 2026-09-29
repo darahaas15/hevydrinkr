@@ -143,3 +143,26 @@ export function durationMinutesBetween(startedAt: string, endedAt: string): numb
     (new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000,
   );
 }
+
+/**
+ * Average drinks across the given session posts, for the live "vs your avg"
+ * pace stat. 0 when there are no posts.
+ */
+export function averageDrinksPerSession(posts: { sessionSummary?: { totalDrinks?: number } | null }[]): number {
+  if (posts.length === 0) return 0;
+  return posts.reduce((sum, p) => sum + (p.sessionSummary?.totalDrinks ?? 0), 0) / posts.length;
+}
+
+/** Drinks per category, most first (ties keep first-logged order). */
+export function drinkCategoryBreakdown(drinks: { category: string }[]): { category: string; count: number }[] {
+  const counts: Record<string, number> = {};
+  for (const d of drinks) counts[d.category] = (counts[d.category] || 0) + 1;
+  return Object.entries(counts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([category, count]) => ({ category, count }));
+}
+
+/** How many different drinks were logged. */
+export function uniqueDrinkCount(drinks: { drinkDefinitionId: string }[]): number {
+  return new Set(drinks.map((d) => d.drinkDefinitionId)).size;
+}

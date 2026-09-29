@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import type { DrinkEntry } from '@/types';
 import { DrinkIcon } from '@/components/ui/drink-icon';
-import { DrinkCart, type DrinkCartItem } from '@/components/session/drink-cart';
+import { DrinkCart } from '@/components/session/drink-cart';
+import { groupDrinksByDefinition, latestEntry, repeatDrink } from '@/lib/drink-groups';
 
 interface DrinkListProps {
   drinks: DrinkEntry[];
@@ -11,33 +12,9 @@ interface DrinkListProps {
   onAdd?: (drink: DrinkEntry) => void;
 }
 
-interface DrinkGroup extends DrinkCartItem {
-  entries: DrinkEntry[];
-}
-
 export function DrinkList({ drinks, onRemove, onAdd }: DrinkListProps) {
   // Group drinks by drinkDefinitionId, ordered with most-recent group first.
-  const groups = useMemo<DrinkGroup[]>(() => {
-    const map = new Map<string, DrinkGroup>();
-    const order: string[] = [];
-    for (const drink of drinks) {
-      const defId = drink.drinkDefinitionId;
-      const existing = map.get(defId);
-      if (existing) {
-        existing.entries.push(drink);
-        existing.quantity += 1;
-      } else {
-        order.push(defId);
-        map.set(defId, {
-          key: defId,
-          template: drink,
-          quantity: 1,
-          entries: [drink],
-        });
-      }
-    }
-    return order.reverse().map((id) => map.get(id)!);
-  }, [drinks]);
+  const groups = useMemo(() => groupDrinksByDefinition(drinks), [drinks]);
 
   if (drinks.length === 0) {
     return (
@@ -55,19 +32,13 @@ export function DrinkList({ drinks, onRemove, onAdd }: DrinkListProps) {
     if (!onAdd) return;
     const group = groupByKey(key);
     if (!group) return;
-    onAdd({
-      ...group.template,
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      roundId: null,
-    });
+    onAdd(repeatDrink(group.template));
   };
 
   const handleDec = (key: string) => {
     const group = groupByKey(key);
     if (!group) return;
-    const latest = group.entries[group.entries.length - 1];
-    onRemove(latest);
+    onRemove(latestEntry(group));
   };
 
   const handleRemoveAll = (key: string) => {

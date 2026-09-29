@@ -7,6 +7,9 @@ import {
   validateSessionForm,
   durationMinutesBetween,
   nextActiveSession,
+  averageDrinksPerSession,
+  drinkCategoryBreakdown,
+  uniqueDrinkCount,
   type SessionFormInput,
 } from './session-utils';
 import { makeSession, makeDrink } from '../../tests/helpers/factories';
@@ -161,5 +164,47 @@ describe('nextActiveSession', () => {
 
   it('leaves the session alone when nobody is signed in', () => {
     expect(nextActiveSession(mine, theirs, 'friend', undefined)).toBe(mine);
+  });
+});
+
+describe('averageDrinksPerSession', () => {
+  it('averages drinks across posts, counting a missing summary as zero', () => {
+    const posts = [
+      { sessionSummary: { totalDrinks: 4 } },
+      { sessionSummary: { totalDrinks: 8 } },
+      { sessionSummary: null },
+    ];
+    expect(averageDrinksPerSession(posts)).toBe(4);
+  });
+
+  it('is zero with no posts', () => {
+    expect(averageDrinksPerSession([])).toBe(0);
+  });
+});
+
+describe('drinkCategoryBreakdown', () => {
+  it('counts drinks per category, most first, ties in first-logged order', () => {
+    const drinks = [
+      makeDrink({ category: 'wine' }),
+      makeDrink({ category: 'beer' }),
+      makeDrink({ category: 'beer' }),
+      makeDrink({ category: 'shot' }),
+    ];
+    expect(drinkCategoryBreakdown(drinks)).toEqual([
+      { category: 'beer', count: 2 },
+      { category: 'wine', count: 1 },
+      { category: 'shot', count: 1 },
+    ]);
+  });
+});
+
+describe('uniqueDrinkCount', () => {
+  it('counts distinct drink definitions', () => {
+    const drinks = [
+      makeDrink({ drinkDefinitionId: 'a' }),
+      makeDrink({ drinkDefinitionId: 'b' }),
+      makeDrink({ drinkDefinitionId: 'a' }),
+    ];
+    expect(uniqueDrinkCount(drinks)).toBe(2);
   });
 });

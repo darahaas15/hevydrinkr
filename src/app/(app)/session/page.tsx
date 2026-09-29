@@ -7,6 +7,7 @@ import { IconSteeringWheel } from '@tabler/icons-react';
 import { calculateBac, getSafetyColor } from '@/lib/algorithms/bac';
 import { BAC_DISCLAIMER, BAC_LEGAL_LIMIT } from '@/lib/constants';
 import { formatDuration } from '@/lib/utils';
+import { averageDrinksPerSession } from '@/lib/session-utils';
 import { formatCost, sumCosts } from '@/lib/money';
 import { canonicalizeVenue } from '@/lib/venues';
 import { useVenueStats } from '@/hooks/use-venue-stats';
@@ -20,7 +21,7 @@ import { useProfileStore } from '@/stores/use-profile-store';
 import { useUIStore } from '@/stores/use-ui-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useTimer } from '@/hooks/use-timer';
-import { detectPRs } from '@/lib/algorithms/pr-detection';
+import { finishActiveSession, logDrink, removeDrinkWithUndo } from '@/lib/session-actions';
 import { BacGauge } from '@/components/session/bac-gauge';
 import { DrinkPicker } from '@/components/session/drink-picker';
 import { DrinkList } from '@/components/session/drink-list';
@@ -29,20 +30,9 @@ import { TagPeopleField } from '@/components/session/tag-people-picker';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import { pickImage, uploadImage } from '@/lib/image-utils';
 import { DrinkIcon } from '@/components/ui/drink-icon';
-import { hapticHeavy, hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import { hapticHeavy, hapticLight, hapticWarning } from '@/lib/haptics';
 import SessionDetailPage from './[id]/session-detail';
 import type { DrinkEntry } from '@/types';
-
-// Mid-session encouragement, keyed by drink count. Module-level so the object
-// isn't rebuilt every render.
-const DRINK_MILESTONES: Record<number, string> = {
-  5: '5 drinks deep!',
-  10: 'Double digits!',
-  15: 'On a roll!',
-  20: 'Unstoppable!',
-  25: 'Quarter century!',
-  30: 'Legend status!',
-};
 
 export default function SessionPage() {
   return (
@@ -66,10 +56,6 @@ function SessionPageRouter() {
 function SessionPageInner() {
   const activeSession = useSessionStore((s) => s.activeSession);
   const startSession = useSessionStore((s) => s.startSession);
-  const endSession = useSessionStore((s) => s.endSession);
-  const addDrink = useSessionStore((s) => s.addDrink);
-  const removeDrink = useSessionStore((s) => s.removeDrink);
-  const restoreDrink = useSessionStore((s) => s.restoreDrink);
   const updateVenue = useSessionStore((s) => s.updateVenue);
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const addPhoto = useSessionStore((s) => s.addPhoto);
@@ -77,11 +63,7 @@ function SessionPageInner() {
   const sessionsByUser = useSessionStore((s) => s.sessionsByUser);
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const currentUser = useAuthStore((s) => s.currentUser);
-  const recordsByUser = useProfileStore((s) => s.recordsByUser);
   const fetchPRs = useProfileStore((s) => s.fetchPRs);
-  const addPR = useProfileStore((s) => s.addPR);
-  const triggerCelebration = useUIStore((s) => s.triggerCelebration);
-  const createFeedItemFromSession = useFeedStore((s) => s.createFeedItemFromSession);
   const addToast = useUIStore((s) => s.addToast);
   const userPostsMap = useFeedStore((s) => s.userPosts);
   const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
@@ -134,35 +116,14 @@ function SessionPageInner() {
   // null when no drink in this session has a recorded price.
   const sessionSpend = sumCosts(activeDrinks);
 
-  // Single entry point for logging a drink, so the milestone toast fires
-  // no matter which affordance was used — picker, quick-add row, or the
-  // "+" on an existing drink row. (Previously only the picker fired it.)
-  const handleAddDrink = (drink: DrinkEntry) => {
-    addDrink(drink);
-    const milestone = DRINK_MILESTONES[activeDrinks.length + 1];
-    if (milestone) {
-      hapticSuccess();
-      addToast(milestone, 'success');
-    }
-  };
-
-  const handleRemoveDrink = (drink: typeof activeDrinks[number]) => {
-    removeDrink(drink.id);
-    addToast(`Removed ${drink.drinkName}`, {
-      type: 'info',
-      durationMs: 6000,
-      action: {
-        label: 'Undo',
-        onPress: () => restoreDrink(drink),
-      },
-    });
-  };
+  // Every way of adding a drink goes through logDrink, so the milestone toast
+  // fires no matter which affordance was used.
+  const handleAddDrink = (drink: DrinkEntry) => logDrink(drink);
+  const handleRemoveDrink = (drink: DrinkEntry) => removeDrinkWithUndo(drink);
 
   // Pace & context calculations
   const myPosts = (currentUser ? userPostsMap[currentUser.id] ?? [] : []).filter((f) => f.sessionSummary);
-  const avgDrinksPerSession = myPosts.length > 0
-    ? myPosts.reduce((sum, p) => sum + (p.sessionSummary?.totalDrinks ?? 0), 0) / myPosts.length
-    : 0;
+  const avgDrinksPerSession = averageDrinksPerSession(myPosts);
 
   const drinkDiff = activeSession ? activeDrinks.length - avgDrinksPerSession : 0;
 
@@ -177,11 +138,12 @@ function SessionPageInner() {
   }, [activeSession?.drinks, currentUser?.weightKg, currentUser?.gender, timer.elapsed]);
 
   // Track peak BAC in the session store (persists to DB)
+  const peakBac = bacEstimate?.peakBac;
   useEffect(() => {
-    if (bacEstimate && Number.isFinite(bacEstimate.peakBac) && bacEstimate.peakBac > 0) {
-      updatePeakBac(bacEstimate.peakBac);
+    if (peakBac !== undefined && Number.isFinite(peakBac) && peakBac > 0) {
+      updatePeakBac(peakBac);
     }
-  }, [bacEstimate?.peakBac, updatePeakBac]);
+  }, [peakBac, updatePeakBac]);
 
   const handleAddPhoto = async () => {
     const file = await pickImage();
@@ -210,27 +172,14 @@ function SessionPageInner() {
     if (!activeSession || !currentUser || posting) return;
     setPosting(true);
     setShowPostPreview(false);
-    hapticSuccess();
-    endSession(selectedMood);
 
-    const completed = useSessionStore.getState().sessionsByUser[currentUser.id]?.[0];
+    const completed = finishActiveSession({ mood: selectedMood, share, caption, taggedUserIds });
     if (!completed) {
-      // endSession rolled back (its DB update failed) and already toasted.
       setPosting(false);
       return;
     }
 
     setLastCompletedSession(completed);
-    const newPRs = detectPRs(completed, recordsByUser[currentUser.id] ?? []);
-    newPRs.forEach((pr) => addPR(pr));
-    if (newPRs.length > 0) {
-      setTimeout(() => triggerCelebration(newPRs[0]), 500);
-    }
-    if (share) {
-      createFeedItemFromSession(completed, currentUser, caption, taggedUserIds);
-    } else {
-      addToast('Saved to your history — you can share it any time', 'success');
-    }
     setCaption('');
     setTaggedUserIds([]);
     setShowSummary(true);

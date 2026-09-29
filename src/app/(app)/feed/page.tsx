@@ -11,11 +11,11 @@ import { FeedCard } from '@/components/feed/feed-card';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { SuggestedPeopleCarousel } from '@/components/feed/suggested-people-carousel';
 import { Avatar } from '@/components/ui/avatar';
-import { supabase } from '@/lib/supabase/client';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useModerationStore } from '@/stores/use-moderation-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { getMilestoneBadge } from '@/lib/milestones';
+import { discoverableUsers, feedForTab, searchFeedPosts, searchProfiles, type FeedTab } from '@/lib/feed-utils';
 import { hapticSelection, hapticLight } from '@/lib/haptics';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import PostDetailPage from './[id]/post-detail';
@@ -96,13 +96,12 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   const items = useFeedStore((s) => s.items);
   const currentUser = useAuthStore((s) => s.currentUser);
   const blockedUserIds = useModerationStore((s) => s.blockedUserIds);
-  const [tab, setTab] = useState<'home' | 'discover'>('home');
+  const [tab, setTab] = useState<FeedTab>('home');
   const loading = useFeedStore((s) => s.loading);
   const loadingMore = useFeedStore((s) => s.loadingMore);
   const hasMore = useFeedStore((s) => s.hasMore);
   const feedError = useFeedStore((s) => s.error);
   const fetchFeed = useFeedStore((s) => s.fetchFeed);
-  const fetchMoreFeed = useFeedStore((s) => s.fetchMoreFeed);
   const allUsers = useAuthStore((s) => s.allUsers);
   const fetchAllUsers = useAuthStore((s) => s.fetchAllUsers);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -130,45 +129,10 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
         return;
       }
       setSearching(true);
-      const q = searchQuery.trim().toLowerCase();
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, bio, created_at, is_private')
-        .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-        .neq('id', currentUser?.id ?? '')
-        .limit(20);
-
-      if (data) {
-        setSearchResults(
-          data.map((p) => ({
-            id: p.id,
-            username: p.username,
-            displayName: p.display_name,
-            avatarUrl: p.avatar_url,
-            bio: p.bio || '',
-            // Body metrics are self-only; default for stranger view.
-            gender: 'other',
-            weightKg: 70,
-            heightCm: null,
-            joinedAt: p.created_at,
-            isDemo: false,
-            isPrivate: p.is_private || false,
-            followers: [],
-            following: [],
-          }))
-        );
-      }
+      const profiles = await searchProfiles(searchQuery, currentUser?.id);
+      if (profiles) setSearchResults(profiles);
       // Also search posts client-side
-      const matchedPosts = items.filter((item) => {
-        const lq = q;
-        return (
-          item.userId !== currentUser?.id &&
-          (item.userName.toLowerCase().includes(lq) ||
-           item.caption.toLowerCase().includes(lq) ||
-           item.sessionSummary.venue.toLowerCase().includes(lq))
-        );
-      });
-      setSearchFeedResults(matchedPosts);
+      setSearchFeedResults(searchFeedPosts(items, searchQuery, currentUser?.id));
 
       setSearching(false);
     }, 300);
@@ -178,17 +142,10 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
 
   const followingIds = following;
 
-  const sorted = useMemo(() => {
-    const followSet = new Set(followingIds);
-    const blockedSet = new Set(blockedUserIds);
-    const uid = currentUser?.id;
-    const filtered = tab === 'home'
-      ? items.filter((item) => (followSet.has(item.userId) || item.userId === uid) && !blockedSet.has(item.userId))
-      : items.filter((item) => !followSet.has(item.userId) && item.userId !== uid && !blockedSet.has(item.userId));
-    return [...filtered].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [items, followingIds, currentUser?.id, tab, blockedUserIds]);
+  const sorted = useMemo(
+    () => feedForTab(items, tab, { followingIds, blockedUserIds, currentUserId: currentUser?.id }),
+    [items, followingIds, currentUser?.id, tab, blockedUserIds],
+  );
 
   // Restore saved feed scroll once the feed is visible and has real height.
   // Runs whenever feedActive/sorted-length changes, so if FeedPageList is
@@ -216,9 +173,7 @@ function FeedPageList({ feedActive = true }: { feedActive?: boolean }) {
   // Non-followed users for discover carousel
   const discoverUsers = useMemo(() => {
     if (!currentUser || tab !== 'discover') return [];
-    const followSet = new Set(followingIds);
-    const blockedSet = new Set(blockedUserIds);
-    return allUsers.filter((u) => u.id !== currentUser.id && !followSet.has(u.id) && !blockedSet.has(u.id));
+    return discoverableUsers(allUsers, { followingIds, blockedUserIds, currentUserId: currentUser.id });
   }, [allUsers, currentUser, tab, followingIds, blockedUserIds]);
 
   // Infinite scroll observer. Use a callback ref so the observer attaches the

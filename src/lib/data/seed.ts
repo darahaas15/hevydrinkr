@@ -1,8 +1,6 @@
 import { STORAGE_KEYS } from '@/lib/constants';
 import { MOCK_USERS, DEMO_USER } from './mock-users';
 import { MOCK_SESSIONS } from './mock-sessions';
-import { MOCK_FEED } from './mock-feed';
-import { MOCK_GROUPS } from './mock-groups';
 import type { PersonalRecord, PRCategory } from '@/types';
 import { generateId } from '@/lib/utils';
 

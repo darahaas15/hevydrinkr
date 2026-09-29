@@ -61,6 +61,42 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  # The iOS app (mobile/): its theme tokens still match globals.css, it
+  # type-checks against the shared web modules (including the native
+  # replacements' API parity), lints, and its JavaScript bundles for iOS.
+  mobile:
+    name: iOS app - tokens, typecheck, lint & bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Theme tokens match the web app
+        run: npm run tokens:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Bundle the iOS JavaScript
+        run: npx expo export --platform ios --output-dir "$RUNNER_TEMP/ios-bundle"
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+
   # Layer 3 — local-Supabase contract + RLS. MANUAL-ONLY for now (gated on the
   # migration re-baseline), so it never reports red on normal PRs/pushes.
   # `supabase/migrations/` does not yet reproduce the schema — the baseline

@@ -4,17 +4,12 @@ import { useEffect, memo, useMemo } from 'react';
 import { Home, Users, Trophy, User, Wine, Clock, MapPin, ChevronRight, Plus } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { hapticLight, hapticMedium } from '@/lib/haptics';
+import { hapticLight } from '@/lib/haptics';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useAuthStore } from '@/stores/use-auth-store';
 import { useUIStore } from '@/stores/use-ui-store';
-import {
-  useDrinkPrefsStore,
-  selectPrefs,
-  selectRecents,
-  selectCost,
-  entryFromQuickDrink,
-} from '@/stores/use-drink-prefs-store';
+import { useDrinkPrefsStore } from '@/stores/use-drink-prefs-store';
+import { lastLoggedDrink, relogDrink } from '@/lib/session-actions';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { useTimer } from '@/hooks/use-timer';
 
@@ -29,18 +24,13 @@ const tabs = [
 // Isolated component so the 1s timer tick doesn't re-render the tab bar
 const SessionBanner = memo(function SessionBanner({ onNavigate }: { onNavigate: (path: string) => void }) {
   const activeSession = useSessionStore((s) => s.activeSession);
-  const addDrink = useSessionStore((s) => s.addDrink);
-  const removeDrink = useSessionStore((s) => s.removeDrink);
   const currentUser = useAuthStore((s) => s.currentUser);
-  const addToast = useUIStore((s) => s.addToast);
   const pathname = usePathname();
   const timer = useTimer(activeSession?.startedAt || null);
 
   const userId = currentUser?.id;
   const byUser = useDrinkPrefsStore((s) => s.byUser);
-  const recordUse = useDrinkPrefsStore((s) => s.recordUse);
-  const prefs = useMemo(() => selectPrefs(byUser, userId), [byUser, userId]);
-  const lastDrink = useMemo(() => selectRecents(prefs, 1)[0] ?? null, [prefs]);
+  const lastDrink = useMemo(() => lastLoggedDrink(byUser, userId), [byUser, userId]);
 
   const show = !!activeSession && !!currentUser && activeSession.userId === currentUser.id && pathname !== '/session';
   if (!show) return null;
@@ -49,15 +39,7 @@ const SessionBanner = memo(function SessionBanner({ onNavigate }: { onNavigate: 
   // with an undo because this button sits under the thumb on every tab.
   const quickLog = () => {
     if (!lastDrink || !userId) return;
-    hapticMedium();
-    const entry = entryFromQuickDrink(lastDrink, selectCost(prefs, lastDrink.definitionId));
-    recordUse(userId, lastDrink);
-    addDrink(entry);
-    addToast(`${lastDrink.name} logged`, {
-      type: 'success',
-      durationMs: 6000,
-      action: { label: 'Undo', onPress: () => removeDrink(entry.id) },
-    });
+    relogDrink(userId, lastDrink);
   };
 
   return (

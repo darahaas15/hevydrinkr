@@ -26,6 +26,14 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.14.5',
+    title: 'Beer gauge reads litres properly',
+    date: 'September 2026',
+    changes: [
+      'Once you pass a litre of beer or spirits in a live session, the small gauges now show litres (like 1.5) instead of the millilitre count labelled "litres".',
+    ],
+  },
+  {
     version: '1.14.4',
     title: 'No more light flash when you open the app',
     date: 'September 2026',

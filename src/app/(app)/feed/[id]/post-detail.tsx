@@ -860,7 +860,6 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
         onClose={() => setShowReport(false)}
         targetType="post"
         targetId={item.id}
-        targetLabel={`Post by ${item.userName}`}
       />
     </div>
   );

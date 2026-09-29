@@ -44,7 +44,9 @@ export const useUIStore = create<UIState>()((set) => ({
   toasts: [],
   hideBottomNav: false,
   lockMainScroll: false,
-  isOffline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
+  // Only a browser that reports `onLine: false` starts offline. React Native
+  // has a `navigator` without `onLine`, which must not read as offline.
+  isOffline: typeof navigator !== 'undefined' && navigator.onLine === false,
 
   triggerCelebration: (pr) =>
     set({

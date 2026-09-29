@@ -41,7 +41,6 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
   const isBlocked = useModerationStore((s) => s.isBlocked(resolvedUserId));
 
   const outgoingRequests = useAuthStore((s) => s.outgoingRequests);
-  const sendFollowRequest = useAuthStore((s) => s.sendFollowRequest);
   const cancelFollowRequest = useAuthStore((s) => s.cancelFollowRequest);
   const fetchOutgoingRequests = useAuthStore((s) => s.fetchOutgoingRequests);
 
@@ -421,7 +420,6 @@ export default function UserProfilePage({ userId: userIdProp }: { userId?: strin
         onClose={() => setShowReport(false)}
         targetType="user"
         targetId={resolvedUserId}
-        targetLabel={user.displayName}
       />
 
       {/* Followers / Following List Modal */}

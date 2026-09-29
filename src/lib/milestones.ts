@@ -26,3 +26,18 @@ export function getMilestoneBadge(
   const position = userItems.findIndex((i) => i.id === item.id) + 1; // 1-indexed
   return MILESTONES[position] ?? null;
 }
+
+// Mid-session encouragement, keyed by the drink count just reached.
+const DRINK_MILESTONES: Record<number, string> = {
+  5: '5 drinks deep!',
+  10: 'Double digits!',
+  15: 'On a roll!',
+  20: 'Unstoppable!',
+  25: 'Quarter century!',
+  30: 'Legend status!',
+};
+
+/** The toast for logging the `drinkCount`th drink of a session, if any. */
+export function drinkMilestoneMessage(drinkCount: number): string | null {
+  return DRINK_MILESTONES[drinkCount] ?? null;
+}

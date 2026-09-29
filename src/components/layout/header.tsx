@@ -3,7 +3,6 @@
 import React from 'react';
 import { ChevronLeft, WifiOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/use-ui-store';
 
 interface HeaderProps {

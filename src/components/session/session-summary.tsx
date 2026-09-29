@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Clock, Wine, Droplets, TrendingUp, Wallet } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
 import { formatCost, sumCosts } from '@/lib/money';
+import { drinkCategoryBreakdown, uniqueDrinkCount } from '@/lib/session-utils';
 import { DRINK_CATEGORY_COLORS, DRINK_CATEGORY_ICONS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
@@ -30,14 +31,8 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
     return () => setHideBottomNav(false);
   }, [setHideBottomNav]);
 
-  // Calculate category breakdown
-  const categoryCounts: Record<string, number> = {};
-  session.drinks.forEach((d) => {
-    categoryCounts[d.category] = (categoryCounts[d.category] || 0) + 1;
-  });
-
-  const sortedCategories = Object.entries(categoryCounts).sort(([, a], [, b]) => b - a);
-  const uniqueDrinks = new Set(session.drinks.map((d) => d.drinkDefinitionId)).size;
+  const sortedCategories = drinkCategoryBreakdown(session.drinks);
+  const uniqueDrinks = uniqueDrinkCount(session.drinks);
 
   return (
     <div className="fixed inset-0 z-[55] bg-background overflow-y-auto">
@@ -66,7 +61,7 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
             { icon: Wine, label: 'Drinks', value: session.drinks.length.toString(), color: 'text-accent' },
             { icon: Clock, label: 'Duration', value: formatDuration(session.durationMinutes), color: 'text-info-fg' },
             { icon: Droplets, label: 'Std Drinks', value: session.totalStandardDrinks.toFixed(1), color: 'text-violet-fg' },
-            { icon: TrendingUp, label: 'Types', value: new Set(session.drinks.map(d => d.drinkDefinitionId)).size.toString(), color: 'text-warning-fg' },
+            { icon: TrendingUp, label: 'Types', value: uniqueDrinks.toString(), color: 'text-warning-fg' },
             // Only when prices were recorded, matching session detail.
             ...(spend !== null
               ? [{ icon: Wallet, label: 'Spent', value: formatCost(spend, currency), color: 'text-success-fg' }]
@@ -106,7 +101,7 @@ export function SessionSummary({ session, onDone }: SessionSummaryProps) {
 
           {/* Categories */}
           <div className="space-y-2">
-            {sortedCategories.map(([category, count]) => (
+            {sortedCategories.map(({ category, count }) => (
               <div key={category} className="flex items-center gap-2">
                 {(() => { const Icon = DRINK_CATEGORY_ICONS[category] || DRINK_CATEGORY_ICONS.custom; return <Icon className="w-4 h-4 shrink-0" style={{ color: DRINK_CATEGORY_COLORS[category] || '#71717a' }} stroke={1.5} />; })()}
                 <span className="text-sm capitalize flex-1">{category}</span>

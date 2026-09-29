@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="-6 -6 36 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- iOS app icon: the PWA icon (public/icons/icon.svg) as a full-bleed
+       square. iOS applies its own corner mask, so no rounding or transparency. -->
+  <defs>
+    <linearGradient id="bg" x1="12" y1="-6" x2="12" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a1a20"/>
+      <stop offset="1" stop-color="#09090b"/>
+    </linearGradient>
+  </defs>
+  <rect x="-6" y="-6" width="36" height="36" fill="url(#bg)"/>
+  <g fill="none" stroke="#14b8a6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 22h8"/>
+    <path d="M7 10h10"/>
+    <path d="M12 15v7"/>
+    <path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z"/>
+  </g>
+</svg>

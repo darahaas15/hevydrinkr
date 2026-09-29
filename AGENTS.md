@@ -90,3 +90,15 @@ PROD is the only database, so app code and migrations can land out of order, and
 `src/lib/supabase/optional-columns.ts` handles this: an `OptionalColumn` starts optimistic and latches off the first time the DB reports the column missing, so callers retry once without it. See `drinkCostColumn` and its use in `src/lib/supabase/drink-entries.ts` for the read + write pattern. Use this for any additive column whose migration might trail the deploy.
 
 **Gotcha:** the contract extractor (`tests/contract/extract-db-contract.ts`) is regex-based on literal `.select('...')` strings. Composing a select list from a variable or helper makes it invisible, and `npm run contract:update` will silently *delete* those columns from the snapshot - a coverage loss that looks like a clean run. Always read the `git diff` of `tests/contract/db-contract.json` and expect it to grow. Conditional column lists must be written out as full literals at each call site. New migrations also need adding to the `FILES` list in `scripts/test-db-bootstrap.sh`, which does not read `supabase/migrations/`.
+
+## iOS app (`mobile/`)
+
+`mobile/` is the native iPhone app (Expo + React Native), a separate npm project with its own `node_modules`; see `mobile/AGENTS.md`.
+It imports this app's `src/lib`, `src/stores`, `src/types` and `src/hooks` directly, so changes there ship to both apps.
+
+- Keep shared modules free of browser-only APIs (`document`, `window` events, `navigator` features); `localStorage` and `crypto.randomUUID()` are fine, the iOS app polyfills them.
+  A module that genuinely needs a browser API gets a native replacement listed in `mobile/metro.config.js`, and `mobile/src/platform/parity.ts` must keep type-checking.
+- Put logic the screens need in `src/lib` (see `session-actions.ts`, `feed-utils.ts`, `drink-picker.ts`) rather than in a component, so the iOS screens reuse it instead of copying it.
+- UI changes don't carry over: a new or changed screen needs its native counterpart in `mobile/src`.
+- After changing `src/app/globals.css` tokens, run `npm run tokens` in `mobile/`.
+- Check both apps with `npm run ci` here and in `mobile/`.

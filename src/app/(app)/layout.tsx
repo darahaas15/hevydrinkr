@@ -9,7 +9,12 @@ import { useFeedStore } from '@/stores/use-feed-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { useModerationStore } from '@/stores/use-moderation-store';
 import { initPushNotifications, requestWebPushPermission } from '@/lib/push-notifications';
-import { supabase } from '@/lib/supabase/client';
+import {
+  FEED_BACKSTOP_POLL_MS,
+  refreshAfterReturn,
+  subscribeToFeedRealtime,
+  subscribeToNotificationRealtime,
+} from '@/lib/realtime';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { useUIStore } from '@/stores/use-ui-store';
 import { useChangelogStore } from '@/stores/use-changelog-store';
@@ -102,86 +107,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Supabase Realtime — patch feed state from per-row payloads (no full
-  // refetch so concurrent optimistic updates aren't clobbered). Auto-resubscribes
-  // on channel error / timeout / close so a Realtime hiccup self-heals.
+  // Supabase Realtime — patch feed state from per-row payloads, and update the
+  // unread badge when new notifications arrive. Both self-heal on errors.
   useEffect(() => {
     if (!currentUser?.id) return;
-    const userId = currentUser.id;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let resubscribeTimer: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-
-    const subscribe = () => {
-      if (cancelled) return;
-      channel = supabase
-        .channel(`feed-realtime-${userId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_items' }, (payload) => {
-          useFeedStore.getState().applyFeedItemChange(payload as never, userId);
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_likes' }, (payload) => {
-          useFeedStore.getState().applyLikeChange(payload as never, userId);
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'feed_comments' }, (payload) => {
-          useFeedStore.getState().applyCommentChange(payload as never, userId);
-        })
-        .subscribe((status) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            if (resubscribeTimer) clearTimeout(resubscribeTimer);
-            resubscribeTimer = setTimeout(() => {
-              if (channel) supabase.removeChannel(channel);
-              subscribe();
-            }, 3000);
-          }
-        });
-    };
-
-    subscribe();
-
+    const unsubscribeFeed = subscribeToFeedRealtime(currentUser.id);
+    const unsubscribeNotifications = subscribeToNotificationRealtime(currentUser.id);
     return () => {
-      cancelled = true;
-      if (resubscribeTimer) clearTimeout(resubscribeTimer);
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, [currentUser?.id]);
-
-  // Supabase Realtime — update unread badge when new notifications arrive.
-  // Same auto-resubscribe pattern as the feed channel.
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    const userId = currentUser.id;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let resubscribeTimer: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-
-    const subscribe = () => {
-      if (cancelled) return;
-      channel = supabase
-        .channel(`notifications-realtime-${userId}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-          () => {
-            useNotificationStore.getState().fetchNotifications(userId, true);
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            if (resubscribeTimer) clearTimeout(resubscribeTimer);
-            resubscribeTimer = setTimeout(() => {
-              if (channel) supabase.removeChannel(channel);
-              subscribe();
-            }, 3000);
-          }
-        });
-    };
-
-    subscribe();
-
-    return () => {
-      cancelled = true;
-      if (resubscribeTimer) clearTimeout(resubscribeTimer);
-      if (channel) supabase.removeChannel(channel);
+      unsubscribeFeed();
+      unsubscribeNotifications();
     };
   }, [currentUser?.id]);
 
@@ -192,8 +126,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const userId = currentUser.id;
     const refresh = () => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-      useFeedStore.getState().fetchFeed();
-      useNotificationStore.getState().fetchNotifications(userId);
+      refreshAfterReturn(userId);
     };
     document.addEventListener('visibilitychange', refresh);
     window.addEventListener('focus', refresh);
@@ -213,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         useFeedStore.getState().fetchFeed();
       }
-    }, 900_000);
+    }, FEED_BACKSTOP_POLL_MS);
     return () => clearInterval(id);
   }, [currentUser?.id]);
 

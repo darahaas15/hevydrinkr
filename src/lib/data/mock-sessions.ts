@@ -34,12 +34,6 @@ function drinkById(id: string): DrinkDefinition {
   return DRINK_LIBRARY.find((dl) => dl.id === id)!;
 }
 
-const MOODS: SessionMood[] = ['legendary', 'great', 'good', 'meh', 'rough'];
-
-function pickMood(index: number): SessionMood {
-  return MOODS[index % MOODS.length];
-}
-
 function buildSession(
   userId: string,
   daysAgo: number,

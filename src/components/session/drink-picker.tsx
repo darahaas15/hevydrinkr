@@ -3,11 +3,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, useDragControls } from 'framer-motion';
 import { Search, X, Plus, ChevronLeft, Star, Clock } from 'lucide-react';
-import { DRINK_LIBRARY, getDrinksByCategory } from '@/lib/data/drink-library';
 import { calculateStandardDrinks } from '@/lib/utils';
 import { DRINK_CATEGORY_COLORS } from '@/lib/constants';
 import { DrinkIcon } from '@/components/ui/drink-icon';
-import { supabase } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/use-auth-store';
 import {
   useDrinkPrefsStore,
@@ -15,61 +13,33 @@ import {
   selectRecents,
   selectFavorites,
   selectCost,
-  type QuickDrink,
+  quickDrinkFromEntry,
 } from '@/stores/use-drink-prefs-store';
+import {
+  PICKER_CATEGORIES,
+  buildDefinitionIndex,
+  customDrinkToDefinition,
+  entryFromCustomDrink,
+  entryFromDefinition,
+  fetchCustomDrinks,
+  filterPickerDrinks,
+  resolveQuickDrink,
+  saveCustomDrink,
+  validateCustomDrink,
+  type PickerCategory,
+} from '@/lib/drink-picker';
 import { formatCost, parseCost, currencySymbol, MAX_DRINK_COST } from '@/lib/money';
 import { hapticMedium, hapticSelection, hapticLight } from '@/lib/haptics';
-import type { DrinkCategory, DrinkEntry, DrinkDefinition } from '@/types';
-
-const CATEGORIES: { value: DrinkCategory | 'all' | 'custom' | 'favorites'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'favorites', label: '★ Starred' },
-  { value: 'custom', label: 'My Drinks' },
-  { value: 'beer', label: 'Beer' },
-  { value: 'whiskey', label: 'Whiskey' },
-  { value: 'vodka', label: 'Vodka' },
-  { value: 'rum', label: 'Rum' },
-  { value: 'gin', label: 'Gin' },
-  { value: 'brandy', label: 'Brandy' },
-  { value: 'tequila', label: 'Tequila' },
-  { value: 'wine', label: 'Wine' },
-  { value: 'cocktail', label: 'Cocktails' },
-  { value: 'shot', label: 'Shots' },
-  { value: 'desi', label: 'Desi' },
-];
-
-interface CustomDrinkRow {
-  id: string;
-  name: string;
-  emoji: string;
-  category: string;
-  abv_percent: number;
-  volume_ml: number;
-}
+import type { DrinkEntry, DrinkDefinition } from '@/types';
 
 interface DrinkPickerProps {
   onSelect: (drink: DrinkEntry) => void;
   onClose: () => void;
 }
 
-function validateCustomDrink(name: string, abvStr: string, volStr: string): string | null {
-  const trimmed = name.trim();
-  if (!trimmed) return 'Give your drink a name.';
-  if (trimmed.length > 60) return 'Name is too long (max 60 chars).';
-  const abv = parseFloat(abvStr);
-  if (!Number.isFinite(abv) || abv < 0.1 || abv > 80) {
-    return 'ABV must be between 0.1% and 80%.';
-  }
-  const vol = parseFloat(volStr);
-  if (!Number.isFinite(vol) || vol < 10 || vol > 2000) {
-    return 'Volume must be between 10 and 2000 ml.';
-  }
-  return null;
-}
-
 export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<DrinkCategory | 'all' | 'custom' | 'favorites'>('all');
+  const [category, setCategory] = useState<PickerCategory>('all');
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customAbv, setCustomAbv] = useState('5');
@@ -110,66 +80,25 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
   // Fetch user's custom drinks
   useEffect(() => {
     if (!currentUser) return;
-    supabase
-      .from('custom_drinks')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) {
-          setCustomDrinks(
-            (data as CustomDrinkRow[]).map((d) => ({
-              id: `custom-${d.id}`,
-              name: d.name,
-              emoji: d.emoji,
-              category: d.category as DrinkCategory,
-              defaultAbvPercent: d.abv_percent,
-              defaultVolumeMl: d.volume_ml,
-              standardDrinks: calculateStandardDrinks(d.volume_ml, d.abv_percent),
-              color: 'var(--fg-secondary)',
-              isCustom: true,
-            }))
-          );
-        }
-      });
+    fetchCustomDrinks(currentUser.id).then((drinks) => {
+      if (drinks) setCustomDrinks(drinks);
+    });
   }, [currentUser]);
 
   // Canonical definition per id: prefer the live library/custom row so an
   // edited ABV or volume wins over the snapshot stored in recents.
-  const definitionById = useMemo(() => {
-    const map = new Map<string, DrinkDefinition>();
-    for (const d of DRINK_LIBRARY) map.set(d.id, d);
-    for (const d of customDrinks) map.set(d.id, d);
-    return map;
-  }, [customDrinks]);
+  const definitionById = useMemo(() => buildDefinitionIndex(customDrinks), [customDrinks]);
 
-  const resolveQuickDrink = useMemo(
-    () => (q: QuickDrink): DrinkDefinition =>
-      definitionById.get(q.definitionId) ?? {
-        id: q.definitionId,
-        name: q.name,
-        emoji: q.emoji,
-        category: q.category,
-        defaultAbvPercent: q.abvPercent,
-        defaultVolumeMl: q.volumeMl,
-        standardDrinks: q.standardDrinks,
-        color: DRINK_CATEGORY_COLORS[q.category] || '#71717a',
-        isCustom: q.definitionId.startsWith('custom-'),
-      },
-    [definitionById],
+  const drinks = useMemo(
+    () =>
+      filterPickerDrinks({
+        query,
+        category,
+        customDrinks,
+        favorites: favoriteDrinks.map((q) => resolveQuickDrink(q, definitionById)),
+      }),
+    [query, category, customDrinks, favoriteDrinks, definitionById],
   );
-
-  const drinks = useMemo(() => {
-    const allDrinks = [...customDrinks, ...DRINK_LIBRARY];
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      return allDrinks.filter((d) => d.name.toLowerCase().includes(q));
-    }
-    if (category === 'all') return allDrinks;
-    if (category === 'custom') return customDrinks;
-    if (category === 'favorites') return favoriteDrinks.map(resolveQuickDrink);
-    return getDrinksByCategory(category as DrinkCategory);
-  }, [query, category, customDrinks, favoriteDrinks, resolveQuickDrink]);
 
   // The pinned Recent strip only makes sense on the unfiltered default view;
   // once you search or pick a category you asked for something specific.
@@ -177,31 +106,8 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
 
   const handleSelect = (def: DrinkDefinition) => {
     hapticMedium();
-    const entry: DrinkEntry = {
-      id: crypto.randomUUID(),
-      drinkDefinitionId: def.id,
-      drinkName: def.name,
-      emoji: def.emoji,
-      category: def.category,
-      abvPercent: def.defaultAbvPercent,
-      volumeMl: def.defaultVolumeMl,
-      standardDrinks: calculateStandardDrinks(def.defaultVolumeMl, def.defaultAbvPercent),
-      timestamp: new Date().toISOString(),
-      roundId: null,
-      notes: '',
-      cost: selectCost(prefs, def.id),
-    };
-    if (userId) {
-      recordUse(userId, {
-        definitionId: def.id,
-        name: def.name,
-        emoji: def.emoji,
-        category: def.category,
-        abvPercent: def.defaultAbvPercent,
-        volumeMl: def.defaultVolumeMl,
-        standardDrinks: entry.standardDrinks,
-      });
-    }
+    const entry = entryFromDefinition(def, selectCost(prefs, def.id));
+    if (userId) recordUse(userId, quickDrinkFromEntry(entry));
     onSelect(entry);
   };
 
@@ -232,72 +138,19 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
       return;
     }
     setCustomError(null);
-    const abv = parseFloat(customAbv);
-    const vol = parseFloat(customVol);
-    const trimmedName = customName.trim();
+    const drink = {
+      name: customName.trim(),
+      abvPercent: parseFloat(customAbv),
+      volumeMl: parseFloat(customVol),
+    };
 
     // Save to Supabase for future use
-    const { data: inserted } = await supabase
-      .from('custom_drinks')
-      .insert({
-        user_id: currentUser.id,
-        name: trimmedName,
-        emoji: '🍸',
-        category: 'custom',
-        abv_percent: abv,
-        volume_ml: vol,
-      })
-      .select()
-      .single();
-
-    // Add to local custom drinks list
-    if (inserted) {
-      const row = inserted as CustomDrinkRow;
-      setCustomDrinks((prev) => [
-        {
-          id: `custom-${row.id}`,
-          name: row.name,
-          emoji: row.emoji,
-          category: row.category as DrinkCategory,
-          defaultAbvPercent: row.abv_percent,
-          defaultVolumeMl: row.volume_ml,
-          standardDrinks: calculateStandardDrinks(row.volume_ml, row.abv_percent),
-          color: 'var(--fg-secondary)',
-          isCustom: true,
-        },
-        ...prev,
-      ]);
-    }
+    const saved = await saveCustomDrink(currentUser.id, drink);
+    if (saved) setCustomDrinks((prev) => [customDrinkToDefinition(saved), ...prev]);
 
     // Select it immediately
-    const definitionId = inserted
-      ? `custom-${(inserted as CustomDrinkRow).id}`
-      : `custom-${crypto.randomUUID()}`;
-    const entry: DrinkEntry = {
-      id: crypto.randomUUID(),
-      drinkDefinitionId: definitionId,
-      drinkName: trimmedName,
-      emoji: '🍸',
-      category: 'custom' as DrinkCategory,
-      abvPercent: abv,
-      volumeMl: vol,
-      standardDrinks: calculateStandardDrinks(vol, abv),
-      timestamp: new Date().toISOString(),
-      roundId: null,
-      notes: '',
-      cost: null,
-    };
-    if (userId) {
-      recordUse(userId, {
-        definitionId,
-        name: trimmedName,
-        emoji: '🍸',
-        category: 'custom' as DrinkCategory,
-        abvPercent: abv,
-        volumeMl: vol,
-        standardDrinks: entry.standardDrinks,
-      });
-    }
+    const entry: DrinkEntry = entryFromCustomDrink(saved, drink);
+    if (userId) recordUse(userId, quickDrinkFromEntry(entry));
     onSelect(entry);
   };
 
@@ -422,7 +275,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
 
               <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden -mx-5 px-5">
                 <div className="flex gap-1.5 min-w-max">
-                  {CATEGORIES.map((c) => (
+                  {PICKER_CATEGORIES.map((c) => (
                     <button
                       key={c.value}
                       onClick={() => { hapticSelection(); setCategory(c.value); setQuery(''); }}
@@ -450,7 +303,7 @@ export function DrinkPicker({ onSelect, onClose }: DrinkPickerProps) {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {recentDrinks.map((quick) => {
-                      const def = resolveQuickDrink(quick);
+                      const def = resolveQuickDrink(quick, definitionById);
                       const cost = selectCost(prefs, quick.definitionId);
                       return (
                         <motion.button

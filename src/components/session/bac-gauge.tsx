@@ -2,24 +2,21 @@
 
 import { motion } from 'framer-motion';
 import type { DrinkEntry } from '@/types';
+import {
+  BEER_GAUGE_MAX_ML,
+  GAUGE_MAX_STANDARD_DRINKS,
+  SPIRITS_GAUGE_MAX_ML,
+  beerVolumeMl,
+  drinkLevel,
+  gaugeProgress,
+  gaugeVolumeLabel,
+  spiritsVolumeMl,
+} from '@/lib/drink-gauge';
 
 interface DrinkGaugeProps {
   standardDrinks: number;
   drinks: DrinkEntry[];
 }
-
-// Colors are theme-aware CSS vars (see globals.css › --gauge-*): vivid on dark,
-// AA-safe deep shades on light so the arc + status label read on a white card.
-function getLevel(std: number): { label: string; color: string } {
-  if (std < 2) return { label: 'Getting Started', color: 'var(--gauge-1)' };
-  if (std < 4) return { label: 'Warming Up', color: 'var(--gauge-2)' };
-  if (std < 7) return { label: 'In The Zone', color: 'var(--gauge-3)' };
-  if (std < 10) return { label: 'Going Hard', color: 'var(--gauge-4)' };
-  return { label: 'Beast Mode', color: 'var(--gauge-5)' };
-}
-
-const HARD = new Set(['whiskey', 'vodka', 'rum', 'gin', 'brandy', 'tequila', 'shot', 'desi']);
-const BEER = new Set(['beer', 'cider', 'seltzer']);
 
 function MiniGauge({ value, max, label, color }: {
   value: number; max: number; label: string; color: string;
@@ -28,9 +25,9 @@ function MiniGauge({ value, max, label, color }: {
   const sw = 6;
   const cx = r + sw;
   const circ = Math.PI * r;
-  const progress = Math.min(value / max, 1);
+  const progress = gaugeProgress(value, max);
   const offset = circ * (1 - progress);
-  const display = value >= 1000 ? `${(value / 1000).toFixed(1)}L` : `${Math.round(value)}ml`;
+  const volume = gaugeVolumeLabel(value);
 
   return (
     <div className="flex flex-col items-center">
@@ -48,10 +45,10 @@ function MiniGauge({ value, max, label, color }: {
           transition={{ duration: 0.5, ease: 'easeOut' }}
         />
         <text x={cx} y={cx - 4} textAnchor="middle" className="fill-foreground font-mono" style={{ fontSize: '18px', fontWeight: 700 }}>
-          {Math.round(value)}
+          {volume.value}
         </text>
         <text x={cx} y={cx + 10} textAnchor="middle" style={{ fill: 'var(--muted-foreground)', fontSize: '10px' }}>
-          {value >= 1000 ? 'litres' : 'ml'}
+          {volume.unit}
         </text>
       </svg>
       <p className="text-[10px] text-fg-secondary -mt-0.5">{label}</p>
@@ -60,24 +57,27 @@ function MiniGauge({ value, max, label, color }: {
 }
 
 export function BacGauge({ standardDrinks, drinks }: DrinkGaugeProps) {
-  const { label, color } = getLevel(standardDrinks);
+  // Colors are theme-aware CSS vars (see globals.css › --gauge-*): vivid on
+  // dark, AA-safe deep shades on light so the arc + status label read on a
+  // white card.
+  const { label, level } = drinkLevel(standardDrinks);
+  const color = `var(--gauge-${level})`;
 
-  const hardMl = drinks.filter(d => HARD.has(d.category)).reduce((s, d) => s + d.volumeMl, 0);
-  const beerMl = drinks.filter(d => BEER.has(d.category)).reduce((s, d) => s + d.volumeMl, 0);
+  const hardMl = spiritsVolumeMl(drinks);
+  const beerMl = beerVolumeMl(drinks);
 
   const radius = 60;
   const strokeWidth = 7;
   const center = radius + strokeWidth;
   const circumference = Math.PI * radius;
-  const maxStd = 15;
-  const progress = Math.min(standardDrinks / maxStd, 1);
+  const progress = gaugeProgress(standardDrinks, GAUGE_MAX_STANDARD_DRINKS);
   const dashOffset = circumference * (1 - progress);
 
   return (
     <div className="rounded-2xl bg-card border border-hairline p-4">
       <div className="flex items-center justify-center gap-2">
         {/* Left — Spirits ml */}
-        <MiniGauge value={hardMl} max={300} label="Spirits" color="var(--violet)" />
+        <MiniGauge value={hardMl} max={SPIRITS_GAUGE_MAX_ML} label="Spirits" color="var(--violet)" />
 
         {/* Center — Standard drinks */}
         <div className="flex flex-col items-center">
@@ -105,7 +105,7 @@ export function BacGauge({ standardDrinks, drinks }: DrinkGaugeProps) {
         </div>
 
         {/* Right — Beer ml */}
-        <MiniGauge value={beerMl} max={3000} label="Beer" color="var(--gauge-3)" />
+        <MiniGauge value={beerMl} max={BEER_GAUGE_MAX_ML} label="Beer" color="var(--gauge-3)" />
       </div>
     </div>
   );
