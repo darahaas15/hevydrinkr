@@ -47,7 +47,11 @@ function EditSessionInner() {
     );
   }
 
-  if (!session) {
+  // Wait for the user's posts too: the form seeds its caption and tags from
+  // the post once, on mount, so rendering before they load would show (and
+  // then save) a blank caption.
+  const postsLoaded = !!currentUser && userPosts[currentUser.id] !== undefined;
+  if (!session || !postsLoaded) {
     return (
       <div className="min-h-full flex items-center justify-center">
         <p className="text-sm text-fg-secondary">Loading…</p>

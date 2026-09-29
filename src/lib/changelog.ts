@@ -32,6 +32,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       'Posts without photos now show a proper summary of the night: where, the big numbers, and what you drank.',
       'Every post now shows what time the session started.',
+      'Editing a post no longer clears its caption or tagged friends when they were slow to load.',
+      'The edit screen no longer gets stuck on “Loading…” after a refresh.',
     ],
   },
   {
