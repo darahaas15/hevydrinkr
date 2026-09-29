@@ -6,7 +6,9 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 process.env.TZ = 'UTC';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  // Only the web app's tsconfig: crawling would also parse mobile/'s, which
+  // extends a package that is only installed in mobile/node_modules.
+  plugins: [tsconfigPaths({ projects: ['./tsconfig.json'] })],
   test: {
     // Unit tests are pure logic — Node is enough and fast. Component/DOM tests
     // can opt into jsdom per-file with a `// @vitest-environment jsdom` pragma.

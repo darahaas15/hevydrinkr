@@ -16,7 +16,9 @@ if (existsSync('.env.test')) {
 }
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  // Only the web app's tsconfig: crawling would also parse mobile/'s, which
+  // extends a package that is only installed in mobile/node_modules.
+  plugins: [tsconfigPaths({ projects: ['./tsconfig.json'] })],
   test: {
     environment: 'node',
     globals: false,
