@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SessionForm } from '@/components/session/session-form';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useFeedStore } from '@/stores/use-feed-store';
 import { useAuthStore } from '@/stores/use-auth-store';
+import type { FeedItem } from '@/types';
 
 export default function EditSessionPage() {
   return (
@@ -25,19 +26,32 @@ function EditSessionInner() {
   // fetchSessions lands, and stayed on "Loading…".
   const session = useSessionStore((s) => (sessionId ? s.getSessionById(sessionId) : undefined));
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
-  const userPosts = useFeedStore((s) => s.userPosts);
-  const fetchUserPosts = useFeedStore((s) => s.fetchUserPosts);
-  const feedItem =
-    currentUser && sessionId
-      ? (userPosts[currentUser.id] ?? []).find((f) => f.sessionId === sessionId) ?? null
-      : null;
+  const fetchPostBySessionId = useFeedStore((s) => s.fetchPostBySessionId);
+  // The form seeds its caption and tags from the post once, on mount, so it
+  // waits for this session's own post: rendering first would show (and then
+  // save) a blank caption.
+  type Lookup = { sessionId: string; attempt: number; result: { post: FeedItem | null } | null };
+  const [lookup, setLookup] = useState<Lookup | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
-  // Hydrate stores if the user deep-linked here before state was loaded.
+  // Hydrate the session if the user deep-linked here before state was loaded.
   useEffect(() => {
-    if (!currentUser) return;
-    if (!session) fetchSessions(currentUser.id);
-    if (!userPosts[currentUser.id]) fetchUserPosts(currentUser.id);
-  }, [currentUser, session, userPosts, fetchSessions, fetchUserPosts]);
+    if (currentUser && !session) fetchSessions(currentUser.id);
+  }, [currentUser, session, fetchSessions]);
+
+  useEffect(() => {
+    if (!currentUser || !sessionId) return;
+    let live = true;
+    fetchPostBySessionId(sessionId).then((result) => {
+      if (live) setLookup({ sessionId, attempt, result });
+    });
+    return () => {
+      live = false;
+    };
+  }, [currentUser, sessionId, fetchPostBySessionId, attempt]);
+
+  // Settled only for this session and this attempt; anything else is loading.
+  const settled = lookup && lookup.sessionId === sessionId && lookup.attempt === attempt ? lookup : null;
 
   if (!sessionId) {
     return (
@@ -47,11 +61,21 @@ function EditSessionInner() {
     );
   }
 
-  // Wait for the user's posts too: the form seeds its caption and tags from
-  // the post once, on mount, so rendering before they load would show (and
-  // then save) a blank caption.
-  const postsLoaded = !!currentUser && userPosts[currentUser.id] !== undefined;
-  if (!session || !postsLoaded) {
+  if (settled && !settled.result) {
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center gap-3">
+        <p className="text-sm text-fg-secondary">Couldn&apos;t load this session</p>
+        <button
+          onClick={() => setAttempt((n) => n + 1)}
+          className="px-4 py-2 rounded-xl bg-surface-raised text-sm font-medium"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!session || !settled?.result) {
     return (
       <div className="min-h-full flex items-center justify-center">
         <p className="text-sm text-fg-secondary">Loading…</p>
@@ -71,5 +95,5 @@ function EditSessionInner() {
     return null;
   }
 
-  return <SessionForm mode="edit" existingSession={session} existingFeedItem={feedItem} />;
+  return <SessionForm mode="edit" existingSession={session} existingFeedItem={settled.result.post} />;
 }

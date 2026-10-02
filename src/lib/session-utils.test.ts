@@ -10,6 +10,7 @@ import {
   orderedPostDrinks,
   postStartTime,
   formatPostStartTime,
+  postStartLabel,
   type SessionFormInput,
 } from './session-utils';
 import type { FeedItem } from '@/types';
@@ -124,6 +125,11 @@ describe('formatPostStartTime (TZ=UTC)', () => {
   it('uses the date from a week back, and the year outside this one', () => {
     expect(formatPostStartTime('2026-09-18T21:40:00.000Z', now)).toBe('18 Sep · 9:40 PM');
     expect(formatPostStartTime('2025-12-31T23:00:00.000Z', now)).toBe('31 Dec 2025 · 11:00 PM');
+  });
+
+  it('labels a post by its start, or not at all when unknown', () => {
+    expect(postStartLabel(summary({ startedAt: '2026-09-25T21:40:00.000Z' }), now)).toBe('Fri · 9:40 PM');
+    expect(postStartLabel(summary({}), now)).toBeNull();
   });
 });
 

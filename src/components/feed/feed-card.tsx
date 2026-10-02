@@ -15,7 +15,7 @@ import { blankBrokenImage } from '@/lib/image-utils';
 import { TaggedUsersLine } from '@/components/feed/tagged-users-line';
 import Skeleton from '@/components/ui/skeleton';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
-import { orderedPostDrinks, postStartTime, formatPostStartTime } from '@/lib/session-utils';
+import { orderedPostDrinks, postStartLabel } from '@/lib/session-utils';
 import type { FeedItem } from '@/types';
 
 // Every drink in the post as an icon, in the order they were drunk, wrapping
@@ -23,23 +23,24 @@ import type { FeedItem } from '@/types';
 // get generic icons in stored order.
 function DrinkIconRows({ summary, className = '' }: { summary: FeedItem['sessionSummary']; className?: string }) {
   const drinks = summary.drinks ?? [];
-  if (drinks.length > 0) {
-    return (
-      <div className={`flex flex-wrap gap-0.5 ${className}`}>
-        {orderedPostDrinks(drinks).map((drink, i) => (
-          <DrinkIcon key={i} category={drink.category} className="w-5 h-5" />
-        ))}
-      </div>
-    );
-  }
-  if (summary.drinkEmojis.length === 0) return null;
+  const categories = drinks.length > 0
+    ? orderedPostDrinks(drinks).map((d) => d.category)
+    : summary.drinkEmojis.map(() => 'custom' as const);
+  if (categories.length === 0) return null;
   return (
     <div className={`flex flex-wrap gap-0.5 ${className}`}>
-      {summary.drinkEmojis.map((_, i) => (
-        <DrinkIcon key={i} category="custom" className="w-5 h-5" />
+      {categories.map((category, i) => (
+        <DrinkIcon key={i} category={category} className="w-5 h-5" />
       ))}
     </div>
   );
+}
+
+// Selects just this liker's avatar URL, so a card re-renders only when that
+// avatar changes, not whenever the user list is refetched.
+function LikerAvatar({ userId, name, size, className }: { userId: string; name: string; size: 'xs' | 'sm'; className?: string }) {
+  const avatarUrl = useAuthStore((s) => s.allUsers.find((u) => u.id === userId)?.avatarUrl ?? null);
+  return <Avatar name={name} size={size} src={avatarUrl} className={className} />;
 }
 
 export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButton }: { item: FeedItem; milestone?: { label: string } | null; showFollowButton?: boolean }) {
@@ -50,10 +51,6 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
   const removeLike = useFeedStore((s) => s.removeLike);
   const isFollowing = currentUser?.following.includes(item.userId) ?? false;
 
-  // Subscribe to the user list itself (getUserById never changes), so
-  // likers' avatars appear once fetchAllUsers lands.
-  const allUsers = useAuthStore((s) => s.allUsers);
-  const getUserById = (id: string) => allUsers.find((u) => u.id === id);
   const addToast = useUIStore((s) => s.addToast);
   const [showLikesList, setShowLikesList] = useState(false);
 
@@ -105,9 +102,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
 
   const { sessionSummary: s } = item;
   const hasPhotos = (item.photos?.length ?? 0) > 0;
-  const start = postStartTime(s);
-  const startLabel = start ? formatPostStartTime(start) : null;
-  const hasDrinkIcons = (s.drinks?.length ?? 0) > 0 || s.drinkEmojis.length > 0;
+  const startLabel = postStartLabel(s);
 
   return (
     <div
@@ -171,58 +166,56 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
       )}
 
       {/* Session stats */}
-      {hasPhotos ? (
-        <div className="mx-4 mb-3 rounded-xl bg-card border border-border-faint p-3">
-          <p className="text-[11px] text-fg-secondary mb-2">
-            {s.venue}
-            {startLabel && <> · {startLabel}</>}
-          </p>
+      <div className={`mx-4 mb-3 rounded-xl bg-card border border-border-faint ${hasPhotos ? 'p-3' : 'p-4'}`}>
+        {hasPhotos ? (
+          <>
+            <p className="text-[11px] text-fg-secondary mb-2">
+              {s.venue}
+              {startLabel && <> · {startLabel}</>}
+            </p>
 
-          <DrinkIconRows summary={s} className="mb-2" />
+            <DrinkIconRows summary={s} className="mb-2" />
 
-          {/* Stats row */}
-          <div className="flex items-center gap-4 text-[11px] text-fg-secondary">
-            <span className="flex items-center gap-1">
-              <Wine className="w-3 h-3" />
-              {s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatDuration(s.durationMinutes)}
-            </span>
-            <span>{s.totalStandardDrinks.toFixed(1)} std</span>
-          </div>
-        </div>
-      ) : (
-        // No photo to carry the post, so the night itself is the hero: where
-        // and when, the three headline numbers, and what was actually drunk.
-        <div className="mx-4 mb-3 rounded-xl bg-card border border-border-faint p-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="w-3.5 h-3.5 text-accent-text shrink-0" />
-            <p className="text-[13px] font-semibold text-fg-bright truncate flex-1">{s.venue}</p>
-            {startLabel && <p className="text-[11px] text-fg-secondary shrink-0">{startLabel}</p>}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mt-4">
-            {[
-              { value: String(s.totalDrinks), label: s.totalDrinks === 1 ? 'drink' : 'drinks' },
-              { value: s.totalStandardDrinks.toFixed(1), label: 'std drinks' },
-              { value: formatDuration(s.durationMinutes), label: 'duration' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums">{stat.value}</p>
-                <p className="text-[10px] text-fg-secondary uppercase tracking-wider mt-1.5">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {hasDrinkIcons && (
-            <div className="mt-4 pt-3 border-t border-hairline">
-              <DrinkIconRows summary={s} />
+            {/* Stats row */}
+            <div className="flex items-center gap-4 text-[11px] text-fg-secondary">
+              <span className="flex items-center gap-1">
+                <Wine className="w-3 h-3" />
+                {s.totalDrinks} drink{s.totalDrinks !== 1 ? 's' : ''}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDuration(s.durationMinutes)}
+              </span>
+              <span>{s.totalStandardDrinks.toFixed(1)} std</span>
             </div>
-          )}
-        </div>
-      )}
+          </>
+        ) : (
+          // No photo to carry the post, so the night itself is the hero: where
+          // and when, the three headline numbers, and what was actually drunk.
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPin className="w-3.5 h-3.5 text-accent-text shrink-0" />
+              <p className="text-[13px] font-semibold text-fg-bright truncate flex-1">{s.venue}</p>
+              {startLabel && <p className="text-[11px] text-fg-secondary shrink-0">{startLabel}</p>}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              {[
+                { value: String(s.totalDrinks), label: s.totalDrinks === 1 ? 'drink' : 'drinks' },
+                { value: s.totalStandardDrinks.toFixed(1), label: 'std drinks' },
+                { value: formatDuration(s.durationMinutes), label: 'duration' },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <p className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums">{stat.value}</p>
+                  <p className="text-[10px] text-fg-secondary uppercase tracking-wider mt-1.5">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <DrinkIconRows summary={s} className="mt-4 pt-3 border-t border-hairline" />
+          </>
+        )}
+      </div>
 
       {/* Actions */}
       <div className="px-4 pb-3">
@@ -272,18 +265,15 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
             className="flex items-center gap-2 mt-2"
           >
             <div className="flex -space-x-1.5">
-              {item.likes.slice(0, 3).map((like) => {
-                const user = getUserById(like.userId);
-                return (
-                  <Avatar
-                    key={like.id}
-                    name={like.userName}
-                    size="xs"
-                    src={user?.avatarUrl ?? null}
-                    className="ring-1 ring-background"
-                  />
-                );
-              })}
+              {item.likes.slice(0, 3).map((like) => (
+                <LikerAvatar
+                  key={like.id}
+                  userId={like.userId}
+                  name={like.userName}
+                  size="xs"
+                  className="ring-1 ring-background"
+                />
+              ))}
             </div>
             <p className="text-[12px] text-muted-foreground">
               Liked by <span className="font-semibold text-fg-bright">{item.likes[0].userId === currentUser?.id ? 'you' : item.likes[0].userName}</span>
@@ -330,7 +320,6 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
                   </div>
                 ) : (
                   item.likes.map((like) => {
-                    const user = getUserById(like.userId);
                     return (
                       <div
                         key={like.id}
@@ -341,7 +330,7 @@ export const FeedCard = memo(function FeedCard({ item, milestone, showFollowButt
                         }}
                         className="flex items-center gap-3 px-5 py-3 active:bg-card cursor-pointer"
                       >
-                        <Avatar name={like.userName} size="sm" src={user?.avatarUrl ?? null} />
+                        <LikerAvatar userId={like.userId} name={like.userName} size="sm" />
                         <p className="text-sm font-medium truncate flex-1">
                           {like.userId === currentUser?.id ? 'You' : like.userName}
                         </p>

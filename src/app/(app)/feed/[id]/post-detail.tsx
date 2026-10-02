@@ -13,7 +13,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { PhotoGallery } from '@/components/ui/photo-gallery';
 import type { FeedComment } from '@/types';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
-import { postStartTime, formatPostStartTime } from '@/lib/session-utils';
+import { postStartLabel, groupDrinks } from '@/lib/session-utils';
 import { getMilestoneBadge } from '@/lib/milestones';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { MentionText } from '@/components/ui/mention-text';
@@ -234,8 +234,7 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
   const userLike = item.likes.find((l) => l.userId === currentUser?.id);
   const isLiked = userLike != null || (item.likes.length === 0 && item.currentUserLikeId != null);
   const s = item.sessionSummary;
-  const start = postStartTime(s);
-  const startLabel = start ? formatPostStartTime(start) : null;
+  const startLabel = postStartLabel(s);
   const highlightedThreadId = highlightCommentId
     ? item.comments.find((comment) => comment.replies.some((reply) => reply.id === highlightCommentId))?.id ?? null
     : null;
@@ -338,22 +337,8 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
     }
   };
 
-  // Group identical drinks by name for compact display
-  const groupedDrinks = (() => {
-    if (!s.drinks || s.drinks.length === 0) return [];
-    const groups: { drink: typeof s.drinks[0]; count: number }[] = [];
-    for (const drink of s.drinks) {
-      const existing = groups.find(
-        (g) => g.drink.name === drink.name && g.drink.abvPercent === drink.abvPercent && g.drink.volumeMl === drink.volumeMl
-      );
-      if (existing) {
-        existing.count++;
-      } else {
-        groups.push({ drink, count: 1 });
-      }
-    }
-    return groups;
-  })();
+  // Group identical drinks (same name, strength and size) for compact display
+  const groupedDrinks = groupDrinks(s.drinks ?? [], (d) => `${d.name}|${d.abvPercent}|${d.volumeMl}`);
 
   return (
     <div className="visual-viewport-shell fixed inset-x-0 z-[61] bg-background">
@@ -412,18 +397,18 @@ export default function PostDetailPage({ params, postId, highlightCommentId }: {
               {/* Grouped drinks */}
               {groupedDrinks.length > 0 ? (
                 <div className="space-y-1">
-                  {groupedDrinks.map((g, i) => (
-                    <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-surface-faint">
-                      <DrinkIcon category={g.drink.category} className="w-5 h-5" />
+                  {groupedDrinks.map((g) => (
+                    <div key={g.key} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-surface-faint">
+                      <DrinkIcon category={g.template.category} className="w-5 h-5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {g.drink.name}{g.count > 1 && <span className="text-fg-secondary font-normal"> x{g.count}</span>}
+                          {g.template.name}{g.quantity > 1 && <span className="text-fg-secondary font-normal"> x{g.quantity}</span>}
                         </p>
                         <p className="text-[10px] text-muted">
-                          {g.drink.abvPercent}% · {g.drink.volumeMl}ml · {(g.drink.standardDrinks * g.count).toFixed(1)} std
+                          {g.template.abvPercent}% · {g.template.volumeMl}ml · {(g.template.standardDrinks * g.quantity).toFixed(1)} std
                         </p>
                       </div>
-                      <span className="text-[10px] text-fg-faint capitalize">{g.drink.category}</span>
+                      <span className="text-[10px] text-fg-faint capitalize">{g.template.category}</span>
                     </div>
                   ))}
                 </div>

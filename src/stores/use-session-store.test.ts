@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { makeSession } from '../../tests/helpers/factories';
+import { makeDrink, makeSession } from '../../tests/helpers/factories';
 
 // Every write the store sends to Supabase, captured instead of sent.
 const writes = vi.hoisted(() => [] as Record<string, unknown>[]);
@@ -106,5 +106,30 @@ describe('account changes', () => {
   it('keeps it when the same account is only updated', () => {
     useAuthStore.setState({ currentUser: { ...alice, bio: 'new bio' } });
     expect(useSessionStore.getState().activeSession).not.toBeNull();
+  });
+});
+
+describe('undoing a drink removal', () => {
+  const at = (minute: number) => new Date(Date.UTC(2026, 8, 1, 20, minute)).toISOString();
+  const beer = makeDrink({ id: 'beer', timestamp: at(0) });
+  const wine = makeDrink({ id: 'wine', timestamp: at(10) });
+  const gin = makeDrink({ id: 'gin', timestamp: at(20) });
+  const ids = () => useSessionStore.getState().activeSession?.drinks.map((d) => d.id);
+
+  beforeEach(() => {
+    useSessionStore.setState({ activeSession: makeSession({ status: 'active', drinks: [beer, wine, gin] }) });
+  });
+  afterEach(() => useSessionStore.setState({ activeSession: null }));
+
+  it('puts the drink back where it was drunk, not at the end', () => {
+    useSessionStore.getState().removeDrink('wine');
+    useSessionStore.getState().restoreDrink(wine);
+    expect(ids()).toEqual(['beer', 'wine', 'gin']);
+  });
+
+  it('puts the latest drink back at the end', () => {
+    useSessionStore.getState().removeDrink('gin');
+    useSessionStore.getState().restoreDrink(gin);
+    expect(ids()).toEqual(['beer', 'wine', 'gin']);
   });
 });

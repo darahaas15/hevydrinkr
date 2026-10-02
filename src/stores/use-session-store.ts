@@ -560,10 +560,18 @@ export const useSessionStore = create<SessionState>()(persist((set, get) => ({
     // somehow survived removal.
     if (activeSession.drinks.some((d) => d.id === drink.id)) return;
 
+    // Put it back in its time slot, not at the end: drinks stay in the order
+    // they were drunk, as the DB returns them.
+    const ms = Date.parse(drink.timestamp);
+    const at = activeSession.drinks.findIndex((d) => Date.parse(d.timestamp) > ms);
+    const drinks = at === -1
+      ? [...activeSession.drinks, drink]
+      : [...activeSession.drinks.slice(0, at), drink, ...activeSession.drinks.slice(at)];
+
     set({
       activeSession: {
         ...activeSession,
-        drinks: [...activeSession.drinks, drink],
+        drinks,
         totalStandardDrinks: (activeSession.totalStandardDrinks ?? 0) + drink.standardDrinks,
         totalVolumeMl: (activeSession.totalVolumeMl ?? 0) + drink.volumeMl,
       },

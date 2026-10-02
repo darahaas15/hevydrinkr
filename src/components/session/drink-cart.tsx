@@ -5,14 +5,11 @@ import { Plus, Minus, Trash2 } from 'lucide-react';
 import type { DrinkEntry } from '@/types';
 import { DrinkIcon } from '@/components/ui/drink-icon';
 import { hapticLight, hapticWarning } from '@/lib/haptics';
+import type { DrinkGroup } from '@/lib/session-utils';
 
-export interface DrinkCartItem {
-  // Stable identity for this group row (e.g. drinkDefinitionId).
-  key: string;
-  // Any one drink from the group — used for name/emoji/abv/volume display.
-  template: DrinkEntry;
-  quantity: number;
-}
+// One row per drink type: `key` is its identity (e.g. drinkDefinitionId) and
+// `template` any one drink from the group, for name/emoji/abv/volume display.
+export type DrinkCartItem = DrinkGroup<DrinkEntry>;
 
 interface DrinkCartProps {
   items: DrinkCartItem[];

@@ -26,15 +26,11 @@ import {
   buildSessionSummary,
   spreadDrinkTimestamps,
   groupDrinks,
-  type DrinkGroup,
 } from '@/lib/session-utils';
 import { formatDuration } from '@/lib/utils';
 import { hapticLight, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
-// Aggregate-by-drink-definition shopping-cart row.
-type CartItem = DrinkGroup<DrinkEntry>;
-
-function groupDrinksIntoCart(drinks: DrinkEntry[]): CartItem[] {
+function groupDrinksIntoCart(drinks: DrinkEntry[]): DrinkCartItem[] {
   // Legacy rows edited via the old modal have drinkDefinitionId === 'edited'.
   // Don't collapse them into one row — key by drink.id so each legacy drink
   // stays distinct. Otherwise touching the cart would rewrite disparate
@@ -102,7 +98,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
   const [taggedUserIds, setTaggedUserIds] = useState<string[]>(existingFeedItem?.taggedUserIds ?? []);
 
   // Cart — initialized from existing drinks in edit mode.
-  const [cart, setCart] = useState<CartItem[]>(() =>
+  const [cart, setCart] = useState<DrinkCartItem[]>(() =>
     mode === 'edit' && existingSession ? groupDrinksIntoCart(existingSession.drinks) : [],
   );
   const [showPicker, setShowPicker] = useState(false);
@@ -464,11 +460,7 @@ export function SessionForm({ mode, existingSession, existingFeedItem }: Session
 
           {cart.length > 0 && (
             <DrinkCart
-              items={cart.map<DrinkCartItem>((c) => ({
-                key: c.key,
-                template: c.template,
-                quantity: c.quantity,
-              }))}
+              items={cart}
               onInc={incCart}
               onDec={decCart}
               onRemove={removeCart}

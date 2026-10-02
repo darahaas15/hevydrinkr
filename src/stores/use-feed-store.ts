@@ -68,6 +68,8 @@ interface FeedState {
   fetchFeed: (force?: boolean) => Promise<void>;
   fetchMoreFeed: () => Promise<void>;
   fetchSinglePost: (postId: string) => Promise<FeedItem | null>;
+  // A session's post, or `post: null` if it has none; null if the lookup failed.
+  fetchPostBySessionId: (sessionId: string) => Promise<{ post: FeedItem | null } | null>;
   fetchUserPosts: (userId: string, force?: boolean) => Promise<void>;
   addLike: (feedItemId: string, like: FeedLike) => Promise<void>;
   removeLike: (feedItemId: string, likeId: string) => Promise<void>;
@@ -370,6 +372,19 @@ export const useFeedStore = create<FeedState>()(persist((set, get) => ({
       return { items, userPosts };
     });
     return item;
+  },
+
+  fetchPostBySessionId: async (sessionId: string) => {
+    const { data, error } = await supabase
+      .from('feed_items')
+      .select(FEED_SELECT)
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (error || !data) return null;
+    const row = (data as unknown as FeedItemRow[])[0];
+    const currentUserId = useAuthStore.getState().currentUser?.id;
+    return { post: row ? mapRow(row, currentUserId) : null };
   },
 
   createFeedItemFromSession: async (session, user, caption, taggedUserIds = [], isBackfilled = false) => {

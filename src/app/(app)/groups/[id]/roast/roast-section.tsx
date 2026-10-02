@@ -24,10 +24,8 @@ export function RoastSection({ groupId, members }: RoastSectionProps) {
   const generateRoast = useRoastStore((s) => s.generateRoast);
   const loading = useRoastStore((s) => s.loading);
   const generating = useRoastStore((s) => s.generating);
-  // Subscribe to the recaps themselves (not getRecapsByGroup, a function that
-  // never changes) so loading or generating a recap re-renders this section.
-  // Filtered outside the selector: returning a fresh array from it would
-  // re-render forever.
+  // Filtered outside the selector: a fresh array from it would re-render
+  // forever.
   const allRecaps = useRoastStore((s) => s.recaps);
   const getLastWeekKey = useRoastStore((s) => s.getLastWeekKey);
   const hasRecapForWeek = useRoastStore((s) => s.hasRecapForWeek);

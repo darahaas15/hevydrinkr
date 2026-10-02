@@ -72,7 +72,6 @@ interface RoastState {
   generateRoast: (groupId: string, weekKey: string, members: GroupMember[]) => Promise<RoastRecap | null>;
   refreshRecords: (groupId: string, members: GroupMember[]) => Promise<void>;
   refreshRecap: (groupId: string, weekKey: string, members: GroupMember[]) => Promise<void>;
-  getRecapsByGroup: (groupId: string) => RoastRecap[];
   getLatestRecap: (groupId: string) => RoastRecap | undefined;
   getCurrentWeekKey: () => string;
   getLastWeekKey: () => string;
@@ -555,9 +554,6 @@ export const useRoastStore = create<RoastState>()(
           ),
         }));
       },
-
-      getRecapsByGroup: (groupId) =>
-        get().recaps.filter((r) => r.groupId === groupId),
 
       getLatestRecap: (groupId) =>
         get()

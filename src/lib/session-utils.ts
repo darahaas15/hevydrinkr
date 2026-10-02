@@ -98,8 +98,8 @@ export interface DrinkGroup<T> {
   quantity: number;
 }
 
-// Group drinks by `keyOf`, keeping first-appearance order (the session cart:
-// one row per drink type with a quantity).
+// Group drinks by `keyOf`, keeping first-appearance order: one row per drink
+// type with a quantity (the session cart, post detail's drink list).
 export function groupDrinks<T>(drinks: T[], keyOf: (drink: T) => string): DrinkGroup<T>[] {
   const groups = new Map<string, DrinkGroup<T>>();
   for (const d of drinks) {
@@ -111,9 +111,10 @@ export function groupDrinks<T>(drinks: T[], keyOf: (drink: T) => string): DrinkG
   return [...groups.values()];
 }
 
-// A post's drinks in the order they were drunk. Sorted by time because a
-// drink restored with undo is re-appended to the end of the list; older rows
-// without per-drink times keep their stored order.
+// A post's drinks in the order they were drunk. Sessions keep their drinks in
+// time order, but posts saved before undo restored a drink to its place have
+// it at the end, so sort by time; rows without per-drink times keep their
+// stored order.
 export function orderedPostDrinks(drinks: SummaryDrink[]): SummaryDrink[] {
   if (!drinks.every((d) => d.timestamp)) return drinks;
   // Array.prototype.sort is stable, so drinks logged in the same instant keep
@@ -127,24 +128,41 @@ export function postStartTime(summary: FeedItem['sessionSummary']): string | nul
   if (summary.startedAt) return summary.startedAt;
   const stamps = (summary.drinks ?? []).map((d) => d.timestamp).filter((t): t is string => !!t);
   if (stamps.length === 0) return null;
-  return stamps.reduce((earliest, t) => (Date.parse(t) < Date.parse(earliest) ? t : earliest));
+  let earliest = stamps[0];
+  let earliestMs = Date.parse(earliest);
+  for (const t of stamps) {
+    const ms = Date.parse(t);
+    if (ms < earliestMs) [earliest, earliestMs] = [t, ms];
+  }
+  return earliest;
 }
+
+// Built once: toLocale*String with options builds a new formatter per call,
+// and this runs for every feed card on every render.
+const TIME_FMT = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+const WEEKDAY_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
+const MONTH_FMT = new Intl.DateTimeFormat('en-US', { month: 'short' });
 
 // "Fri · 9:40 PM" within the last week, "12 Sep · 9:40 PM" before that, with
 // the year added outside the current one. Local time.
 export function formatPostStartTime(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
-  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const daysAgo = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
   let day: string;
   if (daysAgo <= 6) {
-    day = date.toLocaleDateString('en-US', { weekday: 'short' });
+    day = WEEKDAY_FMT.format(date);
   } else {
-    day = `${date.getDate()} ${date.toLocaleDateString('en-US', { month: 'short' })}`;
+    day = `${date.getDate()} ${MONTH_FMT.format(date)}`;
     if (date.getFullYear() !== now.getFullYear()) day += ` ${date.getFullYear()}`;
   }
-  return `${day} · ${time}`;
+  return `${day} · ${TIME_FMT.format(date)}`;
+}
+
+// The start-time label a post shows, or null when its start is unknown.
+export function postStartLabel(summary: FeedItem['sessionSummary'], now?: Date): string | null {
+  const start = postStartTime(summary);
+  return start ? formatPostStartTime(start, now) : null;
 }
 
 // ── Datetime-local <-> ISO conversions ────────────────────────────────────
