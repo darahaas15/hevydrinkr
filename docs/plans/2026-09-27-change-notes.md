@@ -15,7 +15,7 @@ Every PR:
 | 1 | Centre the auth forms | S | none |
 | 2 | Records open their session + stay correct | M | migration (functions + triggers + backfill) |
 | 3 | Feed card for photo-less posts + start time on every post | M | none (JSON field) |
-| 4 | Full-screen end-session review | M-L | none |
+| 4 | Full-screen end-session review; every session is a post | L | migration (one post per session) + one-off prod cleanup |
 
 ---
 
@@ -115,16 +115,21 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 
 ---
 
-## PR 4 - Full-screen end-session review
+## PR 4 - Full-screen end-session review, and every session is a post
 
 **Decisions.**
 
-- "End" opens a **full-screen review** (not a popup), one scrolling page, top to bottom: stats summary -> drink list -> photos + **Add photo** -> mood -> caption -> tag people; **Post** / **Save without posting** pinned at the bottom; "Back to session" at the top.
+- **A completed session and its post are one thing (decided 2026-10-02).** Neither exists without the other. There is no "save without posting"; finishing always posts. Discarding an **active** session (the existing abandon flow) is unchanged, since an active session isn't in history.
+
+- "End" opens a **full-screen review** (not a popup), one scrolling page, top to bottom: stats summary -> drink list -> photos + **Add photo** -> mood -> caption -> tag people; **Post** pinned at the bottom; "Back to session" at the top.
 - Drink list = grouped rows with **remove** and **+/- count** (reuse `DrinkCart`). No per-drink time or price editing here; that stays in the edit screen after posting.
 - Edits apply **immediately** to the live session (same store actions as removing a drink mid-session), so "Back to session" keeps them and nothing is lost if the app is killed.
 - Records preview and BAC are **not** shown (the celebration covers records).
+- The **Share** button on session detail goes (it only existed for unposted sessions).
+- **Self-healing posting.** If the post fails after the session ends, the session is kept and the post is retried in the background. Caption and tags are saved on the device before posting; on app start and on reconnect, any of your completed sessions without a post is posted with its saved caption and tags (or none), then the device copy is cleared. This covers live sessions and "Log past session". A unique-violation on insert counts as success.
+- **The database enforces it.** `feed_items.session_id` becomes `NOT NULL`, `UNIQUE` and `ON DELETE CASCADE` (today it is nullable, `ON DELETE SET NULL`, `supabase/schema.sql:128`).
 
-**Current state.** `src/app/(app)/session/page.tsx` ~lines 580-690: a centred `max-w-sm` modal (`showPostPreview`) with a summary line, up to 6 drink icons, photos, mood, caption, `TagPeopleField`, Back / Post / Save without posting. `finishSession(share)` (~line 209) handles the end. Photo adding already exists on this page (~line 187, `pickImage` -> `uploadImage` -> `addPhoto`).
+**Current state.** `src/app/(app)/session/page.tsx` ~lines 580-690: a centred `max-w-sm` modal (`showPostPreview`) with a summary line, up to 6 drink icons, photos, mood, caption, `TagPeopleField`, Back / Post / Save without posting. `finishSession(share)` (~line 209) handles the end; `share: false` ends without a post. Session detail offers **Share** for unposted sessions (`session-detail.tsx` ~line 66). `createPastSession` inserts the session, then `createFeedItemFromSession` posts it, so a failure there also leaves a session without a post. Photo adding already exists on this page (~line 187, `pickImage` -> `uploadImage` -> `addPhoto`).
 
 **Steps.**
 
@@ -134,9 +139,17 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
    - `onDec`: `removeDrink` on the group's most recent drink;
    - `onRemove`: remove every drink in the group, with an undo toast via `restoreDrink` if the page already offers one for removals.
 3. Photos: `PhotoGallery` + an "Add photo" button reusing the existing handler (move it into a shared function rather than duplicating it).
-4. Zero drinks: disable Post and Save with a hint ("Add a drink, or go back to discard the session"). Discarding stays on the session screen's existing abandon flow.
-5. Replace the modal in `page.tsx` with `<SessionReview>`; delete the old modal markup. `finishSession` is unchanged apart from reading state that is now shared with the review.
+4. Zero drinks: disable Post with a hint ("Add a drink, or go back to discard the session"). Discarding stays on the session screen's existing abandon flow.
+5. Replace the modal in `page.tsx` with `<SessionReview>`; delete the old modal markup. `finishSession` loses its `share` flag and always posts.
 6. Motion: slide up on open, down on Back; respect `prefers-reduced-motion`. Keep `posting` guarding double-submits.
+7. Remove the Share button and `canShare` logic from `session-detail.tsx`.
+8. Self-healing posting: a small persisted store (`persist` + `safeJSONStorage`) of pending `{ sessionId, caption, taggedUserIds }`, written before the post insert and cleared on success. A `ensureSessionsPosted(userId)` pass, run on app start and on `online`, loads the user's completed sessions with no post (one query, left join on `feed_items`), posts each with its pending caption/tags if any, and treats Postgres `23505` (unique violation) as already posted. `createFeedItemFromSession` returns success/failure instead of only toasting.
+9. Migration `supabase/migrations/<date>_one_post_per_session.sql`: `feed_items.session_id` `NOT NULL`, a unique constraint, and the foreign key recreated `ON DELETE CASCADE`. Add it to `FILES` in `scripts/test-db-bootstrap.sh`. It fails while prod holds posts without a session or duplicate posts, so it runs after the cleanup below. `deleteFeedItem` can keep deleting the session explicitly; the cascade makes deleting from either side safe.
+10. One-off prod cleanup script (run by hand, not a migration), `scripts/cleanup-unposted-sessions.sql`, in two parts:
+    - **Count and list** (read-only): completed sessions with no post, per user; posts with no session; sessions with more than one post, flagging any duplicate that has likes or comments.
+    - **Delete**, after review: unposted completed sessions (cascades drinks, photos, rounds; the PR 2 triggers recompute records), posts with no session, and all but the earliest post of each duplicated session. Never touches active sessions.
+
+**Prod rollout, in order (by hand):** apply the PR 2 records migration and merge #34 -> run the cleanup count, review, run the delete -> apply the one-post-per-session migration -> deploy PR 4.
 
 **Tests.** Unit-test any new pure logic (which drink `onDec` removes). Manual, with seeded users:
 
@@ -144,12 +157,15 @@ Apply the same wrapper to forgot-password and reset-password (replacing `pt-16`)
 - Back -> session keeps the edits; End again -> review reflects them.
 - Add a photo from the review; tag Bob; add a caption.
 - Post -> feed card (PR 3) shows caption, tag, photo.
-- Save without posting -> no post, toast, session in history.
+- There is no Save without posting; session detail has no Share button.
+- Post with the network blocked -> session kept; restore the network or reload -> the post appears with its caption and tags, once.
+- Same for Log past session.
+- Integration (`npm run test:rls`): a second post for the same session is rejected; a post without a session is rejected; deleting a session deletes its post.
 - Removing every drink disables Post.
 - Kill and reload mid-review -> live session intact.
 - Check both themes and a short viewport with the keyboard open on the caption.
 
-**Changelog.** "Ending a session now shows a full review of your night: fix any drinks, add a photo, then post."
+**Changelog.** "Ending a session now shows a full review of your night: fix any drinks, add a photo, then post." / "Finished sessions are now always posted to your feed."
 
 ---
 
@@ -169,11 +185,9 @@ Held on 2026-09-27 before any Google Cloud setup. Decisions made so far:
 
 ### Keep drink order when a session is edited
 
-The edit screen regroups drinks by type (its cart) and, when the drink count changes, re-spreads their times in that grouped order, so an edited session's post shows drinks grouped rather than in the order they were drunk. Logged past sessions are grouped the same way. Fix alongside the bug below, since both are in the edit screen's save path: unchanged drinks keep their ids and times, and added drinks go at the end.
+The edit screen regroups drinks by type (its cart) and, when the drink count changes, re-spreads their times in that grouped order, so an edited session's post shows drinks grouped rather than in the order they were drunk. Logged past sessions are grouped the same way. Fix in the edit screen's save path: unchanged drinks keep their ids and times, and added drinks go at the end.
 
-### Drink and photo edits on unposted sessions don't save
-
-The edit screen only writes drink (and likely photo) changes through the post, so a session saved without posting keeps its old drinks after a reload. Move drink persistence into the session store so it runs with or without a post.
+(The former "drink and photo edits on unposted sessions don't save" item is gone: PR 4 removes unposted sessions.)
 
 ### Recaps
 
