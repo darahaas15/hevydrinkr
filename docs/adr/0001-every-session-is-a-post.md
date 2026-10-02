@@ -1,0 +1,3 @@
+# Every completed session is a post
+
+A completed session and its post are one thing: finishing a session always posts it, there is no private "save without posting", and the database requires every post to have its session (and allows at most one post per session), so deleting either deletes both. We chose this over keeping private history because two overlapping concepts kept producing bugs (edits to unposted sessions silently not saving, orphaned posts and records) and a second "history-only" view was never something users asked for. Users who don't want to share a night discard it while it's still active. Undoing this means reintroducing a post-less session state everywhere that now assumes one-to-one, and sessions deleted by the 2026-10 cleanup can't be recovered.
